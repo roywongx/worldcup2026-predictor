@@ -846,7 +846,6 @@ body {
 
 <div class="actions">
   <button class="btn-pill btn-primary" onclick="runSimulation()">New Simulation</button>
-  <button class="btn-pill btn-secondary" onclick="runMonteCarlo()">Monte Carlo (10000x)</button>
   <button class="btn-pill btn-secondary" onclick="refreshData()" style="background:rgba(52,199,89,0.12);color:var(--green)">⟳ Refresh</button>
 </div>
 
@@ -1558,16 +1557,6 @@ function simMatch(home, away) {
   return [poisson(lam), poisson(mu)];
 }
 
-function poisson(lam) {
-  const L = Math.exp(-lam); let k = 0, p = 1;
-  while (true) { k++; p *= Math.random(); if (p < L) return k - 1; if (k > 15) return 15; }
-}
-
-function simMatch(home, away) {
-  const [lam, mu] = goalExpect(home, away);
-  return [poisson(lam), poisson(mu)];
-}
-
 function simKO(home, away) {
   let [ga, gb] = simMatch(home, away); let m = '';
   if (ga !== gb) { m = "90'"; }
@@ -2001,7 +1990,14 @@ function runMonteCarlo() {
 function renderProbabilities() {
   try {
   if(!mcResults) {
-    document.getElementById('section-probabilities').innerHTML = '<div style="text-align:center;padding:4rem;color:var(--text3)">Click "Monte Carlo (10000x)" to generate probability analysis</div>';
+    document.getElementById('section-probabilities').innerHTML = `
+      <div style="text-align:center;padding:3rem">
+        <div style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">Click to run 10,000 tournament simulations</div>
+        <button class="btn-pill btn-primary" onclick="runMonteCarlo()" style="font-size:1rem;padding:0.8rem 2rem">
+          🎲 Monte Carlo (10,000x)
+        </button>
+        <div style="font-size:0.72rem;color:var(--text3);margin-top:1rem">Generates probability distributions for champion, finalist, semi-final, quarter-final, and round of 16</div>
+      </div>`;
     return;
   }
   const {champ,finalist,semi,quarter,r16,N} = mcResults;
@@ -2032,11 +2028,14 @@ function renderProbabilities() {
     h += `<td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
   });
   h += '</table></div>';
-  h += `<div style="margin-top:1rem;font-size:0.72rem;color:var(--text3);line-height:1.6">
-    <strong>Model Components:</strong> Elo + FIFA + Market Value + Form + Experience + Bookmaker Odds + Dynamic Elo (auto-calibrated)<br>
-    <strong>Dynamic Elo:</strong> Updated after each match using standard Elo formula (K=60, World Cup weight)<br>
-    <strong>Form:</strong> Exponential decay (λ=0.05), recent matches weighted more heavily<br>
-    <strong>Odds%:</strong> Implied probability from DraftKings American odds</div>`;
+  h += `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem">
+    <div style="font-size:0.72rem;color:var(--text3);line-height:1.6">
+      <strong>Model:</strong> Elo + FIFA + MV + Form + XP + Odds + Dynamic Elo (auto-calibrated)
+    </div>
+    <button class="btn-pill btn-secondary" onclick="runMonteCarlo()" style="font-size:0.75rem;padding:0.4rem 1rem">
+      🎲 Re-run Monte Carlo
+    </button>
+  </div>`;
   document.getElementById('section-probabilities').innerHTML = h;
   } catch(e) {
     document.getElementById('section-probabilities').innerHTML = '<div class="data-card"><h4>⚠️ Error Loading Probabilities</h4><p style="color:var(--red)">' + e.message + '</p></div>';
@@ -3253,6 +3252,11 @@ function renderRadar() {
   if(state.autoRefresh) {
     autoRefreshTimer = setInterval(() => refreshData(), 30 * 60 * 1000);
   }
+  
+  // Clean up timer on page unload
+  window.addEventListener('beforeunload', () => {
+    if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  });
   
   // Clean up duplicate results (timezone date mismatch fix)
   deduplicateResults();
