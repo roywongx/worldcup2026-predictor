@@ -1402,6 +1402,7 @@ function oddsToProb(usOdds) {
 }
 
 function composite(t) {
+  if(!TEAMS[t]) return 0;
   const [elo,fifa,mv,wcApps,form,host,odds] = TEAMS[t];
   const dynElo = dynamicElo[t] || elo;
   
@@ -1431,6 +1432,7 @@ function composite(t) {
 }
 
 function attackRating(t) {
+  if(!TEAMS[t]) return 0;
   const [elo,fifa,mv,,form] = TEAMS[t];
   const dynElo = dynamicElo[t] || elo;
   return 0.45 * ((dynElo - 1400) / 800) + 0.25 * ((fifa - 900) / 1000) + 
@@ -1438,6 +1440,7 @@ function attackRating(t) {
 }
 
 function defenseRating(t) {
+  if(!TEAMS[t]) return 0;
   const [elo,fifa,mv,wcApps,form] = TEAMS[t];
   const dynElo = dynamicElo[t] || elo;
   return 0.40 * ((dynElo - 1400) / 800) + 0.30 * ((fifa - 900) / 1000) + 
@@ -2086,6 +2089,7 @@ function renderModel() {
   const stats = getCalibrationStats();
   h += `<div class="team-breakdown"><h3>Team Strength Breakdown (Top 20)${stats ? ` — Accuracy: ${(stats.accuracy*100).toFixed(0)}%` : ''}</h3><div class="breakdown-grid">`;
   allTeams.slice(0,20).forEach(t => {
+    if(!TEAMS[t]) return;
     const [elo,fifa,mv,wcApps,form,host,odds] = TEAMS[t];
     const dynElo = dynamicElo[t] || elo;
     const eloDelta = dynElo - elo;
