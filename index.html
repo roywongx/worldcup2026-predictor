@@ -1643,12 +1643,29 @@ function simulateOneTournament(actualMap, formMap) {
 // ---- Monte Carlo simulation ----
 
 /** Run N tournament simulations and aggregate results */
+/** Full simulation history for conditional MC filtering */
+let simulationHistory = [];
+
 function runMonteCarlo(actualMap, N, formMap) {
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
+  simulationHistory = []; // Reset history
 
   for (let i = 0; i < N; i++) {
     const result = simulateOneTournament(actualMap, formMap);
     champ[result.champion] = (champ[result.champion] || 0) + 1;
+
+    // Store full result for conditional filtering
+    const matchResults = {};
+    for (const round of result.rounds) {
+      for (const m of round) {
+        matchResults[`${m.a}|${m.b}`] = { winner: m.ga > m.gb ? m.a : m.b, ga: m.ga, gb: m.gb };
+      }
+    }
+    simulationHistory.push({
+      champion: result.champion,
+      matchResults,
+      rounds: result.rounds
+    });
 
     if (result.rounds.length >= 4) {
       for (const m of result.rounds[3]) {
@@ -2120,6 +2137,11 @@ const I18N = {
     'prob.click':'点击运行 10,000 次锦标赛模拟','prob.btn':'🎲 蒙特卡洛 (10,000x)',
     'prob.desc':'生成冠军、决赛、四强、八强、十六强的概率分布',
     'prob.rerun':'🎲 重新模拟','prob.sims':'模拟次数','prob.champs':'不同冠军','prob.fav':'头号热门','prob.winrate':'夺冠率',
+    'prob.whatif':'条件蒙特卡洛 (What-If)','prob.whatifDesc':'锁定某场比赛结果，即时查看概率变化',
+    'prob.selectTeam':'选择球队','prob.homeWin':'主胜','prob.draw':'平局','prob.awayWin':'客胜',
+    'prob.apply':'应用','prob.clear':'清除','prob.invalidMatch':'请选择有效的对阵',
+    'prob.noData':'无数据','prob.noMatch':'该比分组合从未出现',
+    'prob.conditionalResults':'条件概率结果','prob.filteredSims':'次过滤模拟',
     // Model
     'model.dc':'Dixon-Coles Poisson 模型','model.elo':'Elo 系统',
     'model.base':'基础 λ (总进球)','model.rate':'Elo→进球率','model.host':'东道主加成','model.floor':'最低 λ','model.grid':'比分网格',
@@ -2176,6 +2198,11 @@ const I18N = {
     'prob.click':'Click to run 10,000 tournament simulations','prob.btn':'🎲 Monte Carlo (10,000x)',
     'prob.desc':'Generates probability distributions for champion, finalist, semi, quarter, and R16',
     'prob.rerun':'🎲 Re-run','prob.sims':'Simulations','prob.champs':'Unique Champions','prob.fav':'Top Favorite','prob.winrate':'Win Rate',
+    'prob.whatif':'Conditional Monte Carlo (What-If)','prob.whatifDesc':'Lock a match result, see probability changes instantly',
+    'prob.selectTeam':'Select team','prob.homeWin':'Home Win','prob.draw':'Draw','prob.awayWin':'Away Win',
+    'prob.apply':'Apply','prob.clear':'Clear','prob.invalidMatch':'Please select valid teams',
+    'prob.noData':'No data','prob.noMatch':'This score combination never occurred',
+    'prob.conditionalResults':'Conditional Results','prob.filteredSims':'filtered simulations',
     // Model
     'model.dc':'Dixon-Coles Poisson Model','model.elo':'Elo System',
     'model.base':'Base λ (total goals)','model.rate':'Elo→Goal rate','model.host':'Host advantage','model.floor':'Floor λ','model.grid':'Score grid',
@@ -2248,6 +2275,7 @@ function saveApiKey(s,k){const st=loadState();st.apiKeys[s]=k;saveState(st);show
 
 // ── Tab navigation ───────────────────────────────────────────────────────
 let currentResults=null,mcResults=null,marketData={matches:{},champion:{},lastFetch:null};
+let whatIfLocks={}; // Conditional MC locked match results
 function showSection(id,btn){
   try{document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.segment button').forEach(b=>b.classList.remove('active'));
@@ -2497,6 +2525,108 @@ function runMonteCarloUI(){
   setTimeout(processChunk,50);
 }
 
+/** Query conditional probabilities: filter simulation history by locked match results.
+ *  Returns conditional champion/finalist/semi probabilities.
+ *  Usage: queryWhatIf({"Spain|France": "Spain"}) → filtered probabilities */
+function queryWhatIf(lockedMatches) {
+  if (!simulationHistory || simulationHistory.length === 0) return null;
+
+  let filtered = simulationHistory;
+  const keys = Object.keys(lockedMatches || {});
+
+  if (keys.length > 0) {
+    filtered = simulationHistory.filter(run => {
+      return keys.every(key => {
+        const expected = lockedMatches[key];
+        const actual = run.matchResults[key];
+        if (!actual) return false;
+        return actual.winner === expected;
+      });
+    });
+  }
+
+  if (filtered.length === 0) return { error: t('prob.noMatch'), sampleSize: 0 };
+
+  // Recompute probabilities from filtered subset
+  const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
+  for (const run of filtered) {
+    champ[run.champion] = (champ[run.champion] || 0) + 1;
+    if (run.rounds.length >= 4) for (const m of run.rounds[3]) { finalist[m.a]=(finalist[m.a]||0)+1; finalist[m.b]=(finalist[m.b]||0)+1; }
+    if (run.rounds.length >= 3) for (const m of run.rounds[2]) { semi[m.a]=(semi[m.a]||0)+1; semi[m.b]=(semi[m.b]||0)+1; }
+    if (run.rounds.length >= 2) for (const m of run.rounds[1]) { quarter[m.a]=(quarter[m.a]||0)+1; quarter[m.b]=(quarter[m.b]||0)+1; }
+    if (run.rounds.length >= 1) for (const m of run.rounds[0]) { r16[m.a]=(r16[m.a]||0)+1; r16[m.b]=(r16[m.b]||0)+1; }
+  }
+
+  return { champ, finalist, semi, quarter, r16, N: filtered.length, sampleSize: filtered.length };
+}
+
+/** Apply What-If lock: add a match result to the conditional filter */
+function applyWhatIf() {
+  const t1 = document.getElementById('whatif-team1').value;
+  const t2 = document.getElementById('whatif-team2').value;
+  const result = document.getElementById('whatif-result').value;
+  if (!t1 || !t2 || t1 === t2) { showToast(t('prob.invalidMatch')); return; }
+
+  const key = `${t1}|${t2}`;
+  let winner;
+  if (result === 'home') winner = t1;
+  else if (result === 'away') winner = t2;
+  else winner = 'draw'; // draw = either team (will match both)
+
+  whatIfLocks[key] = winner;
+  displayWhatIfResults();
+}
+
+/** Clear all What-If locks */
+function clearWhatIf() {
+  whatIfLocks = {};
+  const el = document.getElementById('whatif-result-display');
+  if (el) el.innerHTML = '';
+}
+
+/** Display What-If conditional probability results */
+function displayWhatIfResults() {
+  const el = document.getElementById('whatif-result-display');
+  if (!el) return;
+
+  if (Object.keys(whatIfLocks).length === 0) { el.innerHTML = ''; return; }
+
+  const result = queryWhatIf(whatIfLocks);
+  if (!result || result.error) {
+    el.innerHTML = `<div style="color:var(--red);font-size:0.75rem">${result ? result.error : t('prob.noData')}</div>`;
+    return;
+  }
+
+  let h = `<div style="background:rgba(175,82,222,0.06);border:1px solid rgba(175,82,222,0.15);border-radius:10px;padding:1rem;margin-top:0.5rem">`;
+  h += `<div style="font-size:0.75rem;font-weight:700;margin-bottom:0.5rem">${t('prob.conditionalResults')} (${result.sampleSize} ${t('prob.filteredSims')})</div>`;
+
+  // Show locked matches
+  h += `<div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.5rem">`;
+  for (const [key, winner] of Object.entries(whatIfLocks)) {
+    const [t1, t2] = key.split('|');
+    h += `${t1} vs ${t2} → ${winner === 'draw' ? 'Draw' : winner} · `;
+  }
+  h += `</div>`;
+
+  // Show conditional champion probabilities
+  const teams = Object.keys(result.champ).sort((a, b) => result.champ[b] - result.champ[a]);
+  h += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:0.4rem">`;
+  for (const t of teams.slice(0, 10)) {
+    const pct = (result.champ[t] / result.sampleSize * 100).toFixed(1);
+    const basePct = mcResults ? ((mcResults.champ[t] || 0) / mcResults.N * 100).toFixed(1) : '0';
+    const diff = parseFloat(pct) - parseFloat(basePct);
+    const dc = diff > 1 ? 'var(--green)' : diff < -1 ? 'var(--red)' : 'var(--text3)';
+    h += `<div style="text-align:center;padding:0.3rem;background:var(--bg);border-radius:6px">`;
+    h += `<div style="font-size:0.6rem">${fl(t)}</div>`;
+    h += `<div style="font-size:0.85rem;font-weight:700">${pct}%</div>`;
+    h += `<div style="font-size:0.55rem;color:${dc}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp</div>`;
+    h += `</div>`;
+  }
+  h += `</div>`;
+  h += `</div>`;
+  el.innerHTML = h;
+}
+
 function renderProbabilities(){
   try{
   if(!mcResults){document.getElementById('section-probabilities').innerHTML=`<div style="text-align:center;padding:3rem"><div style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">${t('prob.click')}</div><button class="btn-pill btn-primary" onclick="runMonteCarloUI()" style="font-size:1rem;padding:0.8rem 2rem">${t('prob.btn')}</button><div style="font-size:0.72rem;color:var(--text3);margin-top:1rem">${t('prob.desc')}</div></div>`;return;}
@@ -2519,7 +2649,29 @@ function renderProbabilities(){
   });
   h+='</table></div>';
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
+
+  // What-If Conditional Monte Carlo
+  h+=`<div style="margin-top:2rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">🔮 ${t('prob.whatif')}</h4>`;
+  h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.8rem">${t('prob.whatifDesc')}</div>`;
+  // Match selector dropdowns
+  h+=`<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap">`;
+  h+=`<select id="whatif-team1" style="font-size:0.72rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><option value="">${t('prob.selectTeam')}</option>`;
+  for(const g of GROUPS) { for(const t of GROUP_TEAMS[g]) { h+=`<option value="${t}">${t}</option>`; } }
+  h+=`</select>`;
+  h+=`<span style="font-size:0.72rem;color:var(--text3)">vs</span>`;
+  h+=`<select id="whatif-team2" style="font-size:0.72rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><option value="">${t('prob.selectTeam')}</option>`;
+  for(const g of GROUPS) { for(const t of GROUP_TEAMS[g]) { h+=`<option value="${t}">${t}</option>`; } }
+  h+=`</select>`;
+  h+=`<select id="whatif-result" style="font-size:0.72rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><option value="home">${t('prob.homeWin')}</option><option value="draw">${t('prob.draw')}</option><option value="away">${t('prob.awayWin')}</option></select>`;
+  h+=`<button class="data-btn data-btn-primary" onclick="applyWhatIf()">${t('prob.apply')}</button>`;
+  h+=`<button class="data-btn data-btn-secondary" onclick="clearWhatIf()">${t('prob.clear')}</button>`;
+  h+=`</div>`;
+  h+=`<div id="whatif-result-display"></div>`;
+  h+=`</div>`;
+
   document.getElementById('section-probabilities').innerHTML=h;
+  // Show existing What-If results if any
+  if(Object.keys(whatIfLocks).length > 0) displayWhatIfResults();
   }catch(e){document.getElementById('section-probabilities').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+e.message+'</p></div>';}
 }
 
