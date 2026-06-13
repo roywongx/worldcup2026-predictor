@@ -8,36 +8,38 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f5f5f7;
+  /* Taste-skill: one accent color, saturation < 80%, neutral base */
+  --bg: #f8f9fa;
   --card: #fff;
-  --text: #1d1d1f;
-  --text2: #6e6e73;
-  --text3: #76767a;
-  --blue: #007aff;
-  --green: #34c759;
-  --red: #ff3b30;
-  --orange: #ff9500;
-  --gold: #ffd60a;
-  --purple: #af52de;
-  --border: rgba(0,0,0,0.06);
-  --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
-  --radius: 16px;
-  --radius-sm: 10px;
+  --text: #1a1a2e;
+  --text2: #4a5568;
+  --text3: #a0aec0;
+  --blue: #2563eb;
+  --green: #059669;
+  --red: #dc2626;
+  --orange: #d97706;
+  --gold: #ca8a04;
+  --purple: #7c3aed;
+  --border: rgba(0,0,0,0.08);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
 }
 
-html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+html { font-size: 14px; -webkit-font-smoothing: antialiased; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  line-height: 1.5;
 }
 
 .hero {
   text-align: center;
-  padding: 4rem 1.5rem 2.5rem;
+  padding: 3rem 1.5rem 2rem;
   background: linear-gradient(180deg, #fff 0%, var(--bg) 100%);
 }
 
@@ -123,7 +125,8 @@ body {
 .segment button.active {
   background: #fff;
   color: var(--text);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.04);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
 .segment button:hover:not(.active) { color: var(--text); }
@@ -149,7 +152,7 @@ body {
 }
 
 .btn-primary { background: var(--blue); color: #fff; }
-.btn-primary:hover { background: #0066d6; transform: scale(1.02); }
+.btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
 .btn-secondary { background: rgba(0,0,0,0.05); color: var(--text); }
 .btn-secondary:hover { background: rgba(0,0,0,0.08); }
 
@@ -167,10 +170,11 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--border);
 }
 
-.group-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.group-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 
 .group-head {
   padding: 0.8rem 1rem;
@@ -252,17 +256,19 @@ body {
   align-items: center;
   background: var(--card);
   border-radius: var(--radius-sm);
-  padding: 0.65rem 1rem;
-  margin-bottom: 0.4rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  transition: transform 0.2s;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.35rem;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease;
+  border: 1px solid var(--border);
 }
 
-.match-card:hover { transform: scale(1.005); }
+.match-card:hover { transform: translateY(-1px); }
 
 .match-card.final-match {
-  background: linear-gradient(135deg, #fff9e6, #fff);
-  box-shadow: 0 2px 12px rgba(255,214,10,0.15);
+  background: linear-gradient(135deg, #fffbeb, #fff);
+  box-shadow: 0 2px 8px rgba(202,138,4,0.12);
+  border: 1px solid rgba(202,138,4,0.2);
 }
 
 .m-group {
@@ -341,9 +347,10 @@ body {
 .b-match {
   background: var(--card);
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow);
   overflow: hidden;
   margin: 0.25rem 0;
+  border: 1px solid var(--border);
 }
 
 .b-team {
@@ -377,11 +384,12 @@ body {
 
 .champion-hero {
   text-align: center;
-  padding: 3rem 1.5rem 2.5rem;
-  background: linear-gradient(135deg, #fff9e6, #fff3cc, #fff);
+  padding: 2.5rem 1.5rem 2rem;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7, #fff);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   margin-bottom: 2rem;
+  border: 1px solid rgba(202,138,4,0.15);
 }
 
 .champion-hero .trophy-icon { font-size: 3.5rem; margin-bottom: 0.3rem; }
@@ -446,9 +454,10 @@ body {
 .stat-pill {
   background: var(--card);
   border-radius: var(--radius-sm);
-  padding: 1.2rem 0.8rem;
+  padding: 1rem 0.8rem;
   text-align: center;
   box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
 .stat-num {
@@ -472,6 +481,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+  border: 1px solid var(--border);
 }
 
 .prob-table {
@@ -530,6 +540,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1.2rem;
+  border: 1px solid var(--border);
 }
 
 .model-card h4 {
@@ -558,6 +569,7 @@ body {
   box-shadow: var(--shadow);
   overflow: hidden;
   margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
 }
 
 .team-breakdown h3 {
@@ -628,6 +640,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1.2rem;
+  border: 1px solid var(--border);
 }
 
 .data-card h4 {
@@ -753,8 +766,8 @@ body {
   transform: translateX(-50%);
   background: var(--text);
   color: #fff;
-  padding: 0.6rem 1.2rem;
-  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
   font-size: 0.8rem;
   font-weight: 600;
   z-index: 9999;
