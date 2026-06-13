@@ -434,6 +434,65 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+/* Two-pyramid bracket layout */
+.bracket-pyramid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 1rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pyramid-side {
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+}
+
+.pyramid-left {
+  flex-direction: row;
+}
+
+.pyramid-right {
+  flex-direction: row-reverse;
+}
+
+.pyramid-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  min-width: 160px;
+  padding: 0 0.3rem;
+}
+
+.pyramid-round-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.pyramid-match {
+  display: flex;
+  flex-direction: column;
+}
+
+.pyramid-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  padding: 0 0.5rem;
+}
   padding: 0.1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2665,62 +2724,92 @@ function renderBracket(){
   ph+=`<div class="champ-path-item"><span class="cp-round" style="color:var(--gold)">${currentLang==='zh'?'决赛':'FINAL'}</span><span class="cp-score">${fmg}</span><span class="cp-vs">vs</span>${fl(fop)}<span class="cp-score">${fog}</span><span class="cp-method">${ff.method}</span></div>`;
   let h=`<div class="champion-hero"><div class="trophy-icon">🏆</div><h2>${fl(ch)}</h2><div class="champ-sub">${t('ko.champion')}</div><div class="champ-path">${ph}</div></div>`;
 
-  // Professional bracket with connectors
-  h+='<div class="bracket-wrap"><div class="bracket">';
+  // Two-pyramid bracket layout
+  h+='<div class="bracket-pyramid">';
 
-  // Helper: render a bracket column
-  function bc(title, matches, gap) {
-    let s=`<div class="bracket-col" style="margin-top:${gap||0}">`;
-    s+=`<div class="bracket-col-title">${title}</div>`;
-    matches.forEach(m=>{
-      const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
-      s+=`<div class="b-match" style="margin-bottom:${gap||'0.5rem'}">`;
-      s+=`<div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${getTeamName(m.a)}</span><span class="b-score">${m.ga}</span></div>`;
-      s+=`<div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${getTeamName(m.b)}</span><span class="b-score">${m.gb}</span></div>`;
-      if(m.method) s+=`<div class="b-method">${m.method}</div>`;
-      s+=`</div>`;
-    });
-    s+='</div>';
+  // Helper: render a match card
+  function mc(m, highlight) {
+    const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
+    const border = highlight ? 'border:2px solid var(--gold)' : '';
+    let s=`<div class="b-match" style="margin:0.4rem 0;${border}">`;
+    s+=`<div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${getTeamName(m.a)}</span><span class="b-score">${m.ga}</span></div>`;
+    s+=`<div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${getTeamName(m.b)}</span><span class="b-score">${m.gb}</span></div>`;
+    if(m.method) s+=`<div class="b-method">${m.method}</div>`;
+    s+=`</div>`;
     return s;
   }
 
-  // R32 (16 matches, tighter spacing)
-  h+=bc(t('ko.r32'), ko.R32, '0.3rem');
-  // Connector
-  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
-  // R16 (8 matches, medium spacing)
-  h+=bc(t('ko.r16'), ko.R16, '0.8rem');
-  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
-  // QF (4 matches, wider spacing)
-  h+=bc(t('ko.qf'), ko.QF, '2rem');
-  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
-  // SF (2 matches, widest spacing)
-  h+=bc(t('ko.sf'), ko.SF, '4rem');
-  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
+  // Split R32 into left (0-7) and right (8-15)
+  const r32L = ko.R32.slice(0, 8);
+  const r32R = ko.R32.slice(8, 16);
+  const r16L = ko.R16.slice(0, 4);
+  const r16R = ko.R16.slice(4, 8);
+  const qfL = ko.QF.slice(0, 2);
+  const qfR = ko.QF.slice(2, 4);
+  const sfL = ko.SF.slice(0, 1);
+  const sfR = ko.SF.slice(1, 2);
 
-  // Finals column
-  h+=`<div class="bracket-col" style="margin-top:2rem">`;
-  h+=`<div class="bracket-col-title">${t('ko.finals')}</div>`;
+  // LEFT PYRAMID (narrowing toward center)
+  h+=`<div class="pyramid-side pyramid-left">`;
+  // R32
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
+  r32L.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  // R16
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
+  r16L.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  // QF
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
+  qfL.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  // SF
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
+  sfL.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  h+=`</div>`;
+
+  // CENTER: Finals + Champion
+  h+=`<div class="pyramid-center">`;
   // 3rd place
-  h+=`<div class="b-match" style="margin-bottom:1rem">`;
+  h+=`<div class="b-match" style="margin-bottom:1rem;opacity:0.8">`;
   h+=`<div style="font-size:0.65rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div>`;
   h+=`<div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${getTeamName(ko.Third.a)}</span><span class="b-score">${ko.Third.ga}</span></div>`;
   h+=`<div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${getTeamName(ko.Third.b)}</span><span class="b-score">${ko.Third.gb}</span></div>`;
   if(ko.Third.method) h+=`<div class="b-method">${ko.Third.method}</div>`;
   h+=`</div>`;
-  // Final
-  h+=`<div class="b-match" style="background:linear-gradient(135deg,rgba(202,138,4,0.06),rgba(202,138,4,0.02));border:2px solid var(--gold)">`;
-  h+=`<div style="font-size:0.65rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
+  // FINAL
+  h+=`<div class="b-match" style="background:linear-gradient(135deg,rgba(202,138,4,0.08),rgba(202,138,4,0.02));border:2px solid var(--gold);margin-bottom:1rem">`;
+  h+=`<div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
   h+=`<div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${getTeamName(ko.Final.a)}</span><span class="b-score">${ko.Final.ga}</span></div>`;
   h+=`<div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${getTeamName(ko.Final.b)}</span><span class="b-score">${ko.Final.gb}</span></div>`;
   if(ko.Final.method) h+=`<div class="b-method">${ko.Final.method}</div>`;
   h+=`</div>`;
+  // CHAMPION
+  h+=`<div class="bracket-champion"><div class="trophy">🏆</div><div class="name">${fl(ch)}</div><div class="label">${t('ko.champion')}</div></div>`;
   h+=`</div>`;
 
-  // Champion display
-  h+=`<div class="bracket-champion"><div class="trophy">🏆</div><div class="name">${fl(ch)}</div><div class="label">${t('ko.champion')}</div></div>`;
+  // RIGHT PYRAMID (mirrored, narrowing toward center)
+  h+=`<div class="pyramid-side pyramid-right">`;
+  // SF
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
+  sfR.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  // QF
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
+  qfR.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  // R16
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
+  r16R.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  // R32
+  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
+  r32R.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
+  h+=`</div>`;
+  h+=`</div>`;
 
-  h+='</div></div>';
+  h+='</div>';
   document.getElementById('section-bracket').innerHTML=h;
 }
 
