@@ -1,4 +1,4 @@
-# 🏆 2026 FIFA World Cup Predictor / 2026 FIFA 世界杯预测器
+# 🏆 2026 FIFA World Cup Predictor
 
 [English](#english) | [中文](#中文)
 
@@ -8,7 +8,7 @@
 
 ### What is this?
 
-A self-contained, single-file HTML application that predicts the 2026 FIFA World Cup using a **multi-factor composite model** with real-time data integration. No server, no build step — just open the file in your browser.
+A single-file HTML application predicting the 2026 FIFA World Cup using the **Dixon-Coles bivariate Poisson model** (1997) — the academic gold standard for football match prediction. No server, no build step — just open in your browser.
 
 ### Quick Start
 
@@ -19,48 +19,50 @@ curl -fsSL https://raw.githubusercontent.com/roywongx/worldcup2026-predictor/mai
 # Windows (PowerShell)
 irm https://raw.githubusercontent.com/roywongx/worldcup2026-predictor/main/install.ps1 | iex
 
-# Or just download index.html and open in browser
+# Or download index.html and open in browser
 ```
 
-### API Keys Setup (Free, 2 minutes)
-
-The app works with built-in data, but **live updates require free API keys**:
+### API Keys (Free, 2 minutes)
 
 | Service | Purpose | Free Tier | Sign Up |
 |---------|---------|-----------|---------|
 | **football-data.org** | Match results | 10 req/min | [Register](https://www.football-data.org/client/register) |
 | **The-Odds-API** | Betting odds | 500 req/month | [Register](https://the-odds-api.com/) |
 
-**How to set up:**
-1. Register at both sites (free)
-2. Copy your API keys
-3. Open the app → go to **Data** tab
-4. Paste keys in the input fields → click **Save**
-
-### Features
-
-- **Dynamic Composite Model** — Elo (25%) + FIFA (15%) + Market Value (10%) + Bookmaker Odds (25%) + Form (10%) + Experience (5%) + Dynamic Elo (10%)
-- **Auto-Fetch Results** — Pulls completed match results from football-data.org
-- **Auto-Fetch Odds** — Pulls live betting odds from The-Odds-API
-- **Polymarket Radar** — Real-money prediction market comparison
-- **Dynamic Elo** — Updates after each match (K=60, World Cup weight)
-- **Form Momentum** — Exponential decay (λ=0.05), recent matches weighted more
-- **Poisson Goal Model** — Separate attack/defense ratings
-- **Monte Carlo** — 10,000 iterations for probability distributions
-- **Adaptive Calibration** — Model weights auto-adjust based on accuracy
-- **Actual Results Lock** — Completed matches use real scores
-
 ### How It Works
 
 ```
-Data Sources → Composite Rating Engine → Group Stage (Poisson) + Knockout (Deterministic) → Monte Carlo → Probabilities
+Elo Ratings → λ = BASE/2 ± ΔElo/800 + Host Bonus
+    ↓
+Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
+    ↓                                    ↑ ρ = -0.12 low-score correction
+Monte Carlo 10,000 simulations (FIFA bracket)
+    ↓
+Champion/Final/Semi/Quarter/R16 probabilities
 ```
+
+### Model Details
+
+- **Dixon-Coles (1997)** — Bivariate Poisson with low-score correlation correction (ρ=-0.12). Fixes the standard Poisson's under-prediction of 0-0 and 1-1 draws.
+- **Elo → λ** — 400 Elo points ≈ 1 goal supremacy. International average λ_base = 2.7 total goals.
+- **Host advantage** — +0.30 expected goals for Mexico/USA/Canada (CONCACAF hosts).
+- **Dynamic Elo** — K=60 (World Cup weight), updates after each match with goal-difference multiplier.
+- **Monte Carlo** — 10,000 full tournament simulations with proper FIFA bracket structure.
+- **Scoring rules** — RPS (Ranked Probability Score), Brier score, Log-loss, ECE (Expected Calibration Error).
+- **Actual results locked** — Completed matches use real scores; Elo and form update dynamically.
+
+### Academic Basis
+
+- Dixon, M.J. & Coles, S.G. (1997). "Modelling Association Football Scores and Inefficiencies in the Football Betting Market." *JRSS-C*, 46(2): 265-280.
+- Elo, A.E. (1978). *The Rating of Chessplayers, Past and Present*. Arco.
+- Walsh, C. & Joshi, A. (2023). "Machine learning for sports betting: should model selection be based on accuracy or calibration?" *arXiv:2303.06021*.
 
 ### Tech Stack
 
 - Pure HTML/CSS/JavaScript (zero dependencies)
-- localStorage for persistence
-- Fetch API for data retrieval
+- Dixon-Coles Poisson engine with pre-computed factorial table
+- localStorage persistence
+- Fetch API for live data
 
 ---
 
@@ -68,7 +70,7 @@ Data Sources → Composite Rating Engine → Group Stage (Poisson) + Knockout (D
 
 ### 这是什么？
 
-一个**单文件 HTML 应用**，使用多因子复合模型预测 2026 FIFA 世界杯。无需服务器、无需构建步骤 —— 直接在浏览器中打开即可。
+一个**单文件 HTML 应用**，使用 **Dixon-Coles 双变量 Poisson 模型**（1997）预测 2026 FIFA 世界杯。这是学术界足球比赛预测的黄金标准。无需服务器、无需构建 —— 直接在浏览器中打开。
 
 ### 快速开始
 
@@ -82,45 +84,47 @@ irm https://raw.githubusercontent.com/roywongx/worldcup2026-predictor/main/insta
 # 或者直接下载 index.html 用浏览器打开
 ```
 
-### API Key 设置（免费，2 分钟）
+### API Key 设置（免费）
 
-应用可以使用内置数据运行，但**实时更新需要免费的 API Key**：
-
-| 服务 | 用途 | 免费额度 | 注册地址 |
-|------|------|----------|----------|
+| 服务 | 用途 | 免费额度 | 注册 |
+|------|------|----------|------|
 | **football-data.org** | 比赛结果 | 10 次/分钟 | [注册](https://www.football-data.org/client/register) |
 | **The-Odds-API** | 博彩赔率 | 500 次/月 | [注册](https://the-odds-api.com/) |
-
-**设置步骤：**
-1. 在两个网站注册（免费）
-2. 复制你的 API Key
-3. 打开应用 → 进入 **Data** 标签页
-4. 粘贴 Key 到输入框 → 点击 **Save**
-
-### 核心功能
-
-- **动态复合模型** — Elo (25%) + FIFA (15%) + 球队市值 (10%) + 博彩赔率 (25%) + 状态动量 (10%) + 经验 (5%) + 动态 Elo (10%)
-- **自动获取赛果** — 从 football-data.org 拉取已完成的比赛结果
-- **自动获取赔率** — 从 The-Odds-API 拉取实时博彩赔率
-- **Polymarket 雷达** — 真金白银预测市场价格对比
-- **动态 Elo** — 每场比赛后自动更新（K=60，世界杯权重）
-- **状态动量** — 指数衰减（λ=0.05），近期比赛权重更高
-- **Poisson 进球模型** — 独立的进攻/防守评分
-- **蒙特卡洛模拟** — 10,000 次迭代生成概率分布
-- **自适应校准** — 模型权重根据预测准确率自动调整
-- **实际结果锁定** — 已完成的比赛使用真实比分
 
 ### 工作原理
 
 ```
-数据源 → 复合评分引擎 → 小组赛 (Poisson) + 淘汰赛 (确定性) → 蒙特卡洛 → 概率分布
+Elo 评分 → λ = BASE/2 ± ΔElo/800 + 东道主加成
+    ↓
+Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
+    ↓                                    ↑ ρ = -0.12 低比分修正
+蒙特卡洛 10,000 次模拟（FIFA 固定对阵）
+    ↓
+冠军/决赛/四强/八强/十六强概率
 ```
+
+### 模型详情
+
+- **Dixon-Coles (1997)** — 双变量 Poisson + 低比分相关修正（ρ=-0.12）。修复独立 Poisson 对 0-0 和 1-1 平局的低估。
+- **Elo → λ** — 400 Elo 分 ≈ 1 进球优势。国际比赛平均 λ_base = 2.7 总进球。
+- **东道主加成** — 墨西哥/美国/加拿大 +0.30 期望进球。
+- **动态 Elo** — K=60（世界杯权重），每场比赛后更新，含进球差乘数。
+- **蒙特卡洛** — 10,000 次完整锦标赛模拟，使用 FIFA 固定对阵结构。
+- **评分规则** — RPS（排序概率分数）、Brier 分数、对数损失、ECE（期望校准误差）。
+- **实际结果锁定** — 已完成比赛使用真实比分；Elo 和状态动态更新。
+
+### 学术依据
+
+- Dixon, M.J. & Coles, S.G. (1997). "Modelling Association Football Scores and Inefficiencies in the Football Betting Market." *JRSS-C*, 46(2): 265-280.
+- Elo, A.E. (1978). *The Rating of Chessplayers, Past and Present*. Arco.
+- Walsh, C. & Joshi, A. (2023). "Machine learning for sports betting: should model selection be based on accuracy or calibration?" *arXiv:2303.06021*.
 
 ### 技术栈
 
 - 纯 HTML/CSS/JavaScript（零依赖）
+- Dixon-Coles Poisson 引擎 + 预计算阶乘表
 - localStorage 持久化
-- Fetch API 数据获取
+- Fetch API 实时数据
 
 ### License
 
