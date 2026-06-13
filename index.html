@@ -980,52 +980,77 @@ const GROUP_TEAMS = {
 };
 
 /** Match schedule: [date, home, away, group]
- *  Source: FIFA official schedule via NDTV/ESPN/Al Jazeera (cross-verified)
+ *  Source: FIFA official schedule via kickoffadventures.com (cross-verified with NDTV/ESPN)
  *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
- *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 25-28 */
+ *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 24-27 */
 const MATCHES = [
   // ── Matchday 1 ──
   ["2026-06-11","Mexico","South Africa","A"],["2026-06-11","South Korea","Czech Republic","A"],
   ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","United States","Paraguay","D"],
   ["2026-06-13","Qatar","Switzerland","B"],["2026-06-13","Brazil","Morocco","C"],
   ["2026-06-13","Haiti","Scotland","C"],["2026-06-13","Australia","Turkey","D"],
-  ["2026-06-13","Germany","Curaçao","E"],
-  ["2026-06-14","Netherlands","Japan","F"],["2026-06-14","Ivory Coast","Ecuador","E"],
-  ["2026-06-14","Sweden","Tunisia","F"],["2026-06-14","Spain","Cape Verde","H"],
-  ["2026-06-15","Belgium","Egypt","G"],["2026-06-15","Saudi Arabia","Uruguay","H"],
-  ["2026-06-15","Iran","New Zealand","G"],
+  ["2026-06-14","Germany","Curaçao","E"],["2026-06-14","Netherlands","Japan","F"],
+  ["2026-06-14","Ivory Coast","Ecuador","E"],["2026-06-14","Sweden","Tunisia","F"],
+  ["2026-06-15","Spain","Cape Verde","H"],["2026-06-15","Belgium","Egypt","G"],
+  ["2026-06-15","Saudi Arabia","Uruguay","H"],["2026-06-15","Iran","New Zealand","G"],
   ["2026-06-16","France","Senegal","I"],["2026-06-16","Iraq","Norway","I"],
   ["2026-06-16","Argentina","Algeria","J"],["2026-06-16","Austria","Jordan","J"],
-  ["2026-06-16","Portugal","DR Congo","K"],
-  ["2026-06-17","England","Croatia","L"],["2026-06-17","Ghana","Panama","L"],
-  ["2026-06-17","Uzbekistan","Colombia","K"],
+  ["2026-06-17","Portugal","DR Congo","K"],["2026-06-17","England","Croatia","L"],
+  ["2026-06-17","Ghana","Panama","L"],["2026-06-17","Uzbekistan","Colombia","K"],
   // ── Matchday 2 ──
   ["2026-06-18","Czech Republic","South Africa","A"],["2026-06-18","Switzerland","Bosnia Herzegovina","B"],
-  ["2026-06-18","Canada","Qatar","B"],
-  ["2026-06-19","Mexico","South Korea","A"],["2026-06-19","United States","Australia","D"],
-  ["2026-06-19","Scotland","Morocco","C"],["2026-06-19","Brazil","Haiti","C"],
-  ["2026-06-19","Turkey","Paraguay","D"],["2026-06-19","Netherlands","Sweden","F"],
+  ["2026-06-18","Canada","Qatar","B"],["2026-06-18","Mexico","South Korea","A"],
+  ["2026-06-19","United States","Australia","D"],["2026-06-19","Scotland","Morocco","C"],
+  ["2026-06-19","Brazil","Haiti","C"],["2026-06-19","Turkey","Paraguay","D"],
+  ["2026-06-19","Netherlands","Sweden","F"],
   ["2026-06-20","Germany","Ivory Coast","E"],["2026-06-20","Ecuador","Curaçao","E"],
   ["2026-06-20","Tunisia","Japan","F"],["2026-06-20","Spain","Saudi Arabia","H"],
-  ["2026-06-21","Belgium","Iran","G"],["2026-06-21","Uruguay","Cape Verde","H"],
-  ["2026-06-21","New Zealand","Egypt","G"],["2026-06-21","Argentina","Austria","J"],
+  ["2026-06-20","Uruguay","Cape Verde","H"],
+  ["2026-06-21","Belgium","Iran","G"],["2026-06-21","New Zealand","Egypt","G"],
+  ["2026-06-21","Argentina","Austria","J"],
   ["2026-06-22","France","Iraq","I"],["2026-06-22","Norway","Senegal","I"],
   ["2026-06-22","Jordan","Algeria","J"],["2026-06-22","Portugal","Uzbekistan","K"],
   ["2026-06-23","England","Ghana","L"],["2026-06-23","Panama","Croatia","L"],
   ["2026-06-23","Colombia","DR Congo","K"],
-  // ── Matchday 3 ──
-  ["2026-06-25","Switzerland","Canada","B"],["2026-06-25","Bosnia Herzegovina","Qatar","B"],
-  ["2026-06-25","Morocco","Haiti","C"],["2026-06-25","Scotland","Brazil","C"],
-  ["2026-06-25","South Africa","South Korea","A"],["2026-06-25","Czech Republic","Mexico","A"],
-  ["2026-06-26","Curaçao","Ivory Coast","E"],["2026-06-26","Ecuador","Germany","E"],
-  ["2026-06-26","Tunisia","Netherlands","F"],["2026-06-26","Japan","Sweden","F"],
-  ["2026-06-26","Turkey","United States","D"],["2026-06-26","Paraguay","Australia","D"],
-  ["2026-06-27","Norway","France","I"],["2026-06-27","Senegal","Iraq","I"],
-  ["2026-06-27","Cape Verde","Saudi Arabia","H"],["2026-06-27","Uruguay","Spain","H"],
-  ["2026-06-27","New Zealand","Belgium","G"],["2026-06-27","Egypt","Iran","G"],
-  ["2026-06-28","Panama","England","L"],["2026-06-28","Croatia","Ghana","L"],
-  ["2026-06-28","Colombia","Portugal","K"],["2026-06-28","DR Congo","Uzbekistan","K"],
-  ["2026-06-28","Algeria","Austria","J"],["2026-06-28","Jordan","Argentina","J"]
+  // ── Matchday 3 (simultaneous kick-offs per group) ──
+  ["2026-06-24","Czech Republic","Mexico","A"],["2026-06-24","South Africa","South Korea","A"],
+  ["2026-06-24","Switzerland","Canada","B"],["2026-06-24","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-24","Scotland","Brazil","C"],["2026-06-24","Morocco","Haiti","C"],
+  ["2026-06-25","Turkey","United States","D"],["2026-06-25","Paraguay","Australia","D"],
+  ["2026-06-25","Ecuador","Germany","E"],["2026-06-25","Curaçao","Ivory Coast","E"],
+  ["2026-06-25","Japan","Sweden","F"],["2026-06-25","Tunisia","Netherlands","F"],
+  ["2026-06-26","Egypt","Iran","G"],["2026-06-26","New Zealand","Belgium","G"],
+  ["2026-06-26","Cape Verde","Saudi Arabia","H"],["2026-06-26","Uruguay","Spain","H"],
+  ["2026-06-26","Norway","France","I"],["2026-06-26","Senegal","Iraq","I"],
+  ["2026-06-27","Algeria","Austria","J"],["2026-06-27","Jordan","Argentina","J"],
+  ["2026-06-27","Colombia","Portugal","K"],["2026-06-27","DR Congo","Uzbekistan","K"],
+  ["2026-06-27","Panama","England","L"],["2026-06-27","Croatia","Ghana","L"]
+];
+
+/** Venue/city for each match (order matches MATCHES array).
+ *  Source: FIFA official via kickoffadventures.com
+ *  Short city names for compact display. */
+const VENUES = [
+  // MD1
+  "Mexico City 🇲🇽","Guadalajara 🇲🇽",
+  "Toronto 🇨🇦","Los Angeles 🇺🇸",
+  "San Francisco 🇺🇸","New York 🇺🇸","Boston 🇺🇸","Vancouver 🇨🇦",
+  "Houston 🇺🇸","Dallas 🇺🇸","Philadelphia 🇺🇸","Monterrey 🇲🇽",
+  "Atlanta 🇺🇸","Seattle 🇺🇸","Miami 🇺🇸","Los Angeles 🇺🇸",
+  "New York 🇺🇸","Boston 🇺🇸","Kansas City 🇺🇸","San Francisco 🇺🇸",
+  "Houston 🇺🇸","Dallas 🇺🇸","Toronto 🇨🇦","Mexico City 🇲🇽",
+  // MD2
+  "Atlanta 🇺🇸","Los Angeles 🇺🇸","Vancouver 🇨🇦","Guadalajara 🇲🇽",
+  "Seattle 🇺🇸","Boston 🇺🇸","Philadelphia 🇺🇸","San Francisco 🇺🇸","Houston 🇺🇸",
+  "Toronto 🇨🇦","Kansas City 🇺🇸","Monterrey 🇲🇽","Atlanta 🇺🇸","Miami 🇺🇸",
+  "Los Angeles 🇺🇸","Vancouver 🇨🇦","Dallas 🇺🇸",
+  "Philadelphia 🇺🇸","New York 🇺🇸","San Francisco 🇺🇸","Houston 🇺🇸",
+  "Boston 🇺🇸","Toronto 🇨🇦","Guadalajara 🇲🇽",
+  // MD3
+  "Mexico City 🇲🇽","Monterrey 🇲🇽","Vancouver 🇨🇦","Seattle 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸",
+  "Los Angeles 🇺🇸","San Francisco 🇺🇸","New York 🇺🇸","Philadelphia 🇺🇸","Dallas 🇺🇸","Kansas City 🇺🇸",
+  "Seattle 🇺🇸","Vancouver 🇨🇦","Houston 🇺🇸","Guadalajara 🇲🇽","Boston 🇺🇸","Toronto 🇨🇦",
+  "Kansas City 🇺🇸","Dallas 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","New York 🇺🇸","Philadelphia 🇺🇸"
 ];
 
 // ---- FIFA Annex C: 495 third-place combination matrix ----
@@ -1886,6 +1911,15 @@ function fl(t){const c=FLAGS[t];return c?`<img src="https://flagcdn.com/w40/${c}
 function bf(t){const c=FLAGS[t];return c?`<img src="https://flagcdn.com/w20/${c}.png" width="16" height="11" style="border-radius:1.5px;vertical-align:middle;margin-right:3px">`:'';}
 function showToast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2200);}
 
+/** Get venue city for a match by finding its index in MATCHES array */
+function getVenue(ta, tb, date) {
+  for (let i = 0; i < MATCHES.length; i++) {
+    const m = MATCHES[i];
+    if (m[1] === ta && m[2] === tb && m[0] === date) return VENUES[i] || '';
+  }
+  return '';
+}
+
 // ── Data Persistence ─────────────────────────────────────────────────────
 const STORAGE_KEY='wc2026_data';
 function loadState(){
@@ -2040,6 +2074,9 @@ function renderMatches(){
     if(m.date!==ld){ld=m.date;const d=new Date(m.date+'T00:00:00');h+=`<div class="match-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>`;}
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
 
+    const venue=getVenue(m.ta,m.tb,m.date);
+    const venueHtml=venue?`<span style="font-size:0.6rem;color:var(--text3);margin-left:auto;padding-left:0.5rem;white-space:nowrap">${venue}</span>`:'';
+
     if(m.actual){
       // Actual match: show result + prediction comparison
       const stored=actualResults.find(r=>r.team1===m.ta&&r.team2===m.tb);
@@ -2047,7 +2084,6 @@ function renderMatches(){
       if(stored&&stored.predGoals){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
         const predW=predH>predA?m.ta:(predA>predH?m.tb:'Draw');
-        const predOutcome=stored.predicted;
         const isCorrect=stored.correct;
         const predProb=stored.probs?`W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%`:'';
         predLine=`<div style="font-size:0.6rem;color:var(--text3);margin-top:1px;padding-left:2.5rem">
@@ -2062,14 +2098,15 @@ function renderMatches(){
           <span class="m-team home ${wA}">${fl(m.ta)}</span>
           <span class="m-score">${m.sa} - ${m.sb} <span style="font-size:0.6rem;color:var(--green);font-weight:700">✓</span></span>
           <span class="m-team away ${wB}">${fl(m.tb)}</span>
+          ${venueHtml}
         </div>
         ${predLine}
       </div>`;
     } else {
-      // Future match: show predicted probabilities
+      // Future match: show predicted probabilities + venue
       let pd='';
       if(m.probs){pd=`<span style="font-size:0.6rem;color:var(--text3);margin-left:4px">${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
-      h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${pd}</span></div>`;
+      h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${pd}</span>${venueHtml}</div>`;
     }
   });
   [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
@@ -2424,6 +2461,7 @@ function validateData() {
   const errors = [];
   // 1. Match count
   if (MATCHES.length !== 72) errors.push(`MATCHES has ${MATCHES.length} entries, expected 72`);
+  if (typeof VENUES !== 'undefined' && VENUES.length !== 72) errors.push(`VENUES has ${VENUES.length} entries, expected 72`);
   // 2. Each team plays exactly 3 matches
   const teamMatchCount = {};
   for (const [,h,a,] of MATCHES) {
