@@ -1401,17 +1401,30 @@ function oddsToProb(usOdds) {
   return usOdds > 0 ? 100 / (usOdds + 100) : 1;
 }
 
+// Cached weights to avoid reading localStorage millions of times
+let _cachedWeights = null;
+let _cachedWeightsTime = 0;
+
+function getCachedWeights() {
+  const now = Date.now();
+  if(!_cachedWeights || now - _cachedWeightsTime > 5000) {
+    const state = loadState();
+    _cachedWeights = state.calibratedWeights || {
+      elo: BASE_W_ELO, fifa: BASE_W_FIFA, mv: BASE_W_MV,
+      form: BASE_W_FORM, xp: BASE_W_XP, odds: BASE_W_ODDS, dynamic: BASE_W_DYNAMIC
+    };
+    _cachedWeightsTime = now;
+  }
+  return _cachedWeights;
+}
+
 function composite(t) {
   if(!TEAMS[t]) return 0;
   const [elo,fifa,mv,wcApps,form,host,odds] = TEAMS[t];
   const dynElo = dynamicElo[t] || elo;
   
-  // Use calibrated weights if available, otherwise base weights
-  const state = loadState();
-  const w = state.calibratedWeights || {
-    elo: BASE_W_ELO, fifa: BASE_W_FIFA, mv: BASE_W_MV,
-    form: BASE_W_FORM, xp: BASE_W_XP, odds: BASE_W_ODDS, dynamic: BASE_W_DYNAMIC
-  };
+  // Use cached weights (avoids localStorage reads in hot loops)
+  const w = getCachedWeights();
   
   const eloN = (dynElo - 1400) / 800;
   const fifaN = (fifa - 900) / 1000;
@@ -1907,8 +1920,8 @@ function renderBracket() {
 
 // ── Monte Carlo ──────────────────────────────────────────────
 function runMonteCarlo() {
-  const btn = document.querySelector('.btn-secondary');
-  btn.textContent = 'Running...'; btn.disabled = true;
+  const btn = document.querySelector('[onclick="runMonteCarlo()"]');
+  if(btn) { btn.textContent = 'Running...'; btn.disabled = true; }
   const N = 10000;
   const champ={}, finalist={}, semi={}, quarter={}, r16={};
 
@@ -1986,7 +1999,7 @@ function runMonteCarlo() {
     }
     mcResults = {champ,finalist,semi,quarter,r16,N};
     renderProbabilities();
-    btn.textContent = 'Monte Carlo (10000x)'; btn.disabled = false;
+    if(btn) { btn.textContent = '🎲 Monte Carlo (10,000x)'; btn.disabled = false; }
   }, 50);
 }
 
