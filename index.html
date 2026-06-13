@@ -979,44 +979,53 @@ const GROUP_TEAMS = {
   L:["England","Croatia","Ghana","Panama"]
 };
 
-/** Match schedule: [date, home, away, group] */
+/** Match schedule: [date, home, away, group]
+ *  Source: FIFA official schedule via NDTV/ESPN/Al Jazeera (cross-verified)
+ *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
+ *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 25-28 */
 const MATCHES = [
+  // ── Matchday 1 ──
   ["2026-06-11","Mexico","South Africa","A"],["2026-06-11","South Korea","Czech Republic","A"],
-  ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","Qatar","Switzerland","B"],
-  ["2026-06-12","Brazil","Morocco","C"],["2026-06-12","Haiti","Scotland","C"],
-  ["2026-06-12","United States","Paraguay","D"],["2026-06-12","Australia","Turkey","D"],
-  ["2026-06-12","Germany","Curaçao","E"],["2026-06-12","Ivory Coast","Ecuador","E"],
-  ["2026-06-12","Netherlands","Japan","F"],["2026-06-12","Sweden","Tunisia","F"],
-  ["2026-06-13","Belgium","Egypt","G"],["2026-06-13","Iran","New Zealand","G"],
-  ["2026-06-13","Spain","Cape Verde","H"],["2026-06-13","Saudi Arabia","Uruguay","H"],
-  ["2026-06-13","France","Senegal","I"],["2026-06-13","Iraq","Norway","I"],
-  ["2026-06-14","Argentina","Algeria","J"],["2026-06-14","Austria","Jordan","J"],
-  ["2026-06-14","Portugal","DR Congo","K"],["2026-06-14","Uzbekistan","Colombia","K"],
-  ["2026-06-14","England","Panama","L"],["2026-06-14","Croatia","Ghana","L"],
-  ["2026-06-18","Czech Republic","South Africa","A"],["2026-06-18","Mexico","South Korea","A"],
-  ["2026-06-18","Switzerland","Bosnia Herzegovina","B"],["2026-06-18","Canada","Qatar","B"],
-  ["2026-06-19","Brazil","Haiti","C"],["2026-06-19","Scotland","Morocco","C"],
-  ["2026-06-19","United States","Australia","D"],["2026-06-19","Turkey","Paraguay","D"],
-  ["2026-06-19","Germany","Ivory Coast","E"],["2026-06-19","Ecuador","Curaçao","E"],
-  ["2026-06-19","Netherlands","Sweden","F"],["2026-06-19","Tunisia","Japan","F"],
-  ["2026-06-20","Belgium","Iran","G"],["2026-06-20","New Zealand","Egypt","G"],
-  ["2026-06-20","Spain","Saudi Arabia","H"],["2026-06-20","Uruguay","Cape Verde","H"],
-  ["2026-06-20","France","Iraq","I"],["2026-06-20","Norway","Senegal","I"],
-  ["2026-06-21","Argentina","Austria","J"],["2026-06-21","Jordan","Algeria","J"],
-  ["2026-06-21","Portugal","Uzbekistan","K"],["2026-06-21","Colombia","DR Congo","K"],
-  ["2026-06-22","England","Croatia","L"],["2026-06-22","Panama","Ghana","L"],
-  ["2026-06-24","Czech Republic","Mexico","A"],["2026-06-24","South Africa","South Korea","A"],
-  ["2026-06-24","Switzerland","Canada","B"],["2026-06-24","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","United States","Paraguay","D"],
+  ["2026-06-13","Qatar","Switzerland","B"],["2026-06-13","Brazil","Morocco","C"],
+  ["2026-06-13","Haiti","Scotland","C"],["2026-06-13","Australia","Turkey","D"],
+  ["2026-06-13","Germany","Curaçao","E"],
+  ["2026-06-14","Netherlands","Japan","F"],["2026-06-14","Ivory Coast","Ecuador","E"],
+  ["2026-06-14","Sweden","Tunisia","F"],["2026-06-14","Spain","Cape Verde","H"],
+  ["2026-06-15","Belgium","Egypt","G"],["2026-06-15","Saudi Arabia","Uruguay","H"],
+  ["2026-06-15","Iran","New Zealand","G"],
+  ["2026-06-16","France","Senegal","I"],["2026-06-16","Iraq","Norway","I"],
+  ["2026-06-16","Argentina","Algeria","J"],["2026-06-16","Austria","Jordan","J"],
+  ["2026-06-16","Portugal","DR Congo","K"],
+  ["2026-06-17","England","Croatia","L"],["2026-06-17","Ghana","Panama","L"],
+  ["2026-06-17","Uzbekistan","Colombia","K"],
+  // ── Matchday 2 ──
+  ["2026-06-18","Czech Republic","South Africa","A"],["2026-06-18","Switzerland","Bosnia Herzegovina","B"],
+  ["2026-06-18","Canada","Qatar","B"],
+  ["2026-06-19","Mexico","South Korea","A"],["2026-06-19","United States","Australia","D"],
+  ["2026-06-19","Scotland","Morocco","C"],["2026-06-19","Brazil","Haiti","C"],
+  ["2026-06-19","Turkey","Paraguay","D"],["2026-06-19","Netherlands","Sweden","F"],
+  ["2026-06-20","Germany","Ivory Coast","E"],["2026-06-20","Ecuador","Curaçao","E"],
+  ["2026-06-20","Tunisia","Japan","F"],["2026-06-20","Spain","Saudi Arabia","H"],
+  ["2026-06-21","Belgium","Iran","G"],["2026-06-21","Uruguay","Cape Verde","H"],
+  ["2026-06-21","New Zealand","Egypt","G"],["2026-06-21","Argentina","Austria","J"],
+  ["2026-06-22","France","Iraq","I"],["2026-06-22","Norway","Senegal","I"],
+  ["2026-06-22","Jordan","Algeria","J"],["2026-06-22","Portugal","Uzbekistan","K"],
+  ["2026-06-23","England","Ghana","L"],["2026-06-23","Panama","Croatia","L"],
+  ["2026-06-23","Colombia","DR Congo","K"],
+  // ── Matchday 3 ──
+  ["2026-06-25","Switzerland","Canada","B"],["2026-06-25","Bosnia Herzegovina","Qatar","B"],
   ["2026-06-25","Morocco","Haiti","C"],["2026-06-25","Scotland","Brazil","C"],
-  ["2026-06-25","Turkey","United States","D"],["2026-06-25","Paraguay","Australia","D"],
-  ["2026-06-25","Ecuador","Germany","E"],["2026-06-25","Curaçao","Ivory Coast","E"],
-  ["2026-06-25","Japan","Sweden","F"],["2026-06-25","Tunisia","Netherlands","F"],
-  ["2026-06-26","Egypt","Iran","G"],["2026-06-26","New Zealand","Belgium","G"],
-  ["2026-06-26","Uruguay","Spain","H"],["2026-06-26","Cape Verde","Saudi Arabia","H"],
-  ["2026-06-26","Norway","France","I"],["2026-06-26","Senegal","Iraq","I"],
-  ["2026-06-27","Algeria","Austria","J"],["2026-06-27","Jordan","Argentina","J"],
-  ["2026-06-27","Colombia","Portugal","K"],["2026-06-27","Uzbekistan","DR Congo","K"],
-  ["2026-06-27","Ghana","England","L"],["2026-06-27","Panama","Croatia","L"]
+  ["2026-06-25","South Africa","South Korea","A"],["2026-06-25","Czech Republic","Mexico","A"],
+  ["2026-06-26","Curaçao","Ivory Coast","E"],["2026-06-26","Ecuador","Germany","E"],
+  ["2026-06-26","Tunisia","Netherlands","F"],["2026-06-26","Japan","Sweden","F"],
+  ["2026-06-26","Turkey","United States","D"],["2026-06-26","Paraguay","Australia","D"],
+  ["2026-06-27","Norway","France","I"],["2026-06-27","Senegal","Iraq","I"],
+  ["2026-06-27","Cape Verde","Saudi Arabia","H"],["2026-06-27","Uruguay","Spain","H"],
+  ["2026-06-27","New Zealand","Belgium","G"],["2026-06-27","Egypt","Iran","G"],
+  ["2026-06-28","Panama","England","L"],["2026-06-28","Croatia","Ghana","L"],
+  ["2026-06-28","Colombia","Portugal","K"],["2026-06-28","DR Congo","Uzbekistan","K"],
+  ["2026-06-28","Algeria","Austria","J"],["2026-06-28","Jordan","Argentina","J"]
 ];
 
 // ---- FIFA Annex C: 495 third-place combination matrix ----
