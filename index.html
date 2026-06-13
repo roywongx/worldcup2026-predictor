@@ -1307,6 +1307,58 @@ function oddsToProb(usOdds) {
   return Math.abs(usOdds) / (Math.abs(usOdds) + 100);
 }
 
+/** De-vig (去水) normalization: remove bookmaker margin from odds.
+ *  Input: raw probabilities that sum to > 1.0 (due to vig)
+ *  Output: normalized probabilities that sum to exactly 1.0
+ *  Reference: wcforcast.com methodology */
+function deVig(pW, pD, pL) {
+  const total = pW + pD + pL;
+  if (total <= 0) return { win: 0.33, draw: 0.34, loss: 0.33 };
+  return { win: pW/total, draw: pD/total, loss: pL/total };
+}
+
+/** Track prediction accuracy over time (打脸榜 / Brier tracking).
+ *  Stores rolling Brier scores for model vs market comparison. */
+function trackPrediction(matchKey, modelProbs, marketProbs, actualOutcome) {
+  const state = loadState();
+  if (!state.predictionLog) state.predictionLog = [];
+  state.predictionLog.push({
+    match: matchKey,
+    model: { w: modelProbs.win, d: modelProbs.draw, l: modelProbs.loss },
+    market: marketProbs ? { w: marketProbs.win, d: marketProbs.draw, l: marketProbs.loss } : null,
+    outcome: actualOutcome, // 0=home, 1=draw, 2=away
+    timestamp: Date.now()
+  });
+  // Keep last 200 predictions
+  if (state.predictionLog.length > 200) state.predictionLog = state.predictionLog.slice(-200);
+  saveState(state);
+}
+
+/** Compute rolling Brier scores for model and market */
+function computeBrierScores() {
+  const state = loadState();
+  const log = state.predictionLog || [];
+  if (log.length < 3) return null;
+
+  let modelBrier = 0, marketBrier = 0, count = 0, marketCount = 0;
+  for (const entry of log) {
+    const mPred = [entry.model.w, entry.model.d, entry.model.l];
+    const o = entry.outcome;
+    modelBrier += (mPred[0] - (o===0?1:0))**2 + (mPred[1] - (o===1?1:0))**2 + (mPred[2] - (o===2?1:0))**2;
+    count++;
+    if (entry.market) {
+      const mkPred = [entry.market.w, entry.market.d, entry.market.l];
+      marketBrier += (mkPred[0] - (o===0?1:0))**2 + (mkPred[1] - (o===1?1:0))**2 + (mkPred[2] - (o===2?1:0))**2;
+      marketCount++;
+    }
+  }
+  return {
+    model: count > 0 ? modelBrier / (count * 3) : null,
+    market: marketCount > 0 ? marketBrier / (marketCount * 3) : null,
+    count, marketCount
+  };
+}
+
 // ---- Composite rating (UI display only, not used in core model) ----
 
 /** Weighted composite team strength score (0-1) for display.
@@ -2076,13 +2128,16 @@ const I18N = {
     // Radar
     'radar.title':'冷门雷达 — 模型 vs 市场','radar.desc':'对比 Dixon-Coles 模型与 Polymarket 真金白银价格。',
     'radar.fetch':'获取 Polymarket 数据','radar.champion':'冠军概率：模型 vs 市场',
+    'radar.brierTracker':'打脸榜','radar.brierBetter':'预测更准',
+    'radar.trend':'概率走势','radar.trendDesc':'过去 24h 概率变化',
+    'radar.snapshots':'快照',
     // Toast messages
     'toast.fetchErr':'获取失败','toast.fetchOk':'数据已刷新','toast.added':'已添加','toast.cleared':'已清空',
     'toast.imported':'已导入','toast.exported':'已导出','toast.updated':'已更新','toast.reset':'已重置',
     'toast.invalid':'输入无效','toast.needKey':'请先设置 API Key','toast.testing':'测试中...',
     // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
-    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.10) + 东道主加成',
+    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.13) + 温度收缩',
     'footer.mc':'蒙特卡洛 10k · RPS/ECE 校准 · localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
   },
@@ -2129,13 +2184,16 @@ const I18N = {
     // Radar
     'radar.title':'Cold Radar — Model vs Market','radar.desc':'Comparing Dixon-Coles model with Polymarket real-money prices.',
     'radar.fetch':'Fetch Polymarket Data','radar.champion':'Champion: Model vs Market',
+    'radar.brierTracker':'Brier Tracker','radar.brierBetter':'more accurate',
+    'radar.trend':'Probability Trend','radar.trendDesc':'Probability changes over past 24h',
+    'radar.snapshots':'snapshots',
     // Toast messages
     'toast.fetchErr':'Fetch failed','toast.fetchOk':'Data refreshed','toast.added':'Added','toast.cleared':'Cleared',
     'toast.imported':'Imported','toast.exported':'Exported','toast.updated':'Updated','toast.reset':'Reset',
     'toast.invalid':'Invalid input','toast.needKey':'Set API key first','toast.testing':'Testing...',
     // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
-    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.10) + host advantage',
+    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.13) + Temperature Scaling',
     'footer.mc':'Monte Carlo 10k · RPS/ECE · localStorage',
     'footer.disclaimer':'For entertainment only — football is unpredictable',
   }
@@ -2606,7 +2664,33 @@ function renderRadar(){
   const hc=Object.keys(sd.champion||{}).length>0;
   let h=`<div style="margin-bottom:1.5rem"><h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem">${t('radar.title')}</h3><p style="font-size:0.75rem;color:var(--text3)">${t('radar.desc')}</p></div>`;
   h+=`<div style="margin-bottom:1rem"><button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(()=>renderRadar())">${t('radar.fetch')}</button><span id="radar-status" style="font-size:0.72rem;color:var(--text3);margin-left:0.5rem">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span></div>`;
+
+  // Brier Score Tracker (打脸榜)
+  const brierScores = computeBrierScores();
+  if(brierScores && brierScores.count >= 3) {
+    h+=`<div style="background:linear-gradient(135deg,rgba(255,59,48,0.04),rgba(255,149,0,0.04));border:1px solid rgba(255,59,48,0.15);border-radius:12px;padding:1rem;margin-bottom:1.5rem">`;
+    h+=`<div style="font-size:0.85rem;font-weight:700;margin-bottom:0.6rem">🎯 ${t('radar.brierTracker')} (Brier Score)</div>`;
+    h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem">`;
+    if(brierScores.model !== null) {
+      const modelColor = brierScores.model < 0.20 ? 'var(--green)' : brierScores.model < 0.25 ? 'var(--blue)' : 'var(--orange)';
+      h+=`<div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:${modelColor}">${brierScores.model.toFixed(3)}</div><div style="font-size:0.65rem;color:var(--text3)">${t('radar.model')} (${brierScores.count})</div></div>`;
+    }
+    if(brierScores.market !== null) {
+      const mktColor = brierScores.market < 0.20 ? 'var(--green)' : brierScores.market < 0.25 ? 'var(--blue)' : 'var(--orange)';
+      h+=`<div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:${mktColor}">${brierScores.market.toFixed(3)}</div><div style="font-size:0.65rem;color:var(--text3)">${t('radar.market')} (${brierScores.marketCount})</div></div>`;
+    }
+    h+=`</div>`;
+    if(brierScores.model !== null && brierScores.market !== null) {
+      const diff = brierScores.model - brierScores.market;
+      const better = diff < 0 ? t('radar.model') : t('radar.market');
+      h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">${better} ${t('radar.brierBetter')} (${Math.abs(diff*100).toFixed(1)}%)</div>`;
+    }
+    h+=`</div>`;
+  }
+
   if(!hc){h+=`<div style="text-align:center;padding:3rem;color:var(--text3)">Click fetch to load Polymarket data</div>`;document.getElementById('section-radar').innerHTML=h;return;}
+
+  // Champion probability comparison
   h+=`<div style="margin-top:1rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.champion')}</h4><div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>${t('radar.model')}</th><th>${t('radar.market')}</th><th>${t('radar.diff')}</th></tr>`;
   Object.keys(TEAMS).sort((a,b)=>(sd.champion[b]||0)-(sd.champion[a]||0)).forEach(t=>{
     const mp=sd.champion[t]||0;if(mp<0.001)return;
@@ -2614,6 +2698,29 @@ function renderRadar(){
     const diff=mdl-mp,dc=diff>0.02?'var(--green)':diff<-0.02?'var(--red)':'var(--text3)';
     h+=`<tr><td>${fl(t)}</td><td style="font-size:0.72rem">${(mdl*100).toFixed(1)}%</td><td style="font-size:0.72rem">${(mp*100).toFixed(1)}%</td><td style="color:${dc};font-weight:700">${diff>0?'+':''}${(diff*100).toFixed(1)}%</td></tr>`;
   });h+='</table></div></div>';
+
+  // Market history trend (if available)
+  const hist = state.marketHistory || [];
+  if(hist.length >= 2) {
+    const latest = hist[hist.length-1];
+    const earliest = hist[0];
+    h+=`<div style="margin-top:1.5rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">📈 ${t('radar.trend')}</h4>`;
+    h+=`<div style="font-size:0.72rem;color:var(--text3)">${t('radar.trendDesc')} (${hist.length} ${t('radar.snapshots')})</div>`;
+    h+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.5rem;margin-top:0.5rem">`;
+    for(const team of Object.keys(latest.champion).slice(0,8)) {
+      const now = latest.champion[team] || 0;
+      const then = earliest.champion[team] || 0;
+      const delta = now - then;
+      const dc = delta > 0.01 ? 'var(--green)' : delta < -0.01 ? 'var(--red)' : 'var(--text3)';
+      h+=`<div style="text-align:center;padding:0.4rem;background:var(--bg);border-radius:8px">`;
+      h+=`<div style="font-size:0.65rem">${fl(team)}</div>`;
+      h+=`<div style="font-size:0.85rem;font-weight:700">${(now*100).toFixed(1)}%</div>`;
+      h+=`<div style="font-size:0.6rem;color:${dc}">${delta>0?'+':''}${(delta*100).toFixed(1)}%</div>`;
+      h+=`</div>`;
+    }
+    h+=`</div></div>`;
+  }
+
   document.getElementById('section-radar').innerHTML=h;
 }
 
@@ -2724,8 +2831,16 @@ async function fetchPolymarketData(){
       const yt=(cd.tokens||[]).find(t=>t.outcome==='Yes');if(yt&&yt.price>0){nc[tn]=yt.price;fc++;}}catch(e){}
     }
     const ct=Object.values(nc).reduce((s,v)=>s+v,0);if(ct>0)for(const t of Object.keys(nc))nc[t]=nc[t]/ct;
+
+    // Store historical snapshot for trend tracking
+    const state=loadState();
+    if(!state.marketHistory)state.marketHistory=[];
+    state.marketHistory.push({champion:{...nc},timestamp:Date.now()});
+    // Keep last 100 snapshots (about 8 hours at 5-min intervals)
+    if(state.marketHistory.length>100)state.marketHistory=state.marketHistory.slice(-100);
+
     marketData={matches:{},champion:nc,lastFetch:new Date().toISOString()};
-    const state=loadState();state.marketData=marketData;saveState(state);
+    state.marketData=marketData;saveState(state);
     if(se)se.textContent=`Updated ${fc} · ${new Date().toLocaleTimeString()}`;showToast(`Polymarket: ${fc} teams`);return true;
   }catch(e){if(se)se.textContent=`Error: ${e.message}`;showToast(`Error: ${e.message}`);return false;}
 }
