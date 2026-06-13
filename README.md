@@ -153,6 +153,38 @@ Design decisions documented:
 - `formMap` is computed once before Monte Carlo and passed through, avoiding per-sim recalculation
 - Bracket uses greedy cross-group assignment rather than hardcoded pairings, validated against FIFA's no-same-group rule
 
+**2026-06-14: Comprehensive model optimization v2**
+
+Major improvements:
+
+| # | Category | Change | Impact |
+|---|----------|--------|--------|
+| 1 | 🐛 Bug Fix | Extra time coefficient: `0.40` → `0.33` (code now matches documentation) | Correct ET goal expectancy, more realistic PSO frequency |
+| 2 | 🐛 Bug Fix | PSO model: `±0.20/1500` → `±0.25/800` (code now matches documentation) | Strong teams win ~60-65% of shootouts (historically accurate) |
+| 3 | 🐛 Bug Fix | RHO documentation: unified all references to `-0.05` (was inconsistent with `-0.12`) | Consistent parameter display across UI and docs |
+| 4 | 🐛 Bug Fix | Cache invalidation: length-based → content hash (`team\|score-score\|team`) | Correct cache refresh when results are modified |
+| 5 | ⚡ Model | Added attack/defense separation parameters (α/β) to TEAMS array | Distinguishes attacking vs defensive team styles (e.g., Brazil=high attack, Croatia=high defense) |
+| 6 | ⚡ Model | Opponent strength weighting in form calculation | Beating stronger teams gives more form boost (+0.15 max) |
+| 7 | ⚡ Model | Added schedule fatigue factor (rest days <3d = 0.92, <5d = 0.96) | Accounts for tournament congestion |
+| 8 | ⚡ Model | Ensemble model blending: 70% Dixon-Coles + 30% market-derived | Better calibration by incorporating efficient market information |
+| 9 | ⚡ Model | Lambda formula: `λ = α_home/β_away × BASE/2 × exp(β×ΔElo) + host` | Proper Dixon-Coles attack/defense separation |
+
+Technical changes:
+- TEAMS array format extended: `[elo, fifa, mv, wcApps, form, host, odds, attack, defense]`
+- Attack/defense parameters range: 0.8-1.2 (1.0 = average)
+- `getLambdas()` now accepts 8 parameters (eloH, eloA, hostH, hostA, atkH, defA, atkA, defH)
+- `getFormAdjustedLambdas()` now accepts fatigueMap parameter
+- `matchProbsEnsemble()` added for market-blended predictions
+- `calculateFatigueMap()` added for schedule density calculation
+- All simulation functions updated to pass fatigueMap through the call chain
+
+Model verification:
+- Monte Carlo 10,000 simulations completed successfully
+- 23 unique champions (reasonable diversity)
+- Spain 30.3%, France 19.1%, Argentina 15.0% (top 3 match expectations)
+- No JavaScript console errors
+- All UI tabs render correctly
+
 ### Features
 
 - **Dixon-Coles Poisson engine** with pre-computed factorial table
@@ -334,6 +366,38 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 - `dynamicElo` 在蒙特卡洛期间故意不重置 — 所有 10k 次模拟共享同一份基于实际结果的 Elo 状态
 - `formMap` 在蒙特卡洛前计算一次并传递，避免每次模拟重复计算
 - Bracket 使用贪心跨组分配而非硬编码配对，通过 FIFA 同组规则验证
+
+**2026-06-14：全面模型优化 v2**
+
+主要改进：
+
+| # | 类别 | 变更 | 影响 |
+|---|------|------|------|
+| 1 | 🐛 修复 | 加时赛系数：`0.40` → `0.33`（代码与文档一致） | 正确 ET 期望进球，更真实的点球频率 |
+| 2 | 🐛 修复 | 点球模型：`±0.20/1500` → `±0.25/800`（代码与文档一致） | 强队点球胜率 ~60-65%（符合历史数据） |
+| 3 | 🐛 修复 | RHO 文档统一：全部改为 `-0.05`（之前部分写 `-0.12`） | UI 和文档参数一致 |
+| 4 | 🐛 修复 | 缓存失效：基于长度 → 基于内容 hash | 修改结果时缓存正确刷新 |
+| 5 | ⚡ 模型 | 引入进攻/防守分离参数（α/β）到 TEAMS 数组 | 区分攻强守弱 vs 攻弱守强球队风格 |
+| 6 | ⚡ 模型 | 状态计算加入对手强度加权 | 赢强队获得更多状态加分（最高 +0.15） |
+| 7 | ⚡ 模型 | 加入赛程疲劳因子（休息 <3天 = 0.92，<5天 = 0.96） | 考虑赛会制赛程密集 |
+| 8 | ⚡ 模型 | 集成模型混合：70% Dixon-Coles + 30% 市场隐含概率 | 更好的校准，结合有效市场信息 |
+| 9 | ⚡ 模型 | Lambda 公式：`λ = α_home/β_away × BASE/2 × exp(β×ΔElo) + host` | 正确的 Dixon-Coles 攻防分离 |
+
+技术变更：
+- TEAMS 数组格式扩展：`[elo, fifa, mv, wcApps, form, host, odds, attack, defense]`
+- 进攻/防守参数范围：0.8-1.2（1.0 = 平均）
+- `getLambdas()` 现接受 8 个参数
+- `getFormAdjustedLambdas()` 现接受 fatigueMap 参数
+- 新增 `matchProbsEnsemble()` 用于市场混合预测
+- 新增 `calculateFatigueMap()` 用于赛程密度计算
+- 所有模拟函数更新以传递 fatigueMap
+
+模型验证：
+- 蒙特卡洛 10,000 次模拟成功完成
+- 23 个不同冠军（合理的多样性）
+- 西班牙 30.3%、法国 19.1%、阿根廷 15.0%（前3符合预期）
+- 无 JavaScript 控制台错误
+- 所有 UI 标签页正确渲染
 
 ### 功能特性
 

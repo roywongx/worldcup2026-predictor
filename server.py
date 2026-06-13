@@ -144,7 +144,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-print(f'🏆 World Cup Predictor server')
+print(f'World Cup Predictor server')
 print(f'   http://localhost:{PORT}')
 print(f'   http://0.0.0.0:{PORT}')
 print(f'   Test key: http://localhost:{PORT}/api/test?key=YOUR_KEY')

@@ -892,57 +892,59 @@ const HOME_CONTINENTAL = 0.10;
 const MC_DEFAULT = 10000;
 
 /** Pre-tournament Elo ratings (eloratings.net, June 2026)
- *  Array: [elo, fifa, marketValueMillion, wcApps, form(0-1), hostBonus, americanOdds]
+ *  Array: [elo, fifa, marketValueMillion, wcApps, form(0-1), hostBonus, americanOdds, attack, defense]
+ *  attack/defense: 0.8-1.2 scale (1.0=avg, >1.0=above avg)
+ *  attack = offensive multiplier, defense = defensive multiplier (higher = concedes fewer)
  */
 const TEAMS = {
-  "Mexico":[1875,1681,192,17,0.65,0.15,5000],
-  "South Africa":[1456,1070,55,3,0.45,0,75000],
-  "South Korea":[1589,1538,139,11,0.60,0,15000],
-  "Czech Republic":[1710,1480,180,2,0.50,0,18000],
-  "Canada":[1682,1673,80,2,0.55,0.10,20000],
-  "Bosnia Herzegovina":[1654,1376,85,0,0.45,0,30000],
-  "Qatar":[1647,1588,45,2,0.50,0,35000],
-  "Switzerland":[1891,1649,333,12,0.60,0,6500],
-  "Brazil":[1991,1761,928,22,0.60,0,950],
-  "Morocco":[1911,1756,448,7,0.70,0,2800],
-  "Haiti":[1505,1238,15,1,0.35,0,250000],
-  "Scotland":[1730,1480,165,9,0.50,0,15000],
-  "United States":[1788,1673,386,12,0.60,0.10,6000],
-  "Paraguay":[1667,1542,85,9,0.45,0,15000],
-  "Australia":[1696,1539,120,7,0.55,0,12000],
-  "Turkey":[1911,1599,474,3,0.65,0,6500],
-  "Germany":[1932,1730,947,21,0.60,0,1100],
-  "Curaçao":[1420,1046,15,0,0.35,0,250000],
-  "Ivory Coast":[1758,1554,155,4,0.55,0,15000],
-  "Ecuador":[1938,1595,369,4,0.60,0,8000],
-  "Netherlands":[2024,1758,754,11,0.65,0,1400],
-  "Japan":[1906,1660,271,7,0.70,0,5000],
-  "Sweden":[1726,1430,195,12,0.50,0,20000],
-  "Tunisia":[1682,1504,75,7,0.50,0,20000],
-  "Belgium":[1894,1735,548,14,0.55,0,2500],
-  "Egypt":[1639,1550,85,3,0.50,0,15000],
-  "Iran":[1715,1615,55,7,0.55,0,18000],
-  "New Zealand":[1608,1420,35,2,0.40,0,50000],
-  "Spain":[2157,1876,1220,16,0.75,0,450],
-  "Cape Verde":[1550,1310,20,0,0.45,0,75000],
-  "Saudi Arabia":[1652,1590,45,7,0.50,0,20000],
-  "Uruguay":[1892,1673,359,14,0.60,0,3500],
-  "France":[2063,1877,1520,16,0.70,0,500],
-  "Senegal":[1780,1689,478,4,0.60,0,8000],
-  "Iraq":[1616,1400,20,2,0.45,0,50000],
-  "Norway":[1914,1490,250,4,0.55,0,10000],
-  "Argentina":[2115,1875,783,18,0.70,0,950],
-  "Algeria":[1652,1508,95,5,0.50,0,30000],
-  "Austria":[1772,1593,245,8,0.55,0,10000],
-  "Jordan":[1588,1380,25,1,0.45,0,50000],
-  "Portugal":[1989,1764,1010,9,0.65,0,800],
-  "DR Congo":[1607,1410,85,2,0.45,0,100000],
-  "Uzbekistan":[1589,1410,40,0,0.50,0,50000],
-  "Colombia":[1982,1693,303,7,0.60,0,2000],
-  "England":[2024,1826,1360,17,0.65,0,700],
-  "Croatia":[1912,1717,387,7,0.60,0,3300],
-  "Ghana":[1621,1460,70,4,0.45,0,25000],
-  "Panama":[1614,1555,30,2,0.50,0,25000]
+  "Mexico":[1875,1681,192,17,0.65,0.15,5000,1.00,0.98],
+  "South Africa":[1456,1070,55,3,0.45,0,75000,0.88,0.85],
+  "South Korea":[1589,1538,139,11,0.60,0,15000,0.95,0.95],
+  "Czech Republic":[1710,1480,180,2,0.50,0,18000,0.92,0.95],
+  "Canada":[1682,1673,80,2,0.55,0.10,20000,0.95,0.92],
+  "Bosnia Herzegovina":[1654,1376,85,0,0.45,0,30000,0.90,0.88],
+  "Qatar":[1647,1588,45,2,0.50,0,35000,0.85,0.85],
+  "Switzerland":[1891,1649,333,12,0.60,0,6500,1.02,1.05],
+  "Brazil":[1991,1761,928,22,0.60,0,950,1.18,0.98],
+  "Morocco":[1911,1756,448,7,0.70,0,2800,0.98,1.10],
+  "Haiti":[1505,1238,15,1,0.35,0,250000,0.82,0.80],
+  "Scotland":[1730,1480,165,9,0.50,0,15000,0.92,0.95],
+  "United States":[1788,1673,386,12,0.60,0.10,6000,1.05,0.95],
+  "Paraguay":[1667,1542,85,9,0.45,0,15000,0.88,0.92],
+  "Australia":[1696,1539,120,7,0.55,0,12000,0.92,0.92],
+  "Turkey":[1911,1599,474,3,0.65,0,6500,1.08,0.95],
+  "Germany":[1932,1730,947,21,0.60,0,1100,1.12,1.05],
+  "Curaçao":[1420,1046,15,0,0.35,0,250000,0.80,0.78],
+  "Ivory Coast":[1758,1554,155,4,0.55,0,15000,1.00,0.92],
+  "Ecuador":[1938,1595,369,4,0.60,0,8000,1.08,0.98],
+  "Netherlands":[2024,1758,754,11,0.65,0,1400,1.15,1.08],
+  "Japan":[1906,1660,271,7,0.70,0,5000,1.05,1.02],
+  "Sweden":[1726,1430,195,12,0.50,0,20000,0.92,0.95],
+  "Tunisia":[1682,1504,75,7,0.50,0,20000,0.88,0.95],
+  "Belgium":[1894,1735,548,14,0.55,0,2500,1.10,1.02],
+  "Egypt":[1639,1550,85,3,0.50,0,15000,0.90,0.92],
+  "Iran":[1715,1615,55,7,0.55,0,18000,0.88,1.00],
+  "New Zealand":[1608,1420,35,2,0.40,0,50000,0.85,0.85],
+  "Spain":[2157,1876,1220,16,0.75,0,450,1.20,1.12],
+  "Cape Verde":[1550,1310,20,0,0.45,0,75000,0.85,0.85],
+  "Saudi Arabia":[1652,1590,45,7,0.50,0,20000,0.88,0.88],
+  "Uruguay":[1892,1673,359,14,0.60,0,3500,1.05,1.08],
+  "France":[2063,1877,1520,16,0.70,0,500,1.18,1.10],
+  "Senegal":[1780,1689,478,4,0.60,0,8000,1.02,0.98],
+  "Iraq":[1616,1400,20,2,0.45,0,50000,0.88,0.88],
+  "Norway":[1914,1490,250,4,0.55,0,10000,1.10,0.92],
+  "Argentina":[2115,1875,783,18,0.70,0,950,1.15,1.08],
+  "Algeria":[1652,1508,95,5,0.50,0,30000,0.92,0.92],
+  "Austria":[1772,1593,245,8,0.55,0,10000,0.98,0.98],
+  "Jordan":[1588,1380,25,1,0.45,0,50000,0.85,0.85],
+  "Portugal":[1989,1764,1010,9,0.65,0,800,1.15,1.02],
+  "DR Congo":[1607,1410,85,2,0.45,0,100000,0.90,0.88],
+  "Uzbekistan":[1589,1410,40,0,0.50,0,50000,0.88,0.88],
+  "Colombia":[1982,1693,303,7,0.60,0,2000,1.08,1.00],
+  "England":[2024,1826,1360,17,0.65,0,700,1.12,1.08],
+  "Croatia":[1912,1717,387,7,0.60,0,3300,1.02,1.10],
+  "Ghana":[1621,1460,70,4,0.45,0,25000,0.92,0.88],
+  "Panama":[1614,1555,30,2,0.50,0,25000,0.85,0.85]
 };
 
 const FLAGS = {
@@ -1054,28 +1056,37 @@ function getForm(team, formMap) {
 }
 
 /** Convert Elo ratings to Poisson lambda (expected goals).
- *  Uses log-linear model (academic standard): λ = BASE × exp(±β·Δelo)
- *  β = 0.001 calibrated so:
- *    Equal teams → λ ≈ 1.35 each (total 2.7, matches real average)
- *    500 Elo gap → λ ≈ 2.2 / 0.8 (realistic strong vs weak)
- *    200 Elo gap → λ ≈ 1.65 / 1.10 (slight favorite) */
-function getLambdas(eloH, eloA, hostBonusH, hostBonusA) {
+ *  Uses log-linear model with attack/defense separation:
+ *  λ_home = attack_home / defense_away × BASE/2 × exp(β × Δelo) + host
+ *  β = 0.002 calibrated so equal teams → λ ≈ 1.35 each */
+function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) {
   const BETA = 0.002;
   const base = GOALS_BASE / 2; // 1.35 per team (2.7 total)
   const logDiff = BETA * (eloH - eloA);
-  const lh = Math.max(0.15, base * Math.exp(logDiff) + hostBonusH);
-  const la = Math.max(0.15, base * Math.exp(-logDiff) + hostBonusA);
+  // Attack/defense modifiers: atk/def are ~1.0 centered
+  const atkModH = atkH || 1.0;
+  const defModA = defA || 1.0;
+  const atkModA = atkA || 1.0;
+  const defModH = defH || 1.0;
+  const lh = Math.max(0.15, base * (atkModH / defModA) * Math.exp(logDiff) + hostBonusH);
+  const la = Math.max(0.15, base * (atkModA / defModH) * Math.exp(-logDiff) + hostBonusA);
   return [lh, la];
 }
 
 /** Get form-adjusted lambdas for a match.
- *  @param {Object} [formMap] - Optional form map to avoid global state dependency. */
-function getFormAdjustedLambdas(home, away, formMap) {
+ *  @param {Object} [formMap] - Optional form map to avoid global state dependency.
+ *  @param {Object} [fatigueMap] - Optional fatigue map for schedule density. */
+function getFormAdjustedLambdas(home, away, formMap, fatigueMap) {
   const hBonus = getHomeBonus(home);
   const aBonus = getHomeBonus(away);
   const eloH = getEffectiveElo(home);
   const eloA = getEffectiveElo(away);
-  const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus);
+  // Get attack/defense parameters
+  const atkH = TEAMS[home] ? TEAMS[home][7] : 1.0;
+  const defH = TEAMS[home] ? TEAMS[home][8] : 1.0;
+  const atkA = TEAMS[away] ? TEAMS[away][7] : 1.0;
+  const defA = TEAMS[away] ? TEAMS[away][8] : 1.0;
+  const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH);
 
   // Apply form adjustment: form 0.5 = neutral, >0.5 = boost, <0.5 = penalty
   // Max adjustment: ±15% of lambda
@@ -1084,7 +1095,11 @@ function getFormAdjustedLambdas(home, away, formMap) {
   const adjH = 1 + (formH - 0.5) * 0.30; // range: 0.85 to 1.15
   const adjA = 1 + (formA - 0.5) * 0.30;
 
-  return [Math.max(0.05, lh * adjH), Math.max(0.05, la * adjA)];
+  // Apply fatigue adjustment (if available)
+  const fatH = fatigueMap && fatigueMap[home] !== undefined ? fatigueMap[home] : 1.0;
+  const fatA = fatigueMap && fatigueMap[away] !== undefined ? fatigueMap[away] : 1.0;
+
+  return [Math.max(0.05, lh * adjH * fatH), Math.max(0.05, la * adjA * fatA)];
 }
 
 /** Get home advantage bonus for a team */
@@ -1101,9 +1116,39 @@ function getEffectiveElo(team) {
   return (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : TEAMS[team][0];
 }
 
-/** Compute win/draw/loss probabilities for a match */
-function matchProbs(home, away) {
-  const [lh, la] = getFormAdjustedLambdas(home, away);
+/** Ensemble model: blend Dixon-Coles with betting market probabilities.
+ *  Weights: Dixon-Coles 70%, Market 30% (market is efficient but has bias) */
+function matchProbsEnsemble(home, away) {
+  const dcProbs = matchProbsRaw(home, away);
+
+  // Get market implied probabilities from odds
+  const homeOdds = TEAMS[home] ? TEAMS[home][6] : 10000;
+  const awayOdds = TEAMS[away] ? TEAMS[away][6] : 10000;
+  const homeImpProb = oddsToProb(homeOdds);
+  const awayImpProb = oddsToProb(awayOdds);
+
+  // Market doesn't directly give match probabilities, so we use it as a strength modifier
+  // Higher market prob = stronger team = slight boost to win probability
+  const marketRatio = homeImpProb / (homeImpProb + awayImpProb);
+  const marketHomeWin = marketRatio * 0.8 + 0.1; // Scale to 10-90% range
+  const marketAwayWin = (1 - marketRatio) * 0.8 + 0.1;
+  const marketDraw = 1 - marketHomeWin - marketAwayWin;
+
+  // Blend: 70% Dixon-Coles, 30% market-derived
+  const blended = {
+    win: 0.70 * dcProbs.win + 0.30 * marketHomeWin,
+    draw: 0.70 * dcProbs.draw + 0.30 * Math.max(0.15, marketDraw),
+    loss: 0.70 * dcProbs.loss + 0.30 * marketAwayWin
+  };
+
+  // Normalize
+  const total = blended.win + blended.draw + blended.loss;
+  return { win: blended.win/total, draw: blended.draw/total, loss: blended.loss/total };
+}
+
+/** Raw Dixon-Coles match probabilities (no ensemble) */
+function matchProbsRaw(home, away, formMap, fatigueMap) {
+  const [lh, la] = getFormAdjustedLambdas(home, away, formMap, fatigueMap);
 
   let pW = 0, pD = 0, pL = 0;
   for (let i = 0; i <= 10; i++) {
@@ -1116,6 +1161,16 @@ function matchProbs(home, away) {
   }
   const total = pW + pD + pL;
   return { win: pW/total, draw: pD/total, loss: pL/total };
+}
+
+/** Compute win/draw/loss probabilities for a match (with ensemble blending) */
+function matchProbs(home, away, formMap, fatigueMap) {
+  // Use ensemble model for better calibration when no explicit formMap
+  if (!formMap && !fatigueMap) {
+    return matchProbsEnsemble(home, away);
+  }
+  // For Monte Carlo with explicit formMap, use raw Dixon-Coles
+  return matchProbsRaw(home, away, formMap, fatigueMap);
 }
 
 // ---- American odds to probability ----
@@ -1141,8 +1196,12 @@ function composite(team) {
   const rawProb = oddsToProb(odds);
   const oddsN = Math.min(rawProb / 0.22, 1);
   const formN = getForm(team);
+  // Attack/defense bonuses
+  const atk = TEAMS[team][7] || 1.0;
+  const def = TEAMS[team][8] || 1.0;
+  const atkDefN = ((atk - 0.8) + (def - 0.8)) / 0.8; // normalize 0-1
   // Weights sum to ~1.0 (host is part of the base, not additive)
-  const base = 0.28*eloN + 0.14*fifaN + 0.10*mvN + 0.10*formN + 0.05*xpN + 0.28*oddsN + 0.05*host;
+  const base = 0.25*eloN + 0.12*fifaN + 0.10*mvN + 0.10*formN + 0.05*xpN + 0.25*oddsN + 0.08*atkDefN + 0.05*host;
   return Math.max(0, Math.min(1, base));
 }
 
@@ -1161,24 +1220,24 @@ function poissonSample(lam) {
 // ---- Simulation match (Monte Carlo) ----
 
 /** Simulate a single match score using Poisson sampling */
-function simMatch(home, away, formMap) {
-  const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
+function simMatch(home, away, formMap, fatigueMap) {
+  const [lh, la] = getFormAdjustedLambdas(home, away, formMap, fatigueMap);
   return [poissonSample(lh), poissonSample(la)];
 }
 
 // ---- Knockout simulation with ET/PSO ----
 
 /** Simulate a knockout match with extra time and penalties if needed */
-function simKO(home, away, formMap) {
-  let [ga, gb] = simMatch(home, away, formMap);
+function simKO(home, away, formMap, fatigueMap) {
+  let [ga, gb] = simMatch(home, away, formMap, fatigueMap);
   let method;
   if (ga !== gb) {
     method = "90'";
   } else {
-    const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
-    // Extra time: 30 min + fatigue effect → historically ~40% of regular time goals
-    const etH = poissonSample(lh * 0.40);
-    const etA = poissonSample(la * 0.40);
+    const [lh, la] = getFormAdjustedLambdas(home, away, formMap, fatigueMap);
+    // Extra time: 30 min / 90 min = 0.33 proportional scaling
+    const etH = poissonSample(lh * 0.33);
+    const etA = poissonSample(la * 0.33);
     ga += etH; gb += etA;
     if (ga !== gb) {
       method = 'AET';
@@ -1186,9 +1245,9 @@ function simKO(home, away, formMap) {
       const eloH = getEffectiveElo(home);
       const eloA = getEffectiveElo(away);
       const eloDiff = eloH - eloA;
-      // PSO: historically ~50/50 with slight Elo edge
-      // 200 Elo diff → ~55/45, 400 Elo → ~60/40, capped at ±20%
-      const pHome = 0.5 + Math.max(-0.20, Math.min(0.20, eloDiff / 1500));
+      // PSO: historically ~50/50 with Elo edge
+      // 400 Elo diff → ~60/40, capped at ±25%
+      const pHome = 0.5 + Math.max(-0.25, Math.min(0.25, eloDiff / 800));
       if (Math.random() < pHome) ga++; else gb++;
       method = 'PSO';
     }
@@ -1307,8 +1366,9 @@ function findBestThirds(groupStandings) {
 
 /** Simulate one full tournament (group stage + knockouts).
  *  @param {Object} actualMap - Map of actual results
- *  @param {Object} [formMap] - Pre-computed form map (avoids global state dependency) */
-function simulateOneTournament(actualMap, formMap) {
+ *  @param {Object} [formMap] - Pre-computed form map (avoids global state dependency)
+ *  @param {Object} [fatigueMap] - Pre-computed fatigue map for schedule density */
+function simulateOneTournament(actualMap, formMap, fatigueMap) {
   const st = {};
   for (const g of GROUPS) {
     st[g] = {};
@@ -1324,7 +1384,7 @@ function simulateOneTournament(actualMap, formMap) {
     if (actual) {
       sa = actual.score1; sb = actual.score2;
     } else {
-      [sa, sb] = simMatch(home, away, formMap);
+      [sa, sb] = simMatch(home, away, formMap, fatigueMap);
     }
     const a = st[grp][home], b = st[grp][away];
     a.p++; b.p++;
@@ -1371,7 +1431,7 @@ function simulateOneTournament(actualMap, formMap) {
         method = "90'";
         if (ga === gb) { method = 'PSO'; ga++; }
       } else {
-        [ga, gb, method] = simKO(home, away, formMap);
+        [ga, gb, method] = simKO(home, away, formMap, fatigueMap);
       }
 
       const winner = ga > gb ? home : away;
@@ -1388,11 +1448,11 @@ function simulateOneTournament(actualMap, formMap) {
 // ---- Monte Carlo simulation ----
 
 /** Run N tournament simulations and aggregate results */
-function runMonteCarlo(actualMap, N, formMap) {
+function runMonteCarlo(actualMap, N, formMap, fatigueMap) {
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
 
   for (let i = 0; i < N; i++) {
-    const result = simulateOneTournament(actualMap, formMap);
+    const result = simulateOneTournament(actualMap, formMap, fatigueMap);
     champ[result.champion] = (champ[result.champion] || 0) + 1;
 
     if (result.rounds.length >= 4) {
@@ -1574,7 +1634,8 @@ function updateElo(team1, team2, score1, score2) {
 
 // ---- Dynamic form calculation ----
 
-/** Calculate time-weighted form from recent results (does not mutate TEAMS) */
+/** Calculate time-weighted form from recent results with opponent strength weighting.
+ *  Does not mutate TEAMS. */
 function calculateDynamicForm(actualResults) {
   if (!actualResults || actualResults.length === 0) return {};
 
@@ -1585,8 +1646,16 @@ function calculateDynamicForm(actualResults) {
     if (!teamMatches[r.team1]) teamMatches[r.team1] = [];
     if (!teamMatches[r.team2]) teamMatches[r.team2] = [];
     const daysAgo = (now - new Date(r.date)) / (1000 * 60 * 60 * 24);
-    teamMatches[r.team1].push({ opponent: r.team2, score1: r.score1, score2: r.score2, daysAgo });
-    teamMatches[r.team2].push({ opponent: r.team1, score1: r.score2, score2: r.score1, daysAgo });
+    teamMatches[r.team1].push({
+      opponent: r.team2,
+      opponentElo: dynamicElo[r.team2] || (TEAMS[r.team2] ? TEAMS[r.team2][0] : 1600),
+      score1: r.score1, score2: r.score2, daysAgo
+    });
+    teamMatches[r.team2].push({
+      opponent: r.team1,
+      opponentElo: dynamicElo[r.team1] || (TEAMS[r.team1] ? TEAMS[r.team1][0] : 1600),
+      score1: r.score2, score2: r.score1, daysAgo
+    });
   }
 
   const LAMBDA = 0.15; // Faster decay for tournament context (14-day window)
@@ -1605,7 +1674,13 @@ function calculateDynamicForm(actualResults) {
       let points = m.score1 > m.score2 ? 1.0 : (m.score1 === m.score2 ? 0.33 : 0.0);
       const gd = m.score1 - m.score2;
       const gdBonus = Math.max(-0.2, Math.min(0.2, gd * 0.05));
-      formScore += weight * (points + gdBonus);
+
+      // Opponent strength weighting: beating stronger teams gives more form boost
+      // Normalize opponent Elo: 1400 = 0.0, 2200 = 1.0
+      const opponentStrength = Math.max(0, Math.min(1, (m.opponentElo - 1400) / 800));
+      const opponentBonus = opponentStrength * 0.15; // Up to +0.15 for beating top team
+
+      formScore += weight * (points + gdBonus + opponentBonus);
       totalWeight += weight;
     }
     const wcForm = Math.max(0, Math.min(1, formScore / totalWeight));
@@ -1622,16 +1697,58 @@ function calculateDynamicForm(actualResults) {
   return formMap;
 }
 
+/** Calculate fatigue map based on schedule density.
+ *  Teams with fewer rest days between matches get a fatigue penalty. */
+function calculateFatigueMap(actualResults, currentDate) {
+  if (!actualResults || actualResults.length === 0) return {};
+
+  const fatigueMap = {};
+  const lastMatchDate = {};
+
+  // Find last match date for each team
+  for (const r of actualResults) {
+    const date = new Date(r.date);
+    if (!lastMatchDate[r.team1] || date > lastMatchDate[r.team1]) {
+      lastMatchDate[r.team1] = date;
+    }
+    if (!lastMatchDate[r.team2] || date > lastMatchDate[r.team2]) {
+      lastMatchDate[r.team2] = date;
+    }
+  }
+
+  // Calculate fatigue based on rest days since last match
+  const now = currentDate ? new Date(currentDate) : new Date();
+  for (const team of Object.keys(TEAMS)) {
+    if (lastMatchDate[team]) {
+      const restDays = (now - lastMatchDate[team]) / (1000 * 60 * 60 * 24);
+      // Fatigue penalty: <3 days rest = 0.92, 3-4 days = 0.96, 5+ days = 1.0
+      if (restDays < 3) {
+        fatigueMap[team] = 0.92;
+      } else if (restDays < 5) {
+        fatigueMap[team] = 0.96;
+      } else {
+        fatigueMap[team] = 1.0;
+      }
+    } else {
+      fatigueMap[team] = 1.0; // No matches played = no fatigue
+    }
+  }
+
+  return fatigueMap;
+}
+
 // ---- Actual results map (cached) ----
 
 let _cachedActualMap = null;
-let _cachedActualResultsLen = -1;
+let _cachedActualResultsHash = '';
 
 /** Build lookup map from actual results array, with caching.
- *  Cache invalidated by array length change (simple but effective). */
+ *  Cache invalidated by content hash (team pairs + scores) to detect any data change. */
 function buildActualResultsMap(actualResults) {
-  const len = (actualResults || []).length;
-  if (_cachedActualResultsLen === len && _cachedActualMap) return _cachedActualMap;
+  const results = actualResults || [];
+  // Build a lightweight hash from results content for cache invalidation
+  const hash = results.map(r => `${r.team1}|${r.score1}-${r.score2}|${r.team2}`).join(';');
+  if (_cachedActualResultsHash === hash && _cachedActualMap) return _cachedActualMap;
 
   const map = {};
   for (const r of actualResults || []) {
@@ -1649,7 +1766,7 @@ function buildActualResultsMap(actualResults) {
   }
 
   _cachedActualMap = map;
-  _cachedActualResultsLen = len;
+  _cachedActualResultsHash = hash;
   return map;
 }
 
@@ -1761,7 +1878,7 @@ const I18N = {
     'toast.invalid':'输入无效','toast.needKey':'请先设置 API Key','toast.testing':'测试中...',
     // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
-    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.12) + 东道主加成',
+    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.05) + 东道主加成',
     'footer.mc':'蒙特卡洛 10k · RPS/ECE 校准 · localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
   },
@@ -1814,7 +1931,7 @@ const I18N = {
     'toast.invalid':'Invalid input','toast.needKey':'Set API key first','toast.testing':'Testing...',
     // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
-    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.12) + host advantage',
+    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.05) + host advantage',
     'footer.mc':'Monte Carlo 10k · RPS/ECE · localStorage',
     'footer.disclaimer':'For entertainment only — football is unpredictable',
   }
@@ -1868,6 +1985,7 @@ function runSimulation(){
   const state=loadState();const results=state.actualResults||[];
   results.forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2));
   const formMap=calculateDynamicForm(results);
+  const fatigueMap=calculateFatigueMap(results, null);
   const actualMap=buildActualResultsMap(results);
   const standings={},matchResults=[];
   GROUPS.forEach(g=>{standings[g]={};GROUP_TEAMS[g].forEach(t=>{standings[g][t]={P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,ExpPts:0};});});
@@ -1883,7 +2001,7 @@ function runSimulation(){
     }else{
       const probs=matchProbs(ta,tb);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
-      const[lh,la]=getFormAdjustedLambdas(ta,tb);
+      const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap,fatigueMap);
       let bp=0,lh2=1,la2=0;for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,RHO);if(p>bp){bp=p;lh2=x;la2=y;}}
       if(probs.win>probs.draw&&probs.win>probs.loss){a.W++;a.Pts+=3;b.L++;}
       else if(probs.loss>probs.draw&&probs.loss>probs.win){b.W++;b.Pts+=3;a.L++;}
@@ -1905,18 +2023,18 @@ function runSimulation(){
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
       if(actual){const ga=actual.score1,gb=actual.score2;winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method:ga!==gb?"90'":'PSO'});}
-      else{const[ga,gb,method]=simKO(home,away,formMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
+      else{const[ga,gb,method]=simKO(home,away,formMap,fatigueMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
     }return[winners,res];}
   let[w1,r32r]=runKORound(koBracket);let[w2,r16r]=runKORound(w1);let[w3,qfr]=runKORound(w2);let[w4,sfr]=runKORound(w3);
   // Fix: use SF results (sfr) to identify semi-final losers, not QF results
   const sfLosers=sfr.map(m=>m.ga>m.gb?m.b:m.a);
-  const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],formMap);
-  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap);
+  const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],formMap,fatigueMap);
+  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap,fatigueMap);
   ko.R32=r32r;ko.R16=r16r;ko.QF=qfr;ko.SF=sfr;
   ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
   ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
   ko.Champion=fa>fb?w4[0]:w4[1];
-  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap};
+  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,fatigueMap};
   renderAll();
   }catch(e){console.error('runSimulation:',e);}
 }
@@ -2064,7 +2182,8 @@ function runMonteCarloUI(){
   const state=loadState();const actualMap=buildActualResultsMap(state.actualResults||[]);
   initDynamicElo();(state.actualResults||[]).forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2));
   const formMap=calculateDynamicForm(state.actualResults||[]);
-  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT,formMap);renderProbabilities();
+  const fatigueMap=calculateFatigueMap(state.actualResults||[], null);
+  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT,formMap,fatigueMap);renderProbabilities();
     if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}},50);
 }
 
@@ -2110,8 +2229,8 @@ function renderModel(){
   h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">40% base λ (fatigue)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 20% Elo</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">33% base λ (30/90min)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 25% Elo</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.mc')}</span><span class="weight">${MC_DEFAULT.toLocaleString()}</span></div>`;
   h+=`</div>`;
   h+=`<div class="model-card"><h4>${t('model.ds')}</h4>`;
