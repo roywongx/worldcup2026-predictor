@@ -2184,7 +2184,7 @@ const I18N = {
     'radar.fetch':'获取 Polymarket 数据','radar.champion':'冠军概率：模型 vs 市场',
     'radar.brierTracker':'打脸榜','radar.brierBetter':'预测更准',
     'radar.trend':'概率走势','radar.trendDesc':'过去 24h 概率变化',
-    'radar.snapshots':'快照',
+    'radar.snapshots':'快照','radar.fetchMatchOdds':'获取单场赔率',
     // Toast messages
     'toast.fetchErr':'获取失败','toast.fetchOk':'数据已刷新','toast.added':'已添加','toast.cleared':'已清空',
     'toast.imported':'已导入','toast.exported':'已导出','toast.updated':'已更新','toast.reset':'已重置',
@@ -2246,7 +2246,7 @@ const I18N = {
     'radar.fetch':'Fetch Polymarket Data','radar.champion':'Champion: Model vs Market',
     'radar.brierTracker':'Brier Tracker','radar.brierBetter':'more accurate',
     'radar.trend':'Probability Trend','radar.trendDesc':'Probability changes over past 24h',
-    'radar.snapshots':'snapshots',
+    'radar.snapshots':'snapshots','radar.fetchMatchOdds':'Fetch Match Odds',
     // Toast messages
     'toast.fetchErr':'Fetch failed','toast.fetchOk':'Data refreshed','toast.added':'Added','toast.cleared':'Cleared',
     'toast.imported':'Imported','toast.exported':'Exported','toast.updated':'Updated','toast.reset':'Reset',
@@ -2297,6 +2297,7 @@ function saveApiKey(s,k){const st=loadState();st.apiKeys[s]=k;saveState(st);show
 // ── Tab navigation ───────────────────────────────────────────────────────
 let currentResults=null,mcResults=null,marketData={matches:{},champion:{},lastFetch:null};
 let whatIfLocks={}; // Conditional MC locked match results
+let polymarketAutoTimer=null; // Auto-refresh timer for Polymarket data
 function showSection(id,btn){
   try{document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.segment button').forEach(b=>b.classList.remove('active'));
@@ -2894,7 +2895,13 @@ function renderRadar(){
   const state=loadState();const sd=state.marketData||marketData;
   const hc=Object.keys(sd.champion||{}).length>0;
   let h=`<div style="margin-bottom:1.5rem"><h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem">${t('radar.title')}</h3><p style="font-size:0.75rem;color:var(--text3)">${t('radar.desc')}</p></div>`;
-  h+=`<div style="margin-bottom:1rem"><button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(()=>renderRadar())">${t('radar.fetch')}</button><span id="radar-status" style="font-size:0.72rem;color:var(--text3);margin-left:0.5rem">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span></div>`;
+  const state2=loadState();const autoOn=state2.polymarketAuto;
+  h+=`<div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">`;
+  h+=`<button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(()=>renderRadar())">${t('radar.fetch')}</button>`;
+  h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?'⏹ Stop Auto':'▶ Auto 5min'}</button>`;
+  h+=`<button class="data-btn data-btn-green" onclick="fetchPolymarketMatchOdds().then(r=>{const s=loadState();s.polymarketMatchOdds=r;saveState(s);showToast('Match odds: '+Object.keys(r).length+' matches');})">📊 ${t('radar.fetchMatchOdds')}</button>`;
+  h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
+  h+=`</div>`;
 
   // Brier Score Tracker (打脸榜)
   const brierScores = computeBrierScores();
@@ -3132,6 +3139,35 @@ async function fetchPolymarketMatchOdds() {
 }
 
 function mapPolymarketTeam(q){const pats=[/Will (.+?) win the/i,/Will (.+?) win/i,/(.+?) to win/i];for(const p of pats){const m=q.match(p);if(m)return mapTeamName(m[1].trim());}return null;}
+
+/** Toggle Polymarket auto-refresh (every 5 minutes).
+ *  Since Polymarket has no rate limit, we can poll frequently. */
+function togglePolymarketAuto() {
+  const state = loadState();
+  state.polymarketAuto = !state.polymarketAuto;
+  saveState(state);
+
+  if (state.polymarketAuto) {
+    polymarketAutoTimer = setInterval(async () => {
+      try {
+        await fetchPolymarketData();
+        // Re-run simulation with new market data
+        const s = loadState();
+        const mo = s.polymarketMatchOdds || {};
+        if (Object.keys(mo).length > 0) {
+          mcResults = null;
+          // Don't re-run full simulation, just update market data
+        }
+      } catch (e) { console.log('Polymarket auto-refresh failed:', e.message); }
+    }, 5 * 60 * 1000); // 5 minutes
+    showToast('Polymarket auto-refresh ON (every 5 min)');
+  } else {
+    if (polymarketAutoTimer) clearInterval(polymarketAutoTimer);
+    polymarketAutoTimer = null;
+    showToast('Polymarket auto-refresh OFF');
+  }
+  renderRadar();
+}
 
 async function refreshData(){
   const btn=document.querySelector('[onclick="refreshData()"]');if(btn){btn.textContent='⟳ Fetching...';btn.disabled=true;}
