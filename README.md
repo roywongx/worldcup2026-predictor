@@ -72,12 +72,18 @@ Enter keys in the **Data** tab. Use the **🔍 Test** button to verify they work
 ### Features
 
 - **Dixon-Coles Poisson engine** — academic gold standard for football prediction
+- **Elo-Market blending** — 70% Elo + 30% market odds (captures injuries, tactics, morale)
+- **Temperature scaling** — reduces overconfidence (T=1.15, probability clipping)
 - **FIFA Annex C 495-combination bracket** — correct knockout stage pairings
-- **Monte Carlo 10,000** — full tournament simulations
+- **Monte Carlo 10,000** — full tournament simulations with chunked progress
+- **Conditional Monte Carlo (What-If)** — lock match results, see instant probability changes
+- **Probability trend tracking** — sparkline charts showing probability evolution
 - **Isotonic regression calibration** — PAVA algorithm for probability calibration
-- **2022 WC backtest** — out-of-sample validation on historical data
+- **2022 WC backtest** — out-of-sample validation on historical data (48 matches)
 - **Dynamic Elo** — updates after each match (K=60 group, K=80 knockout)
 - **Attack/defense ratings** — differentiates Brazil (high attack) from Morocco (high defense)
+- **De-vig normalization** — removes bookmaker margin from odds
+- **Brier Score tracker (打脸榜)** — model vs market accuracy comparison
 - **Prediction comparison** — shows predicted vs actual for each completed match
 - **Reliability diagram** — visual calibration chart
 - **Bilingual** — full Chinese/English toggle
@@ -87,11 +93,14 @@ Enter keys in the **Data** tab. Use the **🔍 Test** button to verify they work
 
 | Parameter | Value | Source |
 |-----------|-------|--------|
-| Base goals (λ) | 2.7 total (1.35 per team) | International average |
-| Elo → goals | 400 Elo = 1 goal | Industry standard |
-| Dixon-Coles ρ | -0.05 | Empirical (reduced from -0.12 with log-linear model) |
-| Log-linear β | 0.002 | Calibrated for realistic score distribution |
-| Host advantage | +0.30 goals | Mexico/USA/Canada |
+| Base goals (λ) | 1.15 per team (2.30 total) | Calibrated for realistic distribution |
+| Elo → λ | Logistic mapping: `0.3 + 1.4 × W_H` | Physically bounded [0.3, 1.7] |
+| Market blending | 70% Elo + 30% odds | Captures soft information |
+| Dixon-Coles ρ | -0.13 | Calibrated for international cups |
+| Temperature T | 1.15 | Reduces overconfidence |
+| Attack/defense | Power 0.45 damping | Prevents extreme amplification |
+| Host advantage | ×1.30 (multiplicative) | Mexico/USA/Canada |
+| Knockout factor | ×0.88 | Teams play more conservatively |
 | Form decay | λ=0.15 (14-day window) | Tournament-tuned |
 | Elo K factor | 60 (group) / 80 (knockout) | FIFA standard |
 | ET factor | 0.40 (fatigue-adjusted) | Historical ~38-42% of regular time |
@@ -203,12 +212,18 @@ python3 server.py 9090
 ### 功能特性
 
 - **Dixon-Coles Poisson 引擎** — 学术界足球预测黄金标准
+- **Elo-Market 混合评级** — 70% Elo + 30% 市场赔率（捕获伤病、战术、士气）
+- **温度收缩** — 降低过度自信（T=1.15，概率裁剪）
 - **FIFA Annex C 495 组合矩阵** — 正确的淘汰赛对阵
-- **蒙特卡洛 10,000 次** — 完整锦标赛模拟
+- **蒙特卡洛 10,000 次** — 完整锦标赛模拟（分块处理带进度条）
+- **条件蒙特卡洛 (What-If)** — 锁定比赛结果，即时查看概率变化
+- **概率走势追踪** — 迷你图显示概率随比赛结果变化
 - **等保回归校准** — PAVA 算法（优于 Platt Scaling）
-- **2022 WC 回测** — 历史数据样本外验证
+- **2022 WC 回测** — 历史数据样本外验证（48 场）
 - **动态 Elo** — 每场比赛后更新（小组赛 K=60，淘汰赛 K=80）
 - **进攻/防守评分** — 区分巴西（高进攻）和摩洛哥（高防守）
+- **去水归一化** — 去除博彩公司抽水
+- **Brier Score 追踪（打脸榜）** — 模型 vs 市场准确度对比
 - **预测对比** — 每场已完成比赛显示预测 vs 实际
 - **可靠性图表** — 可视化校准图
 - **中英文切换** — 完整双语支持
@@ -218,11 +233,14 @@ python3 server.py 9090
 
 | 参数 | 值 | 来源 |
 |------|-----|------|
-| 基础进球 (λ) | 总 2.7（每队 1.35） | 国际比赛平均 |
-| Elo → 进球 | 400 Elo = 1 进球 | 行业标准 |
-| Dixon-Coles ρ | -0.05 | 经验值（log-linear 模型从 -0.12 降低） |
-| Log-linear β | 0.002 | 校准以获得合理比分分布 |
-| 东道主加成 | +0.30 进球 | 墨西哥/美国/加拿大 |
+| 基础进球 (λ) | 每队 1.15（总 2.30） | 校准以获得合理分布 |
+| Elo → λ | 逻辑映射: `0.3 + 1.4 × W_H` | 物理有界 [0.3, 1.7] |
+| 市场混合 | 70% Elo + 30% 赔率 | 捕获软信息 |
+| Dixon-Coles ρ | -0.13 | 国际杯赛校准 |
+| 温度 T | 1.15 | 降低过度自信 |
+| 攻防阻尼 | Power 0.45 | 防止极端放大 |
+| 东道主加成 | ×1.30（乘法） | 墨西哥/美国/加拿大 |
+| 淘汰赛因子 | ×0.88 | 球队更保守 |
 | 状态衰减 | λ=0.15（14 天窗口） | 赛会制调优 |
 | Elo K 因子 | 60（小组赛）/ 80（淘汰赛） | FIFA 标准 |
 | 加时赛因子 | 0.40（含疲劳） | 历史数据 ~38-42% |
