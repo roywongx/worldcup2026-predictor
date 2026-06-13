@@ -333,51 +333,54 @@ body {
 
 .bracket {
   display: flex;
-  gap: 0.8rem;
-  min-width: 1100px;
+  gap: 0;
+  min-width: 1200px;
   padding: 0 1rem;
+  align-items: center;
 }
 
 .bracket-col {
   display: flex;
   flex-direction: column;
-  min-width: 180px;
+  min-width: 170px;
   flex: 1;
+  position: relative;
 }
 
 .bracket-col-title {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: var(--text3);
+  color: var(--text2);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-align: center;
-  padding-bottom: 0.6rem;
-  margin-bottom: 0.4rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 2px solid var(--border);
 }
 
 .b-match {
   background: var(--card);
-  border-radius: var(--radius);
+  border-radius: 6px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
-  margin: 0.25rem 0;
   border: 1px solid var(--border);
+  position: relative;
 }
 
 .b-team {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.35rem 0.6rem;
+  padding: 0.3rem 0.5rem;
   font-size: 0.78rem;
   font-weight: 600;
   border-bottom: 1px solid var(--border);
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .b-team:last-child { border-bottom: none; }
-.b-team.w { color: var(--text); }
+.b-team.w { color: var(--text); background: rgba(52,199,89,0.04); }
 .b-team.l { color: var(--text3); }
 
 .b-team .b-flag img { width: 18px; height: 12px; border-radius: 2px; margin-right: 4px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1); vertical-align: middle; }
@@ -385,10 +388,52 @@ body {
 .b-team .b-score { font-weight: 800; font-size: 0.9rem; min-width: 1.2rem; text-align: center; }
 
 .b-method {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--orange);
   text-align: center;
+  padding: 0.15rem;
+  background: rgba(217,119,6,0.06);
+  letter-spacing: 0.03em;
+}
+
+/* Connector lines between rounds */
+.bracket-connector {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 20px;
+  min-width: 20px;
+}
+
+.bracket-connector .line {
+  border-right: 2px solid var(--border);
+  height: 50%;
+}
+
+/* Champion display */
+.bracket-champion {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  min-width: 160px;
+}
+
+.bracket-champion .trophy { font-size: 2.5rem; margin-bottom: 0.3rem; }
+
+.bracket-champion .name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.bracket-champion .label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
   padding: 0.1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2609,6 +2654,8 @@ function renderMatches(){
 
 function renderBracket(){
   const{ko}=currentResults;const ch=ko.Champion;
+
+  // Champion path
   let ph='';
   [{k:'R32',l:t('ko.r32')},{k:'R16',l:t('ko.r16')},{k:'QF',l:t('ko.qf')},{k:'SF',l:t('ko.sf')}].forEach(r=>{
     ko[r.k].forEach(m=>{if(m.a===ch||m.b===ch){const op=m.a===ch?m.b:m.a,mg=m.a===ch?m.ga:m.gb,og=m.a===ch?m.gb:m.ga;
@@ -2617,15 +2664,63 @@ function renderBracket(){
   const ff=ko.Final,fmg=ff.a===ch?ff.ga:ff.gb,fog=ff.a===ch?ff.gb:ff.ga,fop=ff.a===ch?ff.b:ff.a;
   ph+=`<div class="champ-path-item"><span class="cp-round" style="color:var(--gold)">${currentLang==='zh'?'决赛':'FINAL'}</span><span class="cp-score">${fmg}</span><span class="cp-vs">vs</span>${fl(fop)}<span class="cp-score">${fog}</span><span class="cp-method">${ff.method}</span></div>`;
   let h=`<div class="champion-hero"><div class="trophy-icon">🏆</div><h2>${fl(ch)}</h2><div class="champ-sub">${t('ko.champion')}</div><div class="champ-path">${ph}</div></div>`;
+
+  // Professional bracket with connectors
   h+='<div class="bracket-wrap"><div class="bracket">';
-  function bc(title,matches){let s=`<div class="bracket-col"><div class="bracket-col-title">${title}</div>`;
-    matches.forEach(m=>{const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
-      s+=`<div class="b-match"><div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${m.a}</span><span class="b-score">${m.ga}</span></div><div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${m.b}</span><span class="b-score">${m.gb}</span></div>${m.method?`<div class="b-method">${m.method}</div>`:''}</div>`;});s+='</div>';return s;}
-  h+=bc(t('ko.r32'),ko.R32);h+=bc(t('ko.r16'),ko.R16);h+=bc(t('ko.qf'),ko.QF);h+=bc(t('ko.sf'),ko.SF);
-  h+=`<div class="bracket-col"><div class="bracket-col-title">${t('ko.finals')}</div>`;
-  h+=`<div class="b-match"><div style="font-size:0.7rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div><div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${ko.Third.a}</span><span class="b-score">${ko.Third.ga}</span></div><div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${ko.Third.b}</span><span class="b-score">${ko.Third.gb}</span></div>${ko.Third.method?`<div class="b-method">${ko.Third.method}</div>`:''}</div>`;
-  h+=`<div class="b-match" style="background:linear-gradient(135deg,#fff9e6,#fff)"><div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">FINAL</div><div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${ko.Final.a}</span><span class="b-score">${ko.Final.ga}</span></div><div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${ko.Final.b}</span><span class="b-score">${ko.Final.gb}</span></div>${ko.Final.method?`<div class="b-method">${ko.Final.method}</div>`:''}</div>`;
-  h+='</div></div></div>';
+
+  // Helper: render a bracket column
+  function bc(title, matches, gap) {
+    let s=`<div class="bracket-col" style="margin-top:${gap||0}">`;
+    s+=`<div class="bracket-col-title">${title}</div>`;
+    matches.forEach(m=>{
+      const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
+      s+=`<div class="b-match" style="margin-bottom:${gap||'0.5rem'}">`;
+      s+=`<div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${getTeamName(m.a)}</span><span class="b-score">${m.ga}</span></div>`;
+      s+=`<div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${getTeamName(m.b)}</span><span class="b-score">${m.gb}</span></div>`;
+      if(m.method) s+=`<div class="b-method">${m.method}</div>`;
+      s+=`</div>`;
+    });
+    s+='</div>';
+    return s;
+  }
+
+  // R32 (16 matches, tighter spacing)
+  h+=bc(t('ko.r32'), ko.R32, '0.3rem');
+  // Connector
+  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
+  // R16 (8 matches, medium spacing)
+  h+=bc(t('ko.r16'), ko.R16, '0.8rem');
+  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
+  // QF (4 matches, wider spacing)
+  h+=bc(t('ko.qf'), ko.QF, '2rem');
+  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
+  // SF (2 matches, widest spacing)
+  h+=bc(t('ko.sf'), ko.SF, '4rem');
+  h+=`<div class="bracket-connector"><div class="line"></div></div>`;
+
+  // Finals column
+  h+=`<div class="bracket-col" style="margin-top:2rem">`;
+  h+=`<div class="bracket-col-title">${t('ko.finals')}</div>`;
+  // 3rd place
+  h+=`<div class="b-match" style="margin-bottom:1rem">`;
+  h+=`<div style="font-size:0.65rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div>`;
+  h+=`<div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${getTeamName(ko.Third.a)}</span><span class="b-score">${ko.Third.ga}</span></div>`;
+  h+=`<div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${getTeamName(ko.Third.b)}</span><span class="b-score">${ko.Third.gb}</span></div>`;
+  if(ko.Third.method) h+=`<div class="b-method">${ko.Third.method}</div>`;
+  h+=`</div>`;
+  // Final
+  h+=`<div class="b-match" style="background:linear-gradient(135deg,rgba(202,138,4,0.06),rgba(202,138,4,0.02));border:2px solid var(--gold)">`;
+  h+=`<div style="font-size:0.65rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
+  h+=`<div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${getTeamName(ko.Final.a)}</span><span class="b-score">${ko.Final.ga}</span></div>`;
+  h+=`<div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${getTeamName(ko.Final.b)}</span><span class="b-score">${ko.Final.gb}</span></div>`;
+  if(ko.Final.method) h+=`<div class="b-method">${ko.Final.method}</div>`;
+  h+=`</div>`;
+  h+=`</div>`;
+
+  // Champion display
+  h+=`<div class="bracket-champion"><div class="trophy">🏆</div><div class="name">${fl(ch)}</div><div class="label">${t('ko.champion')}</div></div>`;
+
+  h+='</div></div>';
   document.getElementById('section-bracket').innerHTML=h;
 }
 
