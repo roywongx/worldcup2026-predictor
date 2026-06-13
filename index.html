@@ -361,7 +361,7 @@ body {
 
 .b-match {
   background: var(--card);
-  border-radius: 6px;
+  border-radius: 5px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   border: 1px solid var(--border);
@@ -372,8 +372,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.78rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.72rem;
   font-weight: 600;
   border-bottom: 1px solid var(--border);
   transition: background 0.15s;
@@ -443,7 +443,8 @@ body {
   overflow-x: auto;
   padding: 1rem 0;
   -webkit-overflow-scrolling: touch;
-  min-width: 1100px;
+  min-width: 1000px;
+  gap: 0;
 }
 
 .pyramid-side {
@@ -454,33 +455,32 @@ body {
 .pyramid-left { flex-direction: row; }
 .pyramid-right { flex-direction: row-reverse; }
 
-/* Each round column: matches spaced by round depth */
+/* Each round column */
 .pyramid-round {
   display: flex;
   flex-direction: column;
-  min-width: 155px;
-  padding: 0 0.2rem;
+  min-width: 150px;
+  max-width: 180px;
+  padding: 0 0.1rem;
 }
 
-/* R32: wide base — matches spread far apart */
-.pyramid-round.r32 { gap: 0.3rem; }
-/* R16: closer */
-.pyramid-round.r16 { gap: 1.8rem; }
-/* QF: tighter */
-.pyramid-round.qf { gap: 4.5rem; }
-/* SF: tip — matches right next to center */
-.pyramid-round.sf { gap: 9rem; }
+/* Pyramid spacing: R32 (wide base, spread out) → SF (narrow tip, tight) */
+.pyramid-round.r32 { gap: 0.2rem; justify-content: space-around; min-height: 600px; }
+.pyramid-round.r16 { gap: 0.6rem; justify-content: space-around; min-height: 500px; }
+.pyramid-round.qf  { gap: 1.2rem; justify-content: space-around; min-height: 400px; }
+.pyramid-round.sf  { gap: 0; justify-content: center; min-height: 300px; }
 
 .pyramid-round-title {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--text2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   text-align: center;
   padding-bottom: 0.3rem;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
   border-bottom: 2px solid var(--border);
+  white-space: nowrap;
 }
 
 .pyramid-center {
@@ -3407,6 +3407,33 @@ async function fetchPolymarketMatchOdds() {
             pWin1 = yesPrice;
           } else if (q.includes(raw2) && !q.includes(raw1)) {
             pWin2 = yesPrice;
+          }
+        }
+        // Fallback: try individual words from mapped team names
+        if (pWin1 <= 0 && team1) {
+          const words1 = team1.toLowerCase().split(/\s+/);
+          for (const m2 of (ev.markets || [])) {
+            const q2 = (m2.question || '').toLowerCase();
+            if (q2.includes('draw')) continue;
+            if (words1.some(w => w.length > 2 && q2.includes(w)) &&
+                !team2.toLowerCase().split(/\s+/).some(w => w.length > 2 && q2.includes(w))) {
+              const p2 = typeof m2.outcomePrices === 'string' ? JSON.parse(m2.outcomePrices) : m2.outcomePrices;
+              const v2 = parseFloat(p2[0]);
+              if (v2 > 0) { pWin1 = v2; break; }
+            }
+          }
+        }
+        if (pWin2 <= 0 && team2) {
+          const words2 = team2.toLowerCase().split(/\s+/);
+          for (const m2 of (ev.markets || [])) {
+            const q2 = (m2.question || '').toLowerCase();
+            if (q2.includes('draw')) continue;
+            if (words2.some(w => w.length > 2 && q2.includes(w)) &&
+                !team1.toLowerCase().split(/\s+/).some(w => w.length > 2 && q2.includes(w))) {
+              const p2 = typeof m2.outcomePrices === 'string' ? JSON.parse(m2.outcomePrices) : m2.outcomePrices;
+              const v2 = parseFloat(p2[0]);
+              if (v2 > 0) { pWin2 = v2; break; }
+            }
           }
         }
         if (pWin1 <= 0 || pWin2 <= 0) continue;
