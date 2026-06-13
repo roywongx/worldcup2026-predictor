@@ -91,6 +91,43 @@ Actual Match Results ──→ Dynamic Elo Update (K=60)
 - **Log Loss**: penalizes confident wrong predictions
 - **ECE** (Expected Calibration Error): measures probability calibration
 
+### Data Sources
+
+| Data | Source | Last Verified |
+|------|--------|---------------|
+| Elo ratings | eloratings.net | June 2026 |
+| FIFA rankings | FIFA.com | June 2026 |
+| Market values | Transfermarkt | 2026 |
+| Bookmaker odds | DraftKings | June 10, 2026 |
+| Match schedule | FIFA official via NDTV/ESPN/Al Jazeera | June 13, 2026 |
+| Attack/defense ratings | Composite of Elo + FIFA + recent form | Estimated |
+| Bracket matrix (495 combos) | FIFA Regulations Annex C via Wikipedia | June 2026 |
+
+### Audit Checklist (for next AI)
+
+When reviewing this codebase, verify:
+
+- [ ] **Match schedule dates** against FIFA official (not just "looks reasonable")
+- [ ] **Flag codes** — England=gb-eng, Scotland=gb-sct, not gb
+- [ ] **Score distribution** — 1-1 should be ~11% of matches, not 50%+
+- [ ] **Total λ average** — should be 2.5-2.7 goals per match
+- [ ] **Draw probability** — should be 25-28% average
+- [ ] **PSO model** — 200 Elo diff should give ~55/45, not 75/25
+- [ ] **ET factor** — should account for fatigue (~0.40), not just 30/90=0.33
+- [ ] **matchProbs consistency** — same inputs must give same outputs regardless of code path
+- [ ] **formMap threading** — Monte Carlo must pass formMap, not rely on global state
+- [ ] **Bracket same-group** — no team faces its own group in R32
+- [ ] **Elo ratings** — cross-reference with eloratings.net
+- [ ] **Data validation** — `validateData()` runs on init, check console for warnings
+
+### Lessons for Next AI
+
+1. **Audit data, not just code.** Schedule dates were wrong for 5+ audit rounds because nobody checked against FIFA's actual schedule.
+2. **Check git log before changing constants.** PSO and ET parameters were fixed, then reverted by a later commit. Always check `git log` before modifying numerical constants.
+3. **Aggregate > individual.** The 1-1 over-prediction (82%) was missed because each individual probability (~13%) "looked reasonable." Always check distributions.
+4. **Single code path > ensemble.** The ensemble model produced 7.8pp inconsistency between code paths. Use one consistent model.
+5. **Don't over-engineer fatigue.** Penalizing both teams equally for equal rest only reduces total goals without changing win probability.
+
 ### Data Flow
 
 ```
@@ -316,6 +353,43 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 - **Brier 分数**：概率向量的均方误差
 - **对数损失**：惩罚自信的错误预测
 - **ECE**（期望校准误差）：衡量概率校准质量
+
+### 数据来源
+
+| 数据 | 来源 | 最后验证 |
+|------|------|----------|
+| Elo 评分 | eloratings.net | 2026年6月 |
+| FIFA 排名 | FIFA.com | 2026年6月 |
+| 球队市值 | Transfermarkt | 2026年 |
+| 博彩赔率 | DraftKings | 2026年6月10日 |
+| 赛程 | FIFA 官方（经 NDTV/ESPN/Al Jazeera 交叉验证） | 2026年6月13日 |
+| 进攻/防守评分 | Elo + FIFA + 近期表现综合 | 估算 |
+| 对阵矩阵（495组合） | FIFA 规程 Annex C（经 Wikipedia） | 2026年6月 |
+
+### 审计清单（给下一个 AI）
+
+审查此代码库时，请验证：
+
+- [ ] **赛程日期** 对照 FIFA 官方（不只是"看起来合理"）
+- [ ] **国旗代码** — 英格兰=gb-eng，苏格兰=gb-sct，不是 gb
+- [ ] **比分分布** — 1-1 应占约 11%，不是 50%+
+- [ ] **总 λ 平均** — 应为 2.5-2.7 进球/场
+- [ ] **平局概率** — 平均应为 25-28%
+- [ ] **PSO 模型** — 200 Elo 差应为 55/45，不是 75/25
+- [ ] **ET 因子** — 应考虑疲劳（~0.40），不是纯 30/90=0.33
+- [ ] **matchProbs 一致性** — 相同输入必须相同输出，无论代码路径
+- [ ] **formMap 传递** — 蒙特卡洛必须传 formMap，不依赖全局状态
+- [ ] **Bracket 同组** — 32 强中不能有同组对阵
+- [ ] **Elo 评分** — 与 eloratings.net 交叉验证
+- [ ] **数据验证** — `validateData()` 在初始化时运行，检查控制台警告
+
+### 给下一个 AI 的教训
+
+1. **审计数据，不只是代码。** 赛程日期错了 5+ 轮审计都没发现，因为没人对照 FIFA 实际赛程检查。
+2. **修改常量前检查 git log。** PSO 和 ET 参数被修复后又被后续提交回退。修改数值常量前务必检查 `git log`。
+3. **聚合 > 单点。** 1-1 过度预测（82%）被遗漏，因为每个单独概率（~13%）"看起来合理"。永远检查分布。
+4. **单一代码路径 > 集成模型。** Ensemble 模型在代码路径间产生 7.8pp 不一致。使用一个一致的模型。
+5. **不要过度工程化疲劳。** 对等休息的双方同等惩罚只会降低总进球，不改变胜率。
 
 ### 数据流
 
