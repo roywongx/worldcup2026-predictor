@@ -1117,9 +1117,11 @@ function runBacktest() {
 
   if (predictions.length === 0) return null;
 
-  let rpsSum = 0;
+  let rpsSum = 0, brierSum = 0, logLossSum = 0;
   for (let i = 0; i < predictions.length; i++) {
     rpsSum += rankedProbabilityScore(predictions[i], outcomes[i]);
+    brierSum += brierScore(predictions[i], outcomes[i]);
+    logLossSum += logLoss(predictions[i], outcomes[i]);
   }
 
   return {
@@ -1127,6 +1129,8 @@ function runBacktest() {
     correct,
     accuracy: correct / predictions.length,
     rps: rpsSum / predictions.length,
+    brier: brierSum / predictions.length,
+    logLoss: logLossSum / predictions.length,
     ece: expectedCalibrationError(predictions, outcomes)
   };
 }
@@ -2437,13 +2441,17 @@ function renderData(){
     const ac=stats.accuracy>=0.6?'metric-good':(stats.accuracy>=0.45?'metric-warn':'metric-bad');
     const lc=stats.logLoss<=0.90?'metric-good':(stats.logLoss<=1.05?'metric-warn':'metric-bad');
     const bc=stats.brier<=0.25?'metric-good':(stats.brier<=0.35?'metric-warn':'metric-bad');
-    // Log Loss is primary (per research: strongest local scoring rule)
-    h+=`<div class="calib-metric"><span class="metric-label">Log Loss</span><span class="metric-val ${lc}">${stats.logLoss.toFixed(4)}</span></div>`;
+    // Log Loss is primary (per research: strongest local scoring rule, punishes confident wrong predictions)
+    h+=`<div class="calib-metric"><span class="metric-label">Log Loss (primary)</span><span class="metric-val ${lc}">${stats.logLoss.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.brier')}</span><span class="metric-val ${bc}">${stats.brier.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.rps')}</span><span class="metric-val">${stats.rps.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.accuracy')}</span><span class="metric-val ${ac}">${(stats.accuracy*100).toFixed(1)}%</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.ece')}</span><span class="metric-val">${(stats.ece*100).toFixed(1)}%</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.correctTotal')}</span><span class="metric-val">${stats.correct}/${stats.total}</span></div>`;
+    // Calibration quality indicator
+    const calQuality = stats.logLoss <= 0.85 ? 'Excellent' : stats.logLoss <= 0.95 ? 'Good' : stats.logLoss <= 1.05 ? 'Fair' : 'Poor';
+    const calColor = stats.logLoss <= 0.85 ? 'var(--green)' : stats.logLoss <= 0.95 ? 'var(--blue)' : stats.logLoss <= 1.05 ? 'var(--orange)' : 'var(--red)';
+    h+=`<div class="calib-metric"><span class="metric-label">Calibration Quality</span><span class="metric-val" style="color:${calColor}">${calQuality}</span></div>`;
     // Isotonic calibration status
     if(stats.isoParams){
       const hasWin=stats.isoParams.win&&stats.isoParams.win.length>1;
@@ -2479,10 +2487,11 @@ function renderData(){
   if(bt){
     h+=`<div class="data-card" style="border:1px solid rgba(175,82,222,0.2)"><h4>🧪 2022 WC Backtest (out-of-sample)</h4>`;
     h+=`<div class="calib-metric"><span class="metric-label">Matches</span><span class="metric-val">${bt.total}</span></div>`;
-    h+=`<div class="calib-metric"><span class="metric-label">Accuracy</span><span class="metric-val">${(bt.accuracy*100).toFixed(1)}%</span></div>`;
+    h+=`<div class="calib-metric"><span class="metric-label">Log Loss</span><span class="metric-val">${bt.logLoss.toFixed(4)}</span></div>`;
+    h+=`<div class="calib-metric"><span class="metric-label">Brier</span><span class="metric-val">${bt.brier.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">RPS</span><span class="metric-val">${bt.rps.toFixed(4)}</span></div>`;
-    h+=`<div class="calib-metric"><span class="metric-label">ECE</span><span class="metric-val">${(bt.ece*100).toFixed(1)}%</span></div>`;
-    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">Model tested on 2022 WC data (teams that exist in our 2026 roster). Uses current pre-tournament Elo, no historical fitting.</div>`;
+    h+=`<div class="calib-metric"><span class="metric-label">Accuracy</span><span class="metric-val">${(bt.accuracy*100).toFixed(1)}%</span></div>`;
+    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">Uses 2022-era Elo data. Model tested on 2022 WC data (teams in 2026 roster).</div>`;
     h+='</div>';
   }
   // Form status
