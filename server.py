@@ -23,6 +23,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._proxy_football_data()
         elif self.path.startswith('/api/odds'):
             self._proxy_odds_api()
+        elif self.path.startswith('/api/test-odds'):
+            self._test_odds_key()
         elif self.path.startswith('/api/test'):
             self._test_key()
         else:
@@ -51,6 +53,32 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             body = e.read().decode('utf-8', errors='replace')[:300]
             self._json_response({'ok': False, 'error': f'HTTP {e.code}: {body}'}, e.code)
         except Exception as e:
+            self._json_response({'ok': False, 'error': str(e)}, 502)
+
+    def _test_odds_key(self):
+        """Test if a the-odds-api.com key is valid."""
+        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        api_key = params.get('key', [''])[0]
+        if not api_key:
+            self._json_response({'error': 'Pass ?key=YOUR_KEY'}, 400)
+            return
+
+        url = f'https://api.the-odds-api.com/v4/sports?apiKey={api_key}'
+        req = urllib.request.Request(url)
+        self._log(f'test-odds → key={api_key[:8]}...')
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+                remaining = resp.headers.get('x-requests-remaining', '?')
+                used = resp.headers.get('x-requests-used', '?')
+                self._log(f'test-odds ✓ remaining={remaining}')
+                self._json_response({'ok': True, 'remaining': remaining, 'used': used})
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='replace')[:300]
+            self._log(f'test-odds ✗ HTTP {e.code}')
+            self._json_response({'ok': False, 'error': f'HTTP {e.code}: {body}'}, e.code)
+        except Exception as e:
+            self._log(f'test-odds ✗ {e}')
             self._json_response({'ok': False, 'error': str(e)}, 502)
 
     def _proxy_football_data(self):
