@@ -177,6 +177,11 @@ body {
   border: 1px solid var(--border);
 }
 
+.group-card .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .group-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 
 .group-head {
@@ -204,22 +209,24 @@ body {
   font-weight: 600;
   font-size: 0.72rem;
   color: var(--text2);
-  padding: 0.6rem 0.4rem;
+  padding: 0.5rem 0.3rem;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-bottom: 2px solid var(--border);
+  white-space: nowrap;
 }
 
-.group-table th:nth-child(2) { text-align: left; }
+.group-table th:nth-child(2) { text-align: left; min-width: 5rem; }
 
 .group-table td {
-  padding: 0.55rem 0.35rem;
+  padding: 0.45rem 0.3rem;
   text-align: center;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.group-table td:nth-child(2) { text-align: left; font-weight: 600; }
+.group-table td:nth-child(2) { text-align: left; font-weight: 600; min-width: 5rem; }
 
 .group-table tr:last-child td { border-bottom: none; }
 .group-table tr.eliminated td { color: var(--text3); }
@@ -2453,7 +2460,7 @@ function renderStandings(){
   const{standings,rankings,bestThirds,formMap}=currentResults;
   let h='<div class="groups-grid">';
   GROUPS.forEach(g=>{
-    h+=`<div class="group-card"><div class="group-head"><h3>${t('sth.group')} ${g}</h3></div>`;
+    h+=`<div class="group-card"><div class="group-head"><h3>${t('sth.group')} ${g}</h3></div><div class="table-wrap">`;
     h+=`<table class="group-table"><tr><th>#</th><th>${t('sth.team')}</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>ExpPts</th><th>Form</th><th>Elo</th><th>Δ</th></tr>`;
     rankings[g].forEach((team,i)=>{
       const s=standings[g][team];const form=formMap?(formMap[team]||TEAMS[team][4]):TEAMS[team][4];
@@ -2465,7 +2472,7 @@ function renderStandings(){
       let cls=i<2?'':(bestThirds.includes(team)?'':'eliminated');
       const fmtG=v=>Math.abs(v-Math.round(v))<0.05?Math.round(v):v.toFixed(1);
       h+=`<tr class="${cls}"><td><span class="pos pos-${i+1}">${i+1}</span></td><td>${fl(team)}</td><td>${s.P}</td><td>${s.W}</td><td>${s.D}</td><td>${s.L}</td><td>${fmtG(s.GF)}</td><td>${fmtG(s.GA)}</td><td>${s.GD>0?'+':''}${fmtG(s.GD)}</td><td><strong>${s.Pts}</strong></td><td style="font-weight:700;color:${ec}">${s.ExpPts.toFixed(1)}</td><td style="font-size:0.7rem;color:${fc}">${(form*100).toFixed(0)}</td><td style="font-size:0.7rem;color:var(--blue)">${de}</td><td style="font-size:0.7rem;color:${dc}">${ds}</td></tr>`;
-    });h+='</table></div>';
+    });h+='</table></div></div>';
   });h+='</div>';
   document.getElementById('section-standings').innerHTML=h;
 }
