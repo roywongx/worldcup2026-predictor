@@ -2183,6 +2183,14 @@ const I18N = {
     'prob.noData':'无数据','prob.noMatch':'该比分组合从未出现',
     'prob.conditionalResults':'条件概率结果','prob.filteredSims':'次过滤模拟',
     'prob.trend':'概率走势','prob.trendDesc':'夺冠概率随比赛结果变化','prob.snapshots':'个快照',
+    'prob.running':'模拟中...','prob.simulating':'模拟中...','prob.fetching':'获取中...',
+    'prob.enterKey':'请先输入 Key','prob.testing':'测试中...',
+    'prob.keyValid':'Key 有效！','prob.keyInvalid':'Key 无效','prob.error':'错误',
+    'prob.backtest':'2022 WC 回测（样本外）','prob.backtestDesc':'使用 2022 年 Elo 数据验证全部 48 场小组赛',
+    'prob.reliability':'可靠性图说明','prob.reliabilityDesc':'蓝色条 = 预测置信度 · 绿线 = 实际准确率 · 越接近 = 校准越好',
+    'prob.stopAuto':'⏹ 停止自动','prob.auto5min':'▶ 自动 5分钟',
+    'prob.clickFetch':'点击获取 Polymarket 数据',
+    'prob.fetchingResults':'获取赛果中...','prob.fetchingOdds':'获取赔率中...',
     // Model
     'model.dc':'Dixon-Coles Poisson 模型','model.elo':'Elo 系统',
     'model.base':'基础 λ (总进球)','model.rate':'Elo→进球率','model.host':'东道主加成','model.floor':'最低 λ','model.grid':'比分网格',
@@ -2246,6 +2254,14 @@ const I18N = {
     'prob.noData':'No data','prob.noMatch':'This score combination never occurred',
     'prob.conditionalResults':'Conditional Results','prob.filteredSims':'filtered simulations',
     'prob.trend':'Probability Trend','prob.trendDesc':'Champion probability changes with match results','prob.snapshots':'snapshots',
+    'prob.running':'Running...','prob.simulating':'Simulating...','prob.fetching':'Fetching...',
+    'prob.enterKey':'Enter a key first','prob.testing':'Testing...',
+    'prob.keyValid':'Key valid!','prob.keyInvalid':'Invalid key','prob.error':'Error',
+    'prob.backtest':'2022 WC Backtest (out-of-sample)','prob.backtestDesc':'Model tested on 2022 WC data (48 matches, 2022-era Elo)',
+    'prob.reliability':'Reliability Diagram','prob.reliabilityDesc':'Blue bar = predicted confidence · Green line = actual accuracy · Closer = better calibrated',
+    'prob.stopAuto':'⏹ Stop Auto','prob.auto5min':'▶ Auto 5min',
+    'prob.clickFetch':'Click fetch to load Polymarket data',
+    'prob.fetchingResults':'Fetching results...','prob.fetchingOdds':'Fetching odds...',
     // Model
     'model.dc':'Dixon-Coles Poisson Model','model.elo':'Elo System',
     'model.base':'Base λ (total goals)','model.rate':'Elo→Goal rate','model.host':'Host advantage','model.floor':'Floor λ','model.grid':'Score grid',
@@ -2581,7 +2597,7 @@ function renderBracket(){
 // ── Monte Carlo ──────────────────────────────────────────────────────────
 function runMonteCarloUI(){
   const btn=document.querySelector('[onclick="runMonteCarloUI()"]');
-  if(btn){btn.textContent='Running...';btn.disabled=true;}
+  if(btn){btn.textContent=t('prob.running');btn.disabled=true;}
   const state=loadState();const actualMap=buildActualResultsMap(state.actualResults||[]);
   initDynamicElo();(state.actualResults||[]).forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2,r.date));
   const formMap=calculateDynamicForm(state.actualResults||[]);
@@ -2600,7 +2616,7 @@ function runMonteCarloUI(){
       if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
     }
     done=end;
-    if(btn)btn.textContent=`Simulating... ${(done/N*100).toFixed(0)}%`;
+    if(btn)btn.textContent=`'+t('prob.simulating')+' ${(done/N*100).toFixed(0)}%`;
     if(done<N){setTimeout(processChunk,0);}
     else{
       mcResults={champ,finalist,semi,quarter,r16,N};
@@ -2899,20 +2915,20 @@ function renderData(){
         h+=`<span style="width:2rem;color:var(--text3)">${bin.count}n</span>`;
         h+=`</div>`;
       }
-      h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem">Blue bar = predicted confidence · Green line = actual accuracy · Closer = better calibrated</div></div>`;
+      h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem">${t('prob.reliabilityDesc')}</div></div>`;
     }
   }else{h+=`<div style="color:var(--text3);font-size:0.8rem;text-align:center;padding:1rem">Fetch or enter 3+ results to see calibration</div>`;}
   h+='</div>';
   // 2022 WC Backtest
   const bt=runBacktest();
   if(bt){
-    h+=`<div class="data-card" style="border:1px solid rgba(175,82,222,0.2)"><h4>🧪 2022 WC Backtest (out-of-sample)</h4>`;
+    h+=`<div class="data-card" style="border:1px solid rgba(175,82,222,0.2)"><h4>🧪 ${t('prob.backtest')}</h4>`;
     h+=`<div class="calib-metric"><span class="metric-label">Matches</span><span class="metric-val">${bt.total}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">Log Loss</span><span class="metric-val">${bt.logLoss.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">Brier</span><span class="metric-val">${bt.brier.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">RPS</span><span class="metric-val">${bt.rps.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">Accuracy</span><span class="metric-val">${(bt.accuracy*100).toFixed(1)}%</span></div>`;
-    h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.4rem">Uses 2022-era Elo data for all 48 group stage matches.</div>`;
+    h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.4rem">${t('prob.backtestDesc')}</div>`;
     h+='</div>';
   }
   // Form status
@@ -2956,7 +2972,7 @@ function renderRadar(){
   const state2=loadState();const autoOn=state2.polymarketAuto;
   h+=`<div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">`;
   h+=`<button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(()=>renderRadar())">${t('radar.fetch')}</button>`;
-  h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?'⏹ Stop Auto':'▶ Auto 5min'}</button>`;
+  h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?t('prob.stopAuto'):t('prob.auto5min')}</button>`;
   h+=`<button class="data-btn data-btn-green" onclick="fetchPolymarketMatchOdds().then(r=>{const s=loadState();s.polymarketMatchOdds=r;saveState(s);showToast('Match odds: '+Object.keys(r).length+' matches');})">📊 ${t('radar.fetchMatchOdds')}</button>`;
   h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
   h+=`</div>`;
@@ -2984,7 +3000,7 @@ function renderRadar(){
     h+=`</div>`;
   }
 
-  if(!hc){h+=`<div style="text-align:center;padding:3rem;color:var(--text3)">Click fetch to load Polymarket data</div>`;document.getElementById('section-radar').innerHTML=h;return;}
+  if(!hc){h+=`<div style="text-align:center;padding:3rem;color:var(--text3)">${t('prob.clickFetch')}</div>`;document.getElementById('section-radar').innerHTML=h;return;}
 
   // Champion probability comparison
   h+=`<div style="margin-top:1rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.champion')}</h4><div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>${t('radar.model')}</th><th>${t('radar.market')}</th><th>${t('radar.diff')}</th></tr>`;
@@ -3026,8 +3042,8 @@ function logFetch(type,success,detail){const s=loadState();if(!s.fetchLog)s.fetc
 async function testApiKey(){
   const key=document.getElementById('key-football-data').value;
   const el=document.getElementById('key-test-result');
-  if(!key){if(el)el.textContent='Enter a key first';return;}
-  if(el)el.textContent='Testing...';if(el)el.style.color='var(--text3)';
+  if(!key){if(el)el.textContent=t('prob.enterKey');return;}
+  if(el)el.textContent=t('prob.testing');if(el)el.style.color='var(--text3)';
   try{
     const r=await fetch(`/api/test?key=${encodeURIComponent(key)}`);
     const j=await r.json();
@@ -3042,8 +3058,8 @@ async function testApiKey(){
 async function testOddsKey(){
   const key=document.getElementById('key-oddsapi').value;
   const el=document.getElementById('odds-test-result');
-  if(!key){if(el)el.textContent='Enter a key first';return;}
-  if(el)el.textContent='Testing...';if(el)el.style.color='var(--text3)';
+  if(!key){if(el)el.textContent=t('prob.enterKey');return;}
+  if(el)el.textContent=t('prob.testing');if(el)el.style.color='var(--text3)';
   try{
     const r=await fetch(`/api/test-odds?key=${encodeURIComponent(key)}`);
     const j=await r.json();
@@ -3058,7 +3074,7 @@ async function testOddsKey(){
 async function fetchResults(){
   const apiKey=getApiKey('football-data');const se=document.getElementById('fetch-status');
   if(!apiKey){if(se)se.textContent='Need API key';showToast('Set Football-Data.org API key first');return false;}
-  if(se)se.textContent='Fetching results...';
+  if(se)se.textContent=t('prob.fetchingResults');
   try{
     let data=null;
     // Try local proxy first
@@ -3099,7 +3115,7 @@ async function fetchResults(){
 
 async function fetchOdds(){
   const apiKey=getApiKey('oddsapi');if(!apiKey){showToast('Set The-Odds-API key first');return false;}
-  const se=document.getElementById('fetch-status');if(se)se.textContent='Fetching odds...';
+  const se=document.getElementById('fetch-status');if(se)se.textContent=t('prob.fetchingOdds');
   try{
     // Use local proxy to bypass CORS
     const r=await fetch(`/api/odds?key=${encodeURIComponent(apiKey)}`);
