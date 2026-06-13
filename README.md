@@ -107,14 +107,38 @@ Actual Match Results ──→ Dynamic Elo Update (K=60)
 | Function | Purpose |
 |----------|---------|
 | `getEffectiveElo(team)` | Returns dynamic Elo if available, else static |
-| `getFormAdjustedLambdas(home, away)` | Elo-based lambda + form adjustment |
+| `getForm(team, formMap?)` | Dynamic form with optional explicit map |
+| `getFormAdjustedLambdas(home, away, formMap?)` | Elo-based lambda + form adjustment |
 | `matchProbs(home, away)` | Dixon-Coles win/draw/loss probabilities |
-| `simMatch(home, away)` | Poisson match simulation |
-| `simKO(home, away)` | Knockout simulation with ET/PSO |
+| `simMatch(home, away, formMap?)` | Poisson match simulation |
+| `simKO(home, away, formMap?)` | Knockout simulation with ET/PSO |
 | `calculateDynamicForm(results)` | Time-weighted form from recent results |
 | `updateElo(team1, team2, s1, s2)` | Dynamic Elo update after match |
-| `buildKOBracket(rankings, bestThirds)` | FIFA Annex C bracket construction |
-| `runMonteCarlo(actualMap, N)` | N tournament simulations |
+| `buildKOBracket(rankings, bestThirds, thirdPlaceGroups)` | FIFA Annex C bracket construction |
+| `runMonteCarlo(actualMap, N, formMap?)` | N tournament simulations |
+
+### Audit Log
+
+**2026-06-14: Deep audit and comprehensive fix**
+
+Bugs found and fixed:
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| 1 | 🔴 Critical | `getForm()` depended on `currentResults` which is `null` during Monte Carlo — form adjustments silently失效 | Added optional `formMap` parameter threaded through `simMatch` → `simKO` → `simulateOneTournament` → `runMonteCarlo` |
+| 2 | 🔴 Critical | `getCalibrationStats` used post-match Elo to evaluate pre-match predictions — calibration scores虚高 | Now uses stored `r.probs` when available, falls back to recalculation only when stored probs missing |
+| 3 | 🔴 Critical | Bracket runner-up pairings had same-group conflicts when matrix assigned third-place teams from those groups | Rewrote `buildKOBracket` with dynamic tracking of used groups, greedy cross-group assignment |
+| 4 | 🟡 Medium | ECE calculation checked probability proximity instead of predicted-vs-actual class match | Rewrote to bin by confidence, measure accuracy within each bin |
+| 5 | 🟡 Medium | Most-likely score calculation omitted Dixon-Coles τ correction — 0-0 and 1-1 underrepresented | Added `dixonColesTau()` to the score grid search |
+| 6 | 🟡 Medium | `composite()` host bonus added on top of weights summing to 1.0 — could exceed 1.0 | Host bonus folded into base weights (sum ≤ 1.0) |
+| 7 | 🟡 Medium | Form calculation used arbitrary 0.4 for draws | Changed to standard 0.33 (1/3 of available points) |
+| 8 | 🟢 Low | `poissonSample` upper bound 15 could truncate extreme lambdas | Increased to 20 |
+| 9 | 🟢 Low | `buildActualResultsMap` cache used reference equality (never matched) | Changed to length-based cache invalidation |
+
+Design decisions documented:
+- `dynamicElo` is intentionally NOT reset during Monte Carlo — all 10k sims share the same Elo state derived from actual results
+- `formMap` is computed once before Monte Carlo and passed through, avoiding per-sim recalculation
+- Bracket uses greedy cross-group assignment rather than hardcoded pairings, validated against FIFA's no-same-group rule
 
 ### Features
 
@@ -252,14 +276,38 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 | 函数 | 用途 |
 |------|------|
 | `getEffectiveElo(team)` | 返回动态 Elo（如有），否则静态 |
-| `getFormAdjustedLambdas(home, away)` | Elo 基础 lambda + 状态调整 |
+| `getForm(team, formMap?)` | 动态状态，可传入显式 map |
+| `getFormAdjustedLambdas(home, away, formMap?)` | Elo 基础 lambda + 状态调整 |
 | `matchProbs(home, away)` | Dixon-Coles 胜/平/负概率 |
-| `simMatch(home, away)` | Poisson 比赛模拟 |
-| `simKO(home, away)` | 淘汰赛模拟（含加时/点球）|
+| `simMatch(home, away, formMap?)` | Poisson 比赛模拟 |
+| `simKO(home, away, formMap?)` | 淘汰赛模拟（含加时/点球）|
 | `calculateDynamicForm(results)` | 近期结果的时间加权状态 |
 | `updateElo(team1, team2, s1, s2)` | 比赛后动态 Elo 更新 |
-| `buildKOBracket(rankings, bestThirds)` | FIFA Annex C 对阵构建 |
-| `runMonteCarlo(actualMap, N)` | N 次锦标赛模拟 |
+| `buildKOBracket(rankings, bestThirds, thirdPlaceGroups)` | FIFA Annex C 对阵构建 |
+| `runMonteCarlo(actualMap, N, formMap?)` | N 次锦标赛模拟 |
+
+### 审计日志
+
+**2026-06-14：深度审计与全面修复**
+
+发现并修复的 Bug：
+
+| # | 严重性 | 问题 | 修复 |
+|---|--------|------|------|
+| 1 | 🔴 严重 | `getForm()` 依赖 `currentResults`，蒙特卡洛时为 `null` — 状态调整静默失效 | 添加可选 `formMap` 参数，贯穿 `simMatch` → `simKO` → `simulateOneTournament` → `runMonteCarlo` |
+| 2 | 🔴 严重 | `getCalibrationStats` 用赛后 Elo 重算历史预测 — 校准指标虚高 | 改用存储的 `r.probs`，仅在缺失时重算 |
+| 3 | 🔴 严重 | Bracket runner-up 配对与矩阵分配的第三名存在同组冲突 | 重写 `buildKOBracket`，动态追踪已用组，贪心跨组分配 |
+| 4 | 🟡 中等 | ECE 计算检查概率接近度而非预测类别匹配 | 重写：按置信度分 bin，计算每 bin 内准确率 |
+| 5 | 🟡 中等 | 最可能比分计算缺少 Dixon-Coles τ 修正 — 0-0 和 1-1 被低估 | 在比分网格搜索中加入 `dixonColesTau()` |
+| 6 | 🟡 中等 | `composite()` host 加成叠加在权重和 1.0 之上 — 可能超 1.0 | host 加成融入基础权重（总和 ≤ 1.0） |
+| 7 | 🟡 中等 | 状态计算平局用任意的 0.4 分 | 改为标准 0.33（可用积分的 1/3） |
+| 8 | 🟢 低 | `poissonSample` 上限 15 可能截断极端 lambda | 提高到 20 |
+| 9 | 🟢 低 | `buildActualResultsMap` 缓存用引用比较（永远不命中） | 改为基于数组长度的缓存失效 |
+
+设计决策记录：
+- `dynamicElo` 在蒙特卡洛期间故意不重置 — 所有 10k 次模拟共享同一份基于实际结果的 Elo 状态
+- `formMap` 在蒙特卡洛前计算一次并传递，避免每次模拟重复计算
+- Bracket 使用贪心跨组分配而非硬编码配对，通过 FIFA 同组规则验证
 
 ### 功能特性
 

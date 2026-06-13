@@ -1041,8 +1041,10 @@ function dixonColesTau(h, a, lh, la, rho) {
 
 // ---- Elo to Lambda conversion ----
 
-/** Get dynamic form for a team (0-1), with fallback to static */
-function getForm(team) {
+/** Get dynamic form for a team (0-1), with fallback to static.
+ *  Accepts optional formMap to avoid dependency on global state during Monte Carlo. */
+function getForm(team, formMap) {
+  if (formMap && formMap[team] !== undefined) return formMap[team];
   if (currentResults && currentResults.formMap && currentResults.formMap[team] !== undefined) {
     return currentResults.formMap[team];
   }
@@ -1057,21 +1059,22 @@ function getLambdas(eloH, eloA, hostBonusH, hostBonusA) {
   return [lh, la];
 }
 
-/** Get form-adjusted lambdas for a match */
-function getFormAdjustedLambdas(home, away) {
+/** Get form-adjusted lambdas for a match.
+ *  @param {Object} [formMap] - Optional form map to avoid global state dependency. */
+function getFormAdjustedLambdas(home, away, formMap) {
   const hBonus = getHomeBonus(home);
   const aBonus = getHomeBonus(away);
   const eloH = getEffectiveElo(home);
   const eloA = getEffectiveElo(away);
   const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus);
-  
+
   // Apply form adjustment: form 0.5 = neutral, >0.5 = boost, <0.5 = penalty
   // Max adjustment: ±15% of lambda
-  const formH = getForm(home);
-  const formA = getForm(away);
+  const formH = getForm(home, formMap);
+  const formA = getForm(away, formMap);
   const adjH = 1 + (formH - 0.5) * 0.30; // range: 0.85 to 1.15
   const adjA = 1 + (formA - 0.5) * 0.30;
-  
+
   return [Math.max(0.05, lh * adjH), Math.max(0.05, la * adjA)];
 }
 
@@ -1116,7 +1119,8 @@ function oddsToProb(usOdds) {
 
 // ---- Composite rating (UI display only, not used in core model) ----
 
-/** Weighted composite team strength score (0-1) for display */
+/** Weighted composite team strength score (0-1) for display.
+ *  Host bonus is included in the base calculation (not added on top). */
 function composite(team) {
   if (!TEAMS[team]) return 0;
   const [elo, fifa, mv, wcApps, form, host, odds] = TEAMS[team];
@@ -1127,39 +1131,42 @@ function composite(team) {
   const xpN = Math.min(wcApps / 20, 1);
   const rawProb = oddsToProb(odds);
   const oddsN = Math.min(rawProb / 0.22, 1);
-  // Weights: Elo 30%, FIFA 15%, MV 10%, Form 10%, XP 5%, Odds 30%
-  return Math.min(1, 0.30*eloN + 0.15*fifaN + 0.10*mvN + 0.10*form + 0.05*xpN + 0.30*oddsN + host);
+  const formN = getForm(team);
+  // Weights sum to ~1.0 (host is part of the base, not additive)
+  const base = 0.28*eloN + 0.14*fifaN + 0.10*mvN + 0.10*formN + 0.05*xpN + 0.28*oddsN + 0.05*host;
+  return Math.max(0, Math.min(1, base));
 }
 
 // ---- Poisson random sampler ----
 
-/** Sample from Poisson distribution using Knuth's algorithm */
+/** Sample from Poisson distribution using Knuth's algorithm.
+ *  Upper bound 20 handles extreme lambdas (rare in football). */
 function poissonSample(lam) {
   if (lam <= 0) return 0;
   const L = Math.exp(-lam);
   let k = 0, p = 1;
-  do { k++; p *= Math.random(); } while (p > L && k < 15);
+  do { k++; p *= Math.random(); } while (p > L && k < 20);
   return k - 1;
 }
 
 // ---- Simulation match (Monte Carlo) ----
 
 /** Simulate a single match score using Poisson sampling */
-function simMatch(home, away) {
-  const [lh, la] = getFormAdjustedLambdas(home, away);
+function simMatch(home, away, formMap) {
+  const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
   return [poissonSample(lh), poissonSample(la)];
 }
 
 // ---- Knockout simulation with ET/PSO ----
 
 /** Simulate a knockout match with extra time and penalties if needed */
-function simKO(home, away) {
-  let [ga, gb] = simMatch(home, away);
+function simKO(home, away, formMap) {
+  let [ga, gb] = simMatch(home, away, formMap);
   let method;
   if (ga !== gb) {
     method = "90'";
   } else {
-    const [lh, la] = getFormAdjustedLambdas(home, away);
+    const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
     const etH = poissonSample(lh * 0.55);
     const etA = poissonSample(la * 0.55);
     ga += etH; gb += etA;
@@ -1181,7 +1188,8 @@ function simKO(home, away) {
 
 /** Build R32 bracket using FIFA Annex C 495-combination matrix.
  *  Uses TPM (compressed matrix) to determine which third-place team each group winner faces.
- *  Returns flat array of 32 team names for 16 R32 matches. */
+ *  Returns flat array of 32 team names for 16 R32 matches.
+ *  Validates: no same-group matchups in R32. */
 function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
   const comboKey = thirdPlaceGroups ? thirdPlaceGroups.sort().join("") : "";
   const matrixEntry = TPM[comboKey];
@@ -1195,32 +1203,63 @@ function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
   // Group winners that face third-place teams (8 slots from Annex C)
   const W_SLOTS = ['A','B','D','E','G','I','K','L'];
   const bracket = [];
+  const usedGroups = new Set(); // Track which groups' teams are already in bracket
 
   // 8 matches: group winners vs third-place teams
   for (let i = 0; i < 8; i++) {
     const wg = W_SLOTS[i];
-    bracket.push(rankings[wg][0]); // group winner
+    bracket.push(rankings[wg][0]);
+    usedGroups.add(wg + 'W'); // Mark winner as used
+
     if (matrixEntry && i < matrixEntry.length) {
-      const tg = matrixEntry[i]; // e.g. "E"
-      bracket.push(thirdMap[tg] || rankings[wg][1]);
+      const tg = matrixEntry[i];
+      const thirdTeam = thirdMap[tg];
+      if (thirdTeam && tg !== wg) {
+        bracket.push(thirdTeam);
+        usedGroups.add(tg + 'T');
+      } else {
+        // Fallback: runner-up from a different group
+        bracket.push(rankings[wg][1]);
+        usedGroups.add(wg + 'R');
+      }
     } else {
       bracket.push(rankings[wg][1]);
+      usedGroups.add(wg + 'R');
     }
   }
 
   // 4 matches: remaining group winners vs runners-up (cross-group)
-  // Winners C,F,H,J face runners-up from different groups
-  bracket.push(rankings['C'][0], rankings['D'][1]); // 1C vs 2D
-  bracket.push(rankings['F'][0], rankings['B'][1]); // 1F vs 2B
-  bracket.push(rankings['H'][0], rankings['L'][1]); // 1H vs 2L
-  bracket.push(rankings['J'][0], rankings['A'][1]); // 1J vs 2A
+  const remainingWinners = GROUPS.filter(g => !usedGroups.has(g + 'W'));
+  const usedRunners = new Set();
+  for (const g of [...usedGroups].filter(x => x.endsWith('R')).map(x => x[0])) usedRunners.add(g);
 
-  // 4 matches: runner-up vs runner-up (cross-group)
-  // Remaining runners-up: C,E,F,G,H,I,J,K (excluding A,B,D,L used above)
-  bracket.push(rankings['C'][1], rankings['E'][1]); // 2C vs 2E
-  bracket.push(rankings['F'][1], rankings['G'][1]); // 2F vs 2G
-  bracket.push(rankings['H'][1], rankings['I'][1]); // 2H vs 2I
-  bracket.push(rankings['J'][1], rankings['K'][1]); // 2J vs 2K
+  for (const wg of remainingWinners) {
+    // Find a runner-up from a different group
+    let assigned = false;
+    for (const rg of GROUPS) {
+      if (rg === wg || usedRunners.has(rg)) continue;
+      bracket.push(rankings[wg][0], rankings[rg][1]);
+      usedRunners.add(rg);
+      assigned = true;
+      break;
+    }
+    if (!assigned) {
+      // Fallback: any unused runner-up
+      for (const rg of GROUPS) {
+        if (!usedRunners.has(rg)) {
+          bracket.push(rankings[wg][0], rankings[rg][1]);
+          usedRunners.add(rg);
+          break;
+        }
+      }
+    }
+  }
+
+  // 4 matches: remaining runners-up vs runners-up (cross-group)
+  const ruLeft = GROUPS.filter(g => !usedRunners.has(g));
+  for (let i = 0; i < ruLeft.length - 1; i += 2) {
+    bracket.push(rankings[ruLeft[i]][1], rankings[ruLeft[i+1]][1]);
+  }
 
   return bracket; // 32 teams = 16 R32 matches
 }
@@ -1254,8 +1293,10 @@ function findBestThirds(groupStandings) {
 
 // ---- Single tournament simulation ----
 
-/** Simulate one full tournament (group stage + knockouts) */
-function simulateOneTournament(actualMap) {
+/** Simulate one full tournament (group stage + knockouts).
+ *  @param {Object} actualMap - Map of actual results
+ *  @param {Object} [formMap] - Pre-computed form map (avoids global state dependency) */
+function simulateOneTournament(actualMap, formMap) {
   const st = {};
   for (const g of GROUPS) {
     st[g] = {};
@@ -1271,7 +1312,7 @@ function simulateOneTournament(actualMap) {
     if (actual) {
       sa = actual.score1; sb = actual.score2;
     } else {
-      [sa, sb] = simMatch(home, away);
+      [sa, sb] = simMatch(home, away, formMap);
     }
     const a = st[grp][home], b = st[grp][away];
     a.p++; b.p++;
@@ -1318,7 +1359,7 @@ function simulateOneTournament(actualMap) {
         method = "90'";
         if (ga === gb) { method = 'PSO'; ga++; }
       } else {
-        [ga, gb, method] = simKO(home, away);
+        [ga, gb, method] = simKO(home, away, formMap);
       }
 
       const winner = ga > gb ? home : away;
@@ -1335,11 +1376,11 @@ function simulateOneTournament(actualMap) {
 // ---- Monte Carlo simulation ----
 
 /** Run N tournament simulations and aggregate results */
-function runMonteCarlo(actualMap, N) {
+function runMonteCarlo(actualMap, N, formMap) {
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
 
   for (let i = 0; i < N; i++) {
-    const result = simulateOneTournament(actualMap);
+    const result = simulateOneTournament(actualMap, formMap);
     champ[result.champion] = (champ[result.champion] || 0) + 1;
 
     if (result.rounds.length >= 4) {
@@ -1400,25 +1441,29 @@ function logLoss(probs, outcome) {
   return -Math.log(p);
 }
 
-/** Expected Calibration Error */
+/** Expected Calibration Error (ECE).
+ *  Bins predictions by confidence, measures calibration gap. */
 function expectedCalibrationError(predictions, outcomes, nBins) {
   nBins = nBins || 10;
-  const bins = Array.from({length: nBins}, () => ({ count: 0, sumProb: 0, sumOutcome: 0 }));
+  const bins = Array.from({length: nBins}, () => ({ count: 0, sumProb: 0, sumCorrect: 0 }));
 
   for (let i = 0; i < predictions.length; i++) {
-    const maxProb = Math.max(predictions[i][0], predictions[i][1], predictions[i][2]);
-    const binIdx = Math.min(nBins - 1, Math.floor(maxProb * nBins));
+    const pred = predictions[i];
+    const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
+                           pred[1] >= pred[2] ? 1 : 2;
+    const confidence = pred[predictedClass];
+    const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
     bins[binIdx].count++;
-    bins[binIdx].sumProb += maxProb;
-    bins[binIdx].sumOutcome += (predictions[i][outcomes[i]] > maxProb - 0.01) ? 1 : 0;
+    bins[binIdx].sumProb += confidence;
+    bins[binIdx].sumCorrect += (predictedClass === outcomes[i]) ? 1 : 0;
   }
 
   let ece = 0, totalCount = 0;
   for (const bin of bins) {
     if (bin.count > 0) {
-      const avgProb = bin.sumProb / bin.count;
-      const avgOutcome = bin.sumOutcome / bin.count;
-      ece += bin.count * Math.abs(avgProb - avgOutcome);
+      const avgConfidence = bin.sumProb / bin.count;
+      const avgAccuracy = bin.sumCorrect / bin.count;
+      ece += bin.count * Math.abs(avgConfidence - avgAccuracy);
       totalCount += bin.count;
     }
   }
@@ -1427,7 +1472,9 @@ function expectedCalibrationError(predictions, outcomes, nBins) {
 
 // ---- Calibration stats ----
 
-/** Compute calibration statistics from actual match results */
+/** Compute calibration statistics from actual match results.
+ *  Uses stored probabilities when available (the prediction made at the time),
+ *  falls back to recalculating with current model state. */
 function getCalibrationStats(actualResults) {
   if (!actualResults || actualResults.length < 3) return null;
 
@@ -1437,8 +1484,14 @@ function getCalibrationStats(actualResults) {
   const outcomes = [];
 
   for (const r of actualResults) {
-    const probs = matchProbs(r.team1, r.team2);
-    const predArr = [probs.win, probs.draw, probs.loss];
+    // Use stored probabilities if available (honest evaluation of past predictions)
+    let predArr;
+    if (r.probs && typeof r.probs.win === 'number') {
+      predArr = [r.probs.win, r.probs.draw, r.probs.loss];
+    } else {
+      const probs = matchProbs(r.team1, r.team2);
+      predArr = [probs.win, probs.draw, probs.loss];
+    }
 
     let outcome;
     if (r.score1 > r.score2) outcome = 0;
@@ -1448,9 +1501,10 @@ function getCalibrationStats(actualResults) {
     predictions.push(predArr);
     outcomes.push(outcome);
 
-    const predicted = probs.win > probs.loss ? r.team1 : (probs.loss > probs.win ? r.team2 : 'draw');
-    const actual = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
-    if (predicted === actual) correct++;
+    // Check if predicted winner matches actual winner
+    const predWinner = predArr[0] > predArr[2] ? r.team1 : (predArr[2] > predArr[0] ? r.team2 : 'draw');
+    const actWinner = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
+    if (predWinner === actWinner) correct++;
 
     rpsSum += rankedProbabilityScore(predArr, outcome);
     brierSum += brierScore(predArr, outcome);
@@ -1533,7 +1587,8 @@ function calculateDynamicForm(actualResults) {
     let formScore = 0, totalWeight = 0;
     for (const m of matches) {
       const weight = Math.exp(-LAMBDA * m.daysAgo);
-      let points = m.score1 > m.score2 ? 1.0 : (m.score1 === m.score2 ? 0.4 : 0.0);
+      // Standard: win=1.0, draw=0.33 (1/3 of available points), loss=0.0
+      let points = m.score1 > m.score2 ? 1.0 : (m.score1 === m.score2 ? 0.33 : 0.0);
       const gd = m.score1 - m.score2;
       const gdBonus = Math.max(-0.2, Math.min(0.2, gd * 0.05));
       formScore += weight * (points + gdBonus);
@@ -1548,11 +1603,13 @@ function calculateDynamicForm(actualResults) {
 // ---- Actual results map (cached) ----
 
 let _cachedActualMap = null;
-let _cachedActualResults = null;
+let _cachedActualResultsLen = -1;
 
-/** Build lookup map from actual results array, with caching */
+/** Build lookup map from actual results array, with caching.
+ *  Cache invalidated by array length change (simple but effective). */
 function buildActualResultsMap(actualResults) {
-  if (_cachedActualResults === actualResults && _cachedActualMap) return _cachedActualMap;
+  const len = (actualResults || []).length;
+  if (_cachedActualResultsLen === len && _cachedActualMap) return _cachedActualMap;
 
   const map = {};
   for (const r of actualResults || []) {
@@ -1570,7 +1627,7 @@ function buildActualResultsMap(actualResults) {
   }
 
   _cachedActualMap = map;
-  _cachedActualResults = actualResults;
+  _cachedActualResultsLen = len;
   return map;
 }
 
@@ -1805,7 +1862,7 @@ function runSimulation(){
       const probs=matchProbs(ta,tb);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=getFormAdjustedLambdas(ta,tb);
-      let bp=0,lh2=1,la2=0;for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){const p=poissonPMF(x,lh)*poissonPMF(y,la);if(p>bp){bp=p;lh2=x;la2=y;}}
+      let bp=0,lh2=1,la2=0;for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,RHO);if(p>bp){bp=p;lh2=x;la2=y;}}
       if(probs.win>probs.draw&&probs.win>probs.loss){a.W++;a.Pts+=3;b.L++;}
       else if(probs.loss>probs.draw&&probs.loss>probs.win){b.W++;b.Pts+=3;a.L++;}
       else{a.D++;a.Pts++;b.D++;b.Pts++;}
@@ -1983,7 +2040,8 @@ function runMonteCarloUI(){
   if(btn){btn.textContent='Running...';btn.disabled=true;}
   const state=loadState();const actualMap=buildActualResultsMap(state.actualResults||[]);
   initDynamicElo();(state.actualResults||[]).forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2));
-  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT);renderProbabilities();
+  const formMap=calculateDynamicForm(state.actualResults||[]);
+  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT,formMap);renderProbabilities();
     if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}},50);
 }
 
