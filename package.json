@@ -1,0 +1,29 @@
+{
+  "name": "worldcup2026-predictor",
+  "version": "1.0.0",
+  "description": "2026 FIFA World Cup Predictor — Multi-factor composite model with real-time data integration",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "open": "start index.html",
+    "test": "echo \"No tests needed — single HTML file\" && exit 0"
+  },
+  "keywords": [
+    "worldcup",
+    "2026",
+    "fifa",
+    "soccer",
+    "football",
+    "prediction",
+    "elo",
+    "monte-carlo",
+    "polymarket"
+  ],
+  "author": "roywongx",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roywongx/worldcup2026-predictor.git"
+  },
+  "homepage": "https://github.com/roywongx/worldcup2026-predictor"
+}

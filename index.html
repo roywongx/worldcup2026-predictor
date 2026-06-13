@@ -1,0 +1,3107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 FIFA World Cup Predictor</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f5f7;
+  --card: #fff;
+  --text: #1d1d1f;
+  --text2: #6e6e73;
+  --text3: #aeaeb2;
+  --blue: #007aff;
+  --green: #34c759;
+  --red: #ff3b30;
+  --orange: #ff9500;
+  --gold: #ffd60a;
+  --purple: #af52de;
+  --border: rgba(0,0,0,0.06);
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.hero {
+  text-align: center;
+  padding: 4rem 1.5rem 2.5rem;
+  background: linear-gradient(180deg, #fff 0%, var(--bg) 100%);
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--blue);
+  background: rgba(0,122,255,0.08);
+  padding: 0.35rem 0.9rem;
+  border-radius: 20px;
+  margin-bottom: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.hero h1 {
+  font-size: 3.2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.hero h1 span { color: var(--blue); }
+
+.hero-sub {
+  font-size: 1.05rem;
+  color: var(--text2);
+  margin-top: 0.6rem;
+  font-weight: 400;
+}
+
+.chips {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text2);
+  background: rgba(0,0,0,0.04);
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+}
+
+.segment-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+  margin: 0 auto 1.5rem;
+  max-width: 700px;
+}
+
+.segment {
+  display: flex;
+  background: rgba(0,0,0,0.05);
+  border-radius: 10px;
+  padding: 3px;
+  width: 100%;
+}
+
+.segment button {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--text2);
+  padding: 0.55rem 0.3rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  white-space: nowrap;
+}
+
+.segment button.active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.04);
+}
+
+.segment button:hover:not(.active) { color: var(--text); }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  padding: 0 1rem;
+}
+
+.btn-pill {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  padding: 0.6rem 1.4rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #0066d6; transform: scale(1.02); }
+.btn-secondary { background: rgba(0,0,0,0.05); color: var(--text); }
+.btn-secondary:hover { background: rgba(0,0,0,0.08); }
+
+.section { display: none; padding: 0 1.5rem 2rem; max-width: 1320px; margin: 0 auto; }
+.section.active { display: block; }
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1rem;
+}
+
+.group-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;
+}
+
+.group-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+.group-head {
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-head h3 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+.group-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.group-table th {
+  font-weight: 500;
+  font-size: 0.65rem;
+  color: var(--text3);
+  padding: 0.5rem 0.35rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-table th:nth-child(2) { text-align: left; }
+
+.group-table td {
+  padding: 0.55rem 0.35rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-table td:nth-child(2) { text-align: left; font-weight: 600; }
+
+.group-table tr:last-child td { border-bottom: none; }
+.group-table tr.eliminated td { color: var(--text3); }
+
+.pos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.pos-1, .pos-2 { background: rgba(52,199,89,0.12); color: var(--green); }
+.pos-3 { background: rgba(255,149,0,0.12); color: var(--orange); }
+.pos-4 { background: rgba(0,0,0,0.04); color: var(--text3); }
+
+.flag { display: inline-block; width: 20px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 4px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1); object-fit: cover; }
+
+.matches-list { max-width: 800px; margin: 0 auto; }
+
+.match-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1.2rem 0 0.4rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.3rem;
+}
+
+.match-card {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem;
+  margin-bottom: 0.4rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: transform 0.2s;
+}
+
+.match-card:hover { transform: scale(1.005); }
+
+.match-card.final-match {
+  background: linear-gradient(135deg, #fff9e6, #fff);
+  box-shadow: 0 2px 12px rgba(255,214,10,0.15);
+}
+
+.m-group {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  width: 1.8rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.m-team {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.m-team.home { justify-content: flex-end; text-align: right; }
+.m-team.away { justify-content: flex-start; }
+.m-team.winner { color: var(--text); }
+.m-team.loser { color: var(--text3); }
+
+.m-score {
+  font-weight: 700;
+  font-size: 1rem;
+  min-width: 3.2rem;
+  text-align: center;
+  padding: 0.15rem 0.4rem;
+  background: rgba(0,0,0,0.04);
+  border-radius: 8px;
+  margin: 0 0.4rem;
+  flex-shrink: 0;
+}
+
+.m-method {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--orange);
+  text-transform: uppercase;
+  min-width: 2rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.bracket-wrap { overflow-x: auto; padding-bottom: 2rem; -webkit-overflow-scrolling: touch; }
+
+.bracket {
+  display: flex;
+  gap: 0.8rem;
+  min-width: 1100px;
+  padding: 0 1rem;
+}
+
+.bracket-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  flex: 1;
+}
+
+.bracket-col-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.b-match {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  overflow: hidden;
+  margin: 0.25rem 0;
+}
+
+.b-team {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.b-team:last-child { border-bottom: none; }
+.b-team.w { color: var(--text); }
+.b-team.l { color: var(--text3); }
+
+.b-team .b-flag img { width: 18px; height: 12px; border-radius: 2px; margin-right: 4px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1); vertical-align: middle; }
+.b-team .b-name { flex: 1; }
+.b-team .b-score { font-weight: 800; font-size: 0.9rem; min-width: 1.2rem; text-align: center; }
+
+.b-method {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--orange);
+  text-align: center;
+  padding: 0.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.champion-hero {
+  text-align: center;
+  padding: 3rem 1.5rem 2.5rem;
+  background: linear-gradient(135deg, #fff9e6, #fff3cc, #fff);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 2rem;
+}
+
+.champion-hero .trophy-icon { font-size: 3.5rem; margin-bottom: 0.3rem; }
+
+.champion-hero h2 {
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.champion-hero .champ-flag { font-size: 2rem; margin-right: 0.3rem; }
+
+.champion-hero .champ-sub {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--orange);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+}
+
+.champ-path {
+  margin-top: 1.5rem;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.champ-path-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.champ-path-item:last-child { border-bottom: none; }
+
+.cp-round {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 4.5rem;
+}
+
+.cp-score { font-weight: 800; font-size: 0.9rem; }
+.cp-vs { color: var(--text3); font-size: 0.7rem; }
+.cp-method { font-size: 0.55rem; font-weight: 700; color: var(--orange); text-transform: uppercase; }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+}
+
+.stat-pill {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 1.2rem 0.8rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.stat-num {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--blue);
+}
+
+.stat-lbl {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.15rem;
+}
+
+.prob-wrap {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.prob-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.prob-table th {
+  font-weight: 600;
+  font-size: 0.65rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.7rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+}
+
+.prob-table th:first-child { text-align: left; }
+
+.prob-table td {
+  padding: 0.6rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.prob-table td:first-child { text-align: left; font-weight: 600; }
+
+.prob-table tr:last-child td { border-bottom: none; }
+.prob-table tr:hover { background: rgba(0,122,255,0.03); }
+
+.prob-bar-wrap { display: inline-flex; align-items: center; gap: 0.3rem; }
+.prob-bar {
+  display: inline-block;
+  height: 4px;
+  background: var(--blue);
+  border-radius: 2px;
+  min-width: 2px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Model Analysis Section */
+.model-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.model-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.2rem;
+}
+
+.model-card h4 {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.6rem;
+}
+
+.model-card .factor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0;
+  font-size: 0.8rem;
+}
+
+.factor .label { color: var(--text2); }
+.factor .weight { font-weight: 700; color: var(--blue); }
+
+.team-breakdown {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.team-breakdown h3 {
+  padding: 1rem 1.2rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0;
+}
+
+.breakdown-item {
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.breakdown-item:hover { background: rgba(0,122,255,0.02); }
+
+.breakdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.breakdown-header .team-name { font-weight: 700; font-size: 0.85rem; }
+.breakdown-header .composite-score { font-weight: 800; color: var(--blue); font-size: 0.9rem; margin-left: auto; }
+
+.breakdown-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+}
+
+.bar-label { width: 5rem; color: var(--text3); text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; height: 4px; background: rgba(0,0,0,0.04); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s; }
+.bar-val { width: 2.5rem; font-weight: 600; color: var(--text2); flex-shrink: 0; }
+
+.bar-fill.elo { background: var(--blue); }
+.bar-fill.fifa { background: var(--green); }
+.bar-fill.mv { background: var(--purple); }
+.bar-fill.atk { background: var(--orange); }
+.bar-fill.def { background: var(--red); }
+.bar-fill.odds { background: var(--gold); }
+
+/* Data Section */
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.data-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.2rem;
+}
+
+.data-card h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.data-card textarea {
+  width: 100%;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  resize: vertical;
+  min-height: 80px;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.data-card textarea:focus { outline: none; border-color: var(--blue); }
+
+.data-card .data-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.data-btn {
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.data-btn-primary { background: var(--blue); color: #fff; }
+.data-btn-primary:hover { background: #0066d6; }
+.data-btn-secondary { background: rgba(0,0,0,0.05); color: var(--text); }
+.data-btn-secondary:hover { background: rgba(0,0,0,0.08); }
+.data-btn-danger { background: rgba(255,59,48,0.1); color: var(--red); }
+.data-btn-danger:hover { background: rgba(255,59,48,0.2); }
+.data-btn-green { background: rgba(52,199,89,0.12); color: var(--green); }
+.data-btn-green:hover { background: rgba(52,199,89,0.2); }
+
+.result-entry {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.result-entry select, .result-entry input {
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.result-entry input { width: 3rem; text-align: center; }
+.result-entry select:focus, .result-entry input:focus { outline: none; border-color: var(--blue); }
+
+.calibration-card {
+  background: linear-gradient(135deg, rgba(0,122,255,0.04), rgba(52,199,89,0.04));
+  border: 1px solid rgba(0,122,255,0.1);
+}
+
+.calib-metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.calib-metric:last-child { border-bottom: none; }
+.calib-metric .metric-label { color: var(--text2); }
+.calib-metric .metric-val { font-weight: 700; }
+.metric-good { color: var(--green); }
+.metric-warn { color: var(--orange); }
+.metric-bad { color: var(--red); }
+
+.odds-input-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem;
+  align-items: center;
+  font-size: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.odds-input-grid input {
+  width: 5rem;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.odds-input-grid input:focus { outline: none; border-color: var(--blue); }
+
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 9999;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+  box-shadow: var(--shadow-lg);
+}
+
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes toastOut { from { opacity:1; } to { opacity:0; } }
+
+.log-entry { font-size: 0.7rem; padding: 0.25rem 0; border-bottom: 1px solid rgba(0,0,0,0.03); color: var(--text2); }
+.log-entry .log-time { color: var(--text3); margin-right: 0.3rem; }
+.log-entry .log-result { font-weight: 600; }
+
+.footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  font-size: 0.7rem;
+  color: var(--text3);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.group-card, .match-card, .b-match, .stat-pill, .champion-hero, .model-card, .team-breakdown {
+  animation: slideUp 0.45s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+.groups-grid .group-card:nth-child(1) { animation-delay: 0.02s; }
+.groups-grid .group-card:nth-child(2) { animation-delay: 0.04s; }
+.groups-grid .group-card:nth-child(3) { animation-delay: 0.06s; }
+.groups-grid .group-card:nth-child(4) { animation-delay: 0.08s; }
+.groups-grid .group-card:nth-child(5) { animation-delay: 0.10s; }
+.groups-grid .group-card:nth-child(6) { animation-delay: 0.12s; }
+.groups-grid .group-card:nth-child(7) { animation-delay: 0.14s; }
+.groups-grid .group-card:nth-child(8) { animation-delay: 0.16s; }
+.groups-grid .group-card:nth-child(9) { animation-delay: 0.18s; }
+.groups-grid .group-card:nth-child(10) { animation-delay: 0.20s; }
+.groups-grid .group-card:nth-child(11) { animation-delay: 0.22s; }
+.groups-grid .group-card:nth-child(12) { animation-delay: 0.24s; }
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 2.2rem; }
+  .groups-grid { grid-template-columns: 1fr; }
+  .segment button { font-size: 0.7rem; padding: 0.5rem 0.2rem; }
+  .section { padding: 0 0.8rem 2rem; }
+  .champion-hero h2 { font-size: 2rem; }
+  .breakdown-grid { grid-template-columns: 1fr; }
+  .model-overview { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="file-protocol-warning" style="display:none;background:#fff3cd;border:1px solid #ffc107;padding:0.8rem 1rem;text-align:center;font-size:0.85rem;color:#856404">
+  ⚠️ You're opening this file directly. Some features may not work in Edge. For best experience, use Chrome or run: <code>python -m http.server 8000</code> and open <code>http://localhost:8000/worldcup2026.html</code>
+</div>
+
+<div class="hero">
+  <div class="hero-badge">FIFA World Cup 26</div>
+  <h1>World Cup <span>2026</span></h1>
+  <div class="hero-sub">Market-Aware Prediction Engine</div>
+  <div class="chips">
+    <span class="chip">Poisson Expected Values</span>
+    <span class="chip">Dynamic Elo Rating</span>
+    <span class="chip">Bookmaker Odds</span>
+    <span class="chip">Polymarket Radar</span>
+    <span class="chip">Deterministic Knockout</span>
+    <span class="chip">Monte Carlo 10k</span>
+  </div>
+</div>
+
+<div class="segment-wrap">
+  <div class="segment">
+    <button class="active" onclick="showSection('standings', this)">Standings</button>
+    <button onclick="showSection('matches', this)">All Matches</button>
+    <button onclick="showSection('bracket', this)">Bracket</button>
+    <button onclick="showSection('probabilities', this)">Probabilities</button>
+    <button onclick="showSection('model', this)">Model</button>
+    <button onclick="showSection('data', this)">Data</button>
+    <button onclick="showSection('radar', this)">Radar</button>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn-pill btn-primary" onclick="runSimulation()">New Simulation</button>
+  <button class="btn-pill btn-secondary" onclick="runMonteCarlo()">Monte Carlo (10000x)</button>
+  <button class="btn-pill btn-secondary" onclick="refreshData()" style="background:rgba(52,199,89,0.12);color:var(--green)">⟳ Refresh</button>
+</div>
+
+<div id="section-standings" class="section active"></div>
+<div id="section-matches" class="section"></div>
+<div id="section-bracket" class="section"></div>
+<div id="section-probabilities" class="section"></div>
+<div id="section-model" class="section"></div>
+<div id="section-data" class="section"></div>
+<div id="section-radar" class="section"></div>
+
+<div class="footer">
+  Group stage: Poisson expected values (win/draw/loss probabilities → expected points)<br>
+  Knockout stage: Deterministic winners based on win probability<br>
+  Dynamic Elo (K=60) + FIFA + Market Value + Bookmaker Odds + Form Momentum<br>
+  Radar: Polymarket real-money prices vs model predictions<br>
+  Monte Carlo 10k for probability distributions · Data persisted in localStorage<br>
+  For entertainment only — football is unpredictable
+</div>
+
+<script>
+// Detect file:// protocol and show warning
+if(window.location.protocol === 'file:') {
+  console.warn('Running from file:// protocol. Some features may not work in Edge. Use Chrome or a local server for best experience.');
+}
+const FLAGS = {
+  "Mexico":"mx","South Africa":"za","South Korea":"kr","Czech Republic":"cz",
+  "Canada":"ca","Bosnia Herzegovina":"ba","Qatar":"qa","Switzerland":"ch",
+  "Brazil":"br","Morocco":"ma","Haiti":"ht","Scotland":"gb-sct",
+  "United States":"us","Paraguay":"py","Australia":"au","Turkey":"tr",
+  "Germany":"de","Curaçao":"cw","Ivory Coast":"ci","Ecuador":"ec",
+  "Netherlands":"nl","Japan":"jp","Sweden":"se","Tunisia":"tn",
+  "Belgium":"be","Egypt":"eg","Iran":"ir","New Zealand":"nz",
+  "Spain":"es","Cape Verde":"cv","Saudi Arabia":"sa","Uruguay":"uy",
+  "France":"fr","Senegal":"sn","Iraq":"iq","Norway":"no",
+  "Argentina":"ar","Algeria":"dz","Austria":"at","Jordan":"jo",
+  "Portugal":"pt","DR Congo":"cd","Uzbekistan":"uz","Colombia":"co",
+  "England":"gb-eng","Croatia":"hr","Ghana":"gh","Panama":"pa"
+};
+
+// [Elo, FIFA, MarketValue(€m), WCApps, RecentForm(0-1), HostBonus, DraftKingsOdds(+)]
+// Odds source: ESPN/DraftKings Jun 10, 2026
+// Team data: [elo, fifa, marketValueMillion, wcApps, form(0-1), hostBonus, americanOdds]
+const TEAMS = {
+  "Mexico":[1875,1681,192,17,0.65,0.15,5000],
+  "South Africa":[1456,1070,55,3,0.45,0,75000],
+  "South Korea":[1589,1538,139,11,0.60,0,15000],
+  "Czech Republic":[1710,1480,180,2,0.50,0,18000],
+  "Canada":[1682,1673,80,2,0.55,0.10,20000],
+  "Bosnia Herzegovina":[1654,1376,85,0,0.45,0,30000],
+  "Qatar":[1647,1588,45,2,0.50,0,35000],
+  "Switzerland":[1891,1649,333,12,0.60,0,6500],
+  "Brazil":[1991,1761,928,22,0.60,0,950],
+  "Morocco":[1911,1756,448,7,0.70,0,2800],
+  "Haiti":[1505,1238,15,1,0.35,0,250000],
+  "Scotland":[1730,1480,165,9,0.50,0,15000],
+  "United States":[1788,1673,386,12,0.60,0.10,6000],
+  "Paraguay":[1667,1542,85,9,0.45,0,15000],
+  "Australia":[1696,1539,120,7,0.55,0,12000],
+  "Turkey":[1911,1599,474,3,0.65,0,6500],
+  "Germany":[1932,1730,947,21,0.60,0,1100],
+  "Curaçao":[1420,1046,15,0,0.35,0,250000],
+  "Ivory Coast":[1758,1554,155,4,0.55,0,15000],
+  "Ecuador":[1938,1595,369,4,0.60,0,8000],
+  "Netherlands":[2024,1758,754,11,0.65,0,1400],
+  "Japan":[1906,1660,271,7,0.70,0,5000],
+  "Sweden":[1726,1430,195,12,0.50,0,20000],
+  "Tunisia":[1682,1504,75,7,0.50,0,20000],
+  "Belgium":[1894,1735,548,14,0.55,0,2500],
+  "Egypt":[1639,1550,85,3,0.50,0,15000],
+  "Iran":[1715,1615,55,7,0.55,0,18000],
+  "New Zealand":[1608,1420,35,2,0.40,0,50000],
+  "Spain":[2157,1876,1220,16,0.75,0,450],
+  "Cape Verde":[1550,1310,20,0,0.45,0,75000],
+  "Saudi Arabia":[1652,1590,45,7,0.50,0,20000],
+  "Uruguay":[1892,1673,359,14,0.60,0,3500],
+  "France":[2063,1877,1520,16,0.70,0,500],
+  "Senegal":[1780,1689,478,4,0.60,0,8000],
+  "Iraq":[1616,1400,20,2,0.45,0,50000],
+  "Norway":[1914,1490,250,4,0.55,0,10000],
+  "Argentina":[2115,1875,783,18,0.70,0,950],
+  "Algeria":[1652,1508,95,5,0.50,0,30000],
+  "Austria":[1772,1593,245,8,0.55,0,10000],
+  "Jordan":[1588,1380,25,1,0.45,0,50000],
+  "Portugal":[1989,1764,1010,9,0.65,0,800],
+  "DR Congo":[1607,1410,85,2,0.45,0,100000],
+  "Uzbekistan":[1589,1410,40,0,0.50,0,50000],
+  "Colombia":[1982,1693,303,7,0.60,0,2000],
+  "England":[2024,1826,1360,17,0.65,0,700],
+  "Croatia":[1912,1717,387,7,0.60,0,3300],
+  "Ghana":[1621,1460,70,4,0.45,0,25000],
+  "Panama":[1614,1555,30,2,0.50,0,25000]
+};
+
+const GROUPS = "ABCDEFGHIJKL".split('');
+const GROUP_TEAMS = {
+  A:["Mexico","South Africa","South Korea","Czech Republic"],
+  B:["Canada","Bosnia Herzegovina","Qatar","Switzerland"],
+  C:["Brazil","Morocco","Haiti","Scotland"],
+  D:["United States","Paraguay","Australia","Turkey"],
+  E:["Germany","Curaçao","Ivory Coast","Ecuador"],
+  F:["Netherlands","Japan","Sweden","Tunisia"],
+  G:["Belgium","Egypt","Iran","New Zealand"],
+  H:["Spain","Cape Verde","Saudi Arabia","Uruguay"],
+  I:["France","Senegal","Iraq","Norway"],
+  J:["Argentina","Algeria","Austria","Jordan"],
+  K:["Portugal","DR Congo","Uzbekistan","Colombia"],
+  L:["England","Croatia","Ghana","Panama"]
+};
+
+// Match schedule: [date, home, away, group]
+// Source: FIFA 2026 World Cup official schedule (as of June 12, 2026)
+const MATCHES = [
+  // Matchday 1 - June 11-14
+  ["2026-06-11","Mexico","South Africa","A"],["2026-06-11","South Korea","Czech Republic","A"],
+  ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","Qatar","Switzerland","B"],
+  ["2026-06-12","Brazil","Morocco","C"],["2026-06-12","Haiti","Scotland","C"],
+  ["2026-06-12","United States","Paraguay","D"],["2026-06-12","Australia","Turkey","D"],
+  ["2026-06-12","Germany","Curaçao","E"],["2026-06-12","Ivory Coast","Ecuador","E"],
+  ["2026-06-12","Netherlands","Japan","F"],["2026-06-12","Sweden","Tunisia","F"],
+  ["2026-06-13","Belgium","Egypt","G"],["2026-06-13","Iran","New Zealand","G"],
+  ["2026-06-13","Spain","Cape Verde","H"],["2026-06-13","Saudi Arabia","Uruguay","H"],
+  ["2026-06-13","France","Senegal","I"],["2026-06-13","Iraq","Norway","I"],
+  ["2026-06-14","Argentina","Algeria","J"],["2026-06-14","Austria","Jordan","J"],
+  ["2026-06-14","Portugal","DR Congo","K"],["2026-06-14","Uzbekistan","Colombia","K"],
+  ["2026-06-14","England","Panama","L"],["2026-06-14","Croatia","Ghana","L"],
+  // Matchday 2 - June 18-22
+  ["2026-06-18","Czech Republic","South Africa","A"],["2026-06-18","Mexico","South Korea","A"],
+  ["2026-06-18","Switzerland","Bosnia Herzegovina","B"],["2026-06-18","Canada","Qatar","B"],
+  ["2026-06-19","Brazil","Haiti","C"],["2026-06-19","Scotland","Morocco","C"],
+  ["2026-06-19","United States","Australia","D"],["2026-06-19","Turkey","Paraguay","D"],
+  ["2026-06-19","Germany","Ivory Coast","E"],["2026-06-19","Ecuador","Curaçao","E"],
+  ["2026-06-19","Netherlands","Sweden","F"],["2026-06-19","Tunisia","Japan","F"],
+  ["2026-06-20","Belgium","Iran","G"],["2026-06-20","New Zealand","Egypt","G"],
+  ["2026-06-20","Spain","Saudi Arabia","H"],["2026-06-20","Uruguay","Cape Verde","H"],
+  ["2026-06-20","France","Iraq","I"],["2026-06-20","Norway","Senegal","I"],
+  ["2026-06-21","Argentina","Austria","J"],["2026-06-21","Jordan","Algeria","J"],
+  ["2026-06-21","Portugal","Uzbekistan","K"],["2026-06-21","Colombia","DR Congo","K"],
+  ["2026-06-22","England","Croatia","L"],["2026-06-22","Panama","Ghana","L"],
+  // Matchday 3 - June 24-27
+  ["2026-06-24","Czech Republic","Mexico","A"],["2026-06-24","South Africa","South Korea","A"],
+  ["2026-06-24","Switzerland","Canada","B"],["2026-06-24","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-25","Morocco","Haiti","C"],["2026-06-25","Scotland","Brazil","C"],
+  ["2026-06-25","Turkey","United States","D"],["2026-06-25","Paraguay","Australia","D"],
+  ["2026-06-25","Ecuador","Germany","E"],["2026-06-25","Curaçao","Ivory Coast","E"],
+  ["2026-06-25","Japan","Sweden","F"],["2026-06-25","Tunisia","Netherlands","F"],
+  ["2026-06-26","Egypt","Iran","G"],["2026-06-26","New Zealand","Belgium","G"],
+  ["2026-06-26","Uruguay","Spain","H"],["2026-06-26","Cape Verde","Saudi Arabia","H"],
+  ["2026-06-26","Norway","France","I"],["2026-06-26","Senegal","Iraq","I"],
+  ["2026-06-27","Algeria","Austria","J"],["2026-06-27","Jordan","Argentina","J"],
+  ["2026-06-27","Colombia","Portugal","K"],["2026-06-27","Uzbekistan","DR Congo","K"],
+  ["2026-06-27","Ghana","England","L"],["2026-06-27","Panama","Croatia","L"]
+];
+
+// ── Actual Results Lookup ────────────────────────────────────
+// Build a map of actual match results for quick lookup during simulation
+function buildActualResultsMap() {
+  const state = loadState();
+  const map = {};
+  for (const r of state.actualResults || []) {
+    const dateStr = r.date?.substring(0,10) || '';
+    // Key with date: "TeamA|TeamB|YYYY-MM-DD" (order-independent)
+    const key1 = `${r.team1}|${r.team2}|${dateStr}`;
+    const key2 = `${r.team2}|${r.team1}|${dateStr}`;
+    map[key1] = { score1: r.score1, score2: r.score2, team1: r.team1, team2: r.team2 };
+    map[key2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
+    
+    // Also store without date for fallback matching (handles timezone issues)
+    const keyNoDate1 = `${r.team1}|${r.team2}|`;
+    const keyNoDate2 = `${r.team2}|${r.team1}|`;
+    if (!map[keyNoDate1]) map[keyNoDate1] = map[key1];
+    if (!map[keyNoDate2]) map[keyNoDate2] = map[key2];
+  }
+  return map;
+}
+
+// Get actual result for a match if it has been played
+// Tries exact date match first, then falls back to team-name-only match
+function getActualResult(team1, team2, date) {
+  const map = buildActualResultsMap();
+  // Try exact match with date
+  const keyExact = `${team1}|${team2}|${date || ''}`;
+  if (map[keyExact]) return map[keyExact];
+  // Fallback: match by team names only (handles timezone date mismatch)
+  const keyFallback = `${team1}|${team2}|`;
+  return map[keyFallback] || null;
+}
+
+// ── Dynamic Form Calculation ─────────────────────────────────
+// Calculate team form (0-1) based on recent match results
+// Uses last 5 matches with exponential decay (recent matches weighted more)
+// ── Dynamic Elo Rating System ────────────────────────────────
+// Based on World Football Elo Ratings (eloratings.net)
+// Formula: R_new = R_old + K * G * (W - We)
+// K = 60 (World Cup), G = goal difference index, W = result, We = expected
+
+const dynamicElo = {}; // Store dynamic Elo ratings
+
+function initDynamicElo() {
+  for (const t of Object.keys(TEAMS)) {
+    dynamicElo[t] = TEAMS[t][0]; // Initialize with base Elo
+  }
+}
+
+function eloExpected(ra, rb) {
+  return 1 / (Math.pow(10, -(ra - rb) / 400) + 1);
+}
+
+function eloGoalIndex(gd) {
+  if (gd <= 1) return 1;
+  if (gd === 2) return 1.5;
+  return (11 + gd) / 8;
+}
+
+function updateElo(team1, team2, score1, score2) {
+  const ra = dynamicElo[team1], rb = dynamicElo[team2];
+  const gd = Math.abs(score1 - score2);
+  const G = eloGoalIndex(gd);
+  const K = 60; // World Cup weight
+  
+  let W;
+  if (score1 > score2) W = 1;
+  else if (score1 < score2) W = 0;
+  else W = 0.5;
+  
+  const We = eloExpected(ra, rb);
+  const Pa = K * G * (W - We);
+  
+  dynamicElo[team1] = Math.round(ra + Pa);
+  dynamicElo[team2] = Math.round(rb - Pa);
+}
+
+// ── Dynamic Form Calculation ─────────────────────────────────
+// Exponential decay: recent matches weighted more heavily
+// Form = Σ(weight_i * result_i) / Σ(weight_i)
+// weight_i = exp(-λ * days_ago), λ = 0.05
+
+function calculateDynamicForm() {
+  const state = loadState();
+  const results = state.actualResults || [];
+  if (results.length === 0) return;
+
+  const now = new Date();
+  const teamMatches = {};
+  
+  for (const r of results) {
+    if (!teamMatches[r.team1]) teamMatches[r.team1] = [];
+    if (!teamMatches[r.team2]) teamMatches[r.team2] = [];
+    
+    const daysAgo = (now - new Date(r.date)) / (1000 * 60 * 60 * 24);
+    teamMatches[r.team1].push({ 
+      opponent: r.team2, score1: r.score1, score2: r.score2, 
+      date: r.date, daysAgo 
+    });
+    teamMatches[r.team2].push({ 
+      opponent: r.team1, score1: r.score2, score2: r.score1, 
+      date: r.date, daysAgo 
+    });
+  }
+
+  const LAMBDA = 0.05; // Decay rate
+  
+  for (const team of Object.keys(TEAMS)) {
+    const matches = teamMatches[team] || [];
+    if (matches.length === 0) continue;
+
+    let formScore = 0, totalWeight = 0;
+    
+    matches.forEach(m => {
+      const weight = Math.exp(-LAMBDA * m.daysAgo);
+      let points = 0;
+      
+      if (m.score1 > m.score2) points = 1.0;
+      else if (m.score1 === m.score2) points = 0.4;
+      else points = 0.0;
+
+      // Goal difference bonus/penalty (capped at ±0.2)
+      const gd = m.score1 - m.score2;
+      const gdBonus = Math.max(-0.2, Math.min(0.2, gd * 0.05));
+
+      formScore += weight * (points + gdBonus);
+      totalWeight += weight;
+    });
+
+    const newForm = Math.max(0, Math.min(1, formScore / totalWeight));
+    TEAMS[team][4] = newForm;
+  }
+}
+
+// ── Group Stage Tracking ─────────────────────────────────────
+function getGroupStatus() {
+  const state = loadState();
+  const results = state.actualResults || [];
+  const status = {};
+  
+  GROUPS.forEach(g => {
+    status[g] = {};
+    GROUP_TEAMS[g].forEach(t => {
+      status[g][t] = { P:0, W:0, D:0, L:0, GF:0, GA:0, GD:0, Pts:0, 
+                        qualified: false, eliminated: false, canStillQualify: true };
+    });
+  });
+  
+  // Calculate current standings from actual results
+  results.forEach(r => {
+    for (const g of GROUPS) {
+      if (GROUP_TEAMS[g].includes(r.team1) && GROUP_TEAMS[g].includes(r.team2)) {
+        const a = status[g][r.team1], b = status[g][r.team2];
+        a.P++; b.P++;
+        a.GF += r.score1; a.GA += r.score2;
+        b.GF += r.score2; b.GA += r.score1;
+        a.GD = a.GF - a.GA; b.GD = b.GF - b.GA;
+        
+        if (r.score1 > r.score2) { a.W++; a.Pts += 3; b.L++; }
+        else if (r.score1 < r.score2) { b.W++; b.Pts += 3; a.L++; }
+        else { a.D++; a.Pts++; b.D++; b.Pts++; }
+        break;
+      }
+    }
+  });
+  
+  // Determine qualification status
+  GROUPS.forEach(g => {
+    const teams = GROUP_TEAMS[g];
+    const sorted = teams.slice().sort((a, b) => {
+      const sa = status[g][a], sb = status[g][b];
+      return sb.Pts - sa.Pts || sb.GD - sa.GD || sb.GF - sa.GF;
+    });
+    
+    const played = status[g][sorted[0]].P;
+    const maxPts = (3 - played) * 3;
+    
+    // Top 2 qualify, 3rd might qualify
+    sorted.forEach((t, i) => {
+      const s = status[g][t];
+      const remaining = 3 - s.P;
+      const maxPossible = s.Pts + remaining * 3;
+      
+      // Check if mathematically eliminated
+      if (i >= 2) {
+        const ptsNeeded = sorted[1] ? status[g][sorted[1]].Pts : 0;
+        if (maxPossible < ptsNeeded) {
+          s.eliminated = true;
+          s.canStillQualify = false;
+        }
+      }
+      
+      // Check if mathematically qualified
+      if (i < 2) {
+        const ptsBelow = sorted[2] ? status[g][sorted[2]].Pts : 0;
+        const maxBelow = ptsBelow + (3 - (status[g][sorted[2]]?.P || 0)) * 3;
+        if (s.Pts > maxBelow) {
+          s.qualified = true;
+        }
+      }
+    });
+  });
+  
+  return status;
+}
+
+// ── Composite Model ──────────────────────────────────────────
+// Dynamic weights that adjust based on tournament stage
+// Early stage: Elo + FIFA + Odds more important
+// Later stage: Form + Momentum more important
+
+const BASE_W_ELO=0.25, BASE_W_FIFA=0.15, BASE_W_MV=0.10, 
+      BASE_W_FORM=0.10, BASE_W_XP=0.05, BASE_W_ODDS=0.25, BASE_W_DYNAMIC=0.10;
+
+function oddsToProb(usOdds) {
+  return usOdds > 0 ? 100 / (usOdds + 100) : 1;
+}
+
+function composite(t) {
+  const [elo,fifa,mv,wcApps,form,host,odds] = TEAMS[t];
+  const dynElo = dynamicElo[t] || elo;
+  
+  // Use calibrated weights if available, otherwise base weights
+  const state = loadState();
+  const w = state.calibratedWeights || {
+    elo: BASE_W_ELO, fifa: BASE_W_FIFA, mv: BASE_W_MV,
+    form: BASE_W_FORM, xp: BASE_W_XP, odds: BASE_W_ODDS, dynamic: BASE_W_DYNAMIC
+  };
+  
+  const eloN = (dynElo - 1400) / 800;
+  const fifaN = (fifa - 900) / 1000;
+  const mvN = Math.min(mv / 1000, 1);
+  const xpN = Math.min(wcApps / 20, 1);
+  const rawProb = oddsToProb(odds);
+  const oddsN = Math.min(rawProb / 0.22, 1);
+  
+  // Dynamic Elo adjustment (how much Elo changed from initial)
+  const eloChange = (dynElo - elo) / 200;
+  const dynamicN = Math.max(-1, Math.min(1, eloChange));
+  
+  const base = w.elo * eloN + w.fifa * fifaN + w.mv * mvN + 
+               w.form * form + w.xp * xpN + w.odds * oddsN + 
+               w.dynamic * dynamicN;
+  
+  return Math.min(1, base + host);
+}
+
+function attackRating(t) {
+  const [elo,fifa,mv,,form] = TEAMS[t];
+  const dynElo = dynamicElo[t] || elo;
+  return 0.45 * ((dynElo - 1400) / 800) + 0.25 * ((fifa - 900) / 1000) + 
+         0.20 * Math.min(mv / 1000, 1) + 0.10 * form;
+}
+
+function defenseRating(t) {
+  const [elo,fifa,mv,wcApps,form] = TEAMS[t];
+  const dynElo = dynamicElo[t] || elo;
+  return 0.40 * ((dynElo - 1400) / 800) + 0.30 * ((fifa - 900) / 1000) + 
+         0.15 * Math.min(mv / 1000, 1) + 0.15 * Math.min(wcApps / 20, 1);
+}
+
+function goalExpect(home, away) {
+  const cH = composite(home), cA = composite(away);
+  const aH = attackRating(home), dA = defenseRating(away);
+  const aA = attackRating(away), dH = defenseRating(home);
+  const globalAvg = 1.35;
+  
+  // Strength differential (0-1 scale)
+  const atkDefDiff = aH - dA;   // how much home attack beats away defense
+  const compositeDiff = cH - cA; // overall strength gap
+  
+  // Exponential scaling: big gaps produce much higher lambdas
+  // This ensures strong vs weak → 3-0, 4-0 type results
+  const attackBoost = Math.exp(1.5 * atkDefDiff); // exp scaling
+  const strengthBoost = 1 + 0.4 * compositeDiff;  // linear boost from overall strength
+  
+  const lam = globalAvg * attackBoost * strengthBoost;
+  
+  // Same for away team (mirrored)
+  const atkDefDiffA = aA - dH;
+  const compositeDiffA = cA - cH;
+  const attackBoostA = Math.exp(1.5 * atkDefDiffA);
+  const strengthBoostA = 1 + 0.4 * compositeDiffA;
+  const mu = globalAvg * attackBoostA * strengthBoostA;
+  
+  return [Math.max(0.15, Math.min(6.0, lam)), Math.max(0.15, Math.min(6.0, mu))];
+}
+
+// ── Poisson PMF (Probability Mass Function) ──────────────────
+function poissonPMF(k, lam) {
+  return Math.exp(-lam) * Math.pow(lam, k) / factorial(k);
+}
+
+function factorial(n) {
+  if (n <= 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= n; i++) result *= i;
+  return result;
+}
+
+// ── Match Probabilities (Industry Standard) ──────────────────
+// Calculate win/draw/loss probabilities from Poisson distribution
+// This is how FiveThirtyEight, Opta, and professional bookmakers work
+function matchProbabilities(home, away) {
+  const [lam, mu] = goalExpect(home, away);
+  const MAX_GOALS = 10;
+  
+  let pHome = 0, pDraw = 0, pAway = 0;
+  
+  for (let i = 0; i <= MAX_GOALS; i++) {
+    for (let j = 0; j <= MAX_GOALS; j++) {
+      const prob = poissonPMF(i, lam) * poissonPMF(j, mu);
+      if (i > j) pHome += prob;
+      else if (i === j) pDraw += prob;
+      else pAway += prob;
+    }
+  }
+  
+  return { win: pHome, draw: pDraw, loss: pAway };
+}
+
+// ── Expected Match Outcome ───────────────────────────────────
+// Returns expected goals and expected points (deterministic)
+function expectedMatch(home, away) {
+  const [lam, mu] = goalExpect(home, away);
+  const probs = matchProbabilities(home, away);
+  
+  // Expected points
+  const homeExpPts = probs.win * 3 + probs.draw * 1;
+  const awayExpPts = probs.loss * 3 + probs.draw * 1;
+  
+  // Most likely scoreline
+  let maxProb = 0, likelyHome = 0, likelyAway = 0;
+  for (let i = 0; i <= 5; i++) {
+    for (let j = 0; j <= 5; j++) {
+      const prob = poissonPMF(i, lam) * poissonPMF(j, mu);
+      if (prob > maxProb) {
+        maxProb = prob;
+        likelyHome = i;
+        likelyAway = j;
+      }
+    }
+  }
+  
+  return {
+    homeGoals: lam,
+    awayGoals: mu,
+    homeExpPts,
+    awayExpPts,
+    probs,
+    likelyScore: [likelyHome, likelyAway]
+  };
+}
+
+// ── Deterministic Knockout Winner ────────────────────────────
+// Returns the team with higher win probability (no randomness)
+function deterministicWinner(home, away) {
+  const probs = matchProbabilities(home, away);
+  if (probs.win > probs.loss) return home;
+  if (probs.loss > probs.win) return away;
+  // Tie-breaker: higher composite rating
+  return composite(home) >= composite(away) ? home : away;
+}
+
+function poisson(lam) {
+  const L = Math.exp(-lam); let k = 0, p = 1;
+  while (true) { k++; p *= Math.random(); if (p < L) return k - 1; if (k > 15) return 15; }
+}
+
+function simMatch(home, away) {
+  const [lam, mu] = goalExpect(home, away);
+  return [poisson(lam), poisson(mu)];
+}
+
+function poisson(lam) {
+  const L = Math.exp(-lam); let k = 0, p = 1;
+  while (true) { k++; p *= Math.random(); if (p < L) return k - 1; if (k > 15) return 15; }
+}
+
+function simMatch(home, away) {
+  const [lam, mu] = goalExpect(home, away);
+  return [poisson(lam), poisson(mu)];
+}
+
+function simKO(home, away) {
+  let [ga, gb] = simMatch(home, away); let m = '';
+  if (ga !== gb) { m = "90'"; }
+  else {
+    const [lam, mu] = goalExpect(home, away);
+    ga += poisson(lam * 0.55); gb += poisson(mu * 0.55);
+    if (ga !== gb) m = 'AET';
+    else {
+      const pHome = composite(home) / (composite(home) + composite(away));
+      if (Math.random() < pHome) ga++; else gb++;
+      m = 'PSO';
+    }
+  }
+  return [ga, gb, m];
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Display helpers ──────────────────────────────────────────
+function fl(t) { const c=FLAGS[t]; return c ? `<img src="https://flagcdn.com/w40/${c}.png" width="20" height="14" style="border-radius:2px;vertical-align:middle;margin-right:4px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1)">` + t : t; }
+function bf(t) { const c=FLAGS[t]; return c ? `<img src="https://flagcdn.com/w20/${c}.png" width="16" height="11" style="border-radius:1.5px;vertical-align:middle;margin-right:3px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1)">` : ''; }
+function pct(v) { return (v*100).toFixed(0); }
+
+let currentResults = null, mcResults = null;
+
+// ── Single Simulation (Expected Values + Deterministic Knockout) ──
+function runSimulation() {
+  try {
+  // Initialize dynamic Elo and update from actual results
+  initDynamicElo();
+  const state = loadState();
+  const results = state.actualResults || [];
+  results.forEach(r => {
+    updateElo(r.team1, r.team2, r.score1, r.score2);
+  });
+  
+  // Recalculate dynamic form from actual results before simulation
+  calculateDynamicForm();
+
+  const standings = {}, matchResults = [];
+  const actualMap = buildActualResultsMap();
+
+  GROUPS.forEach(g => {
+    standings[g] = {};
+    GROUP_TEAMS[g].forEach(t => { standings[g][t] = {P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,ExpPts:0}; });
+  });
+  
+  // ── Group Stage: Expected Values (Deterministic) ─────────
+  MATCHES.forEach(([date,ta,tb,grp]) => {
+    // Try exact date match first, then fallback to team-name-only match
+    let actual = actualMap[`${ta}|${tb}|${date}`];
+    if (!actual) actual = actualMap[`${ta}|${tb}|`]; // timezone fallback
+    if (actual) {
+      // Use actual result if match was played
+      const sa = actual.score1, sb = actual.score2;
+      const a = standings[grp][ta], b = standings[grp][tb];
+      a.P++; b.P++; a.GF+=sa; a.GA+=sb; b.GF+=sb; b.GA+=sa;
+      if (sa>sb) { a.W++; a.Pts+=3; b.L++; } else if (sa<sb) { b.W++; b.Pts+=3; a.L++; } else { a.D++; a.Pts++; b.D++; b.Pts++; }
+      a.GD=a.GF-a.GA; b.GD=b.GF-b.GA;
+      a.ExpPts = a.Pts; b.ExpPts = b.Pts;
+      matchResults.push({date,ta,sa,sb,tb,grp,actual:true,probs:null});
+    } else {
+      // Use expected values for future matches
+      const exp = expectedMatch(ta, tb);
+      const a = standings[grp][ta], b = standings[grp][tb];
+      a.P++; b.P++;
+      a.GF += exp.homeGoals; a.GA += exp.awayGoals;
+      b.GF += exp.awayGoals; b.GA += exp.homeGoals;
+      a.GD = a.GF - a.GA; b.GD = b.GF - b.GA;
+      a.ExpPts += exp.homeExpPts;
+      b.ExpPts += exp.awayExpPts;
+      
+      // Determine most likely result for W/D/L display
+      if (exp.probs.win > exp.probs.draw && exp.probs.win > exp.probs.loss) {
+        a.W++; a.Pts += 3; b.L++;
+      } else if (exp.probs.loss > exp.probs.draw && exp.probs.loss > exp.probs.win) {
+        b.W++; b.Pts += 3; a.L++;
+      } else {
+        a.D++; a.Pts++; b.D++; b.Pts++;
+      }
+      
+      matchResults.push({
+        date, ta, sa: exp.likelyScore[0], sb: exp.likelyScore[1],
+        tb, grp, actual: false,
+        probs: exp.probs, homeExpPts: exp.homeExpPts, awayExpPts: exp.awayExpPts
+      });
+    }
+  });
+  
+  // ── Rankings: Sort by Expected Points then actual Points ──
+  const rankings = {};
+  GROUPS.forEach(g => {
+    rankings[g] = GROUP_TEAMS[g].slice().sort((a,b) => {
+      const sa=standings[g][a], sb=standings[g][b];
+      // Use expected points for future matches, actual for played
+      return sb.ExpPts-sa.ExpPts || sb.Pts-sa.Pts || sb.GD-sa.GD || sb.GF-sa.GF || composite(b)-composite(a);
+    });
+  });
+  const thirds = [];
+  GROUPS.forEach(g => thirds.push({team:rankings[g][2], group:g, ...standings[g][rankings[g][2]]}));
+  thirds.sort((a,b) => b.ExpPts-a.ExpPts || b.GD-a.GD || b.GF-a.GF);
+  const bestThirds = thirds.slice(0,8).map(t=>t.team);
+  const ko = {};
+  const r32 = [];
+  GROUPS.forEach(g => { r32.push(rankings[g][0], rankings[g][1]); });
+  bestThirds.forEach(t => r32.push(t));
+  
+  // ── Knockout Stage: Actual Results or Simulated ──────────────
+  function runRound(teams) {
+    const res=[], winners=[];
+    for(let i=0;i<teams.length;i+=2) {
+      const home=teams[i], away=teams[i+1];
+      
+      // Check if this knockout match has an actual result
+      const actual = getActualResult(home, away, '');
+      
+      if(actual) {
+        // Use actual result
+        const ga = actual.score1, gb = actual.score2;
+        const winner = ga > gb ? home : away;
+        let method = "90'";
+        // Detect if it went to extra time or penalties (heuristic: if close score)
+        // For now, assume 90' unless it's a knockout that needs tiebreak
+        winners.push(winner);
+        res.push({a:home,ga,gb,b:away,method,actual:true});
+      } else {
+        // Simulate
+        const probs = matchProbabilities(home, away);
+        const winner = deterministicWinner(home, away);
+        const [lam, mu] = goalExpect(home, away);
+        
+        // Use most likely scoreline from Poisson distribution
+        let bestP = 0, ga = 1, gb = 0;
+        for(let x=0; x<=6; x++) {
+          for(let y=0; y<=6; y++) {
+            const p = poissonPMF(x, lam) * poissonPMF(y, mu);
+            if(p > bestP) { bestP = p; ga = x; gb = y; }
+          }
+        }
+        
+        // If draw, break in favor of the predicted winner
+        let method = "90'";
+        if(ga === gb) {
+          const etLam = lam * 0.55, etMu = mu * 0.55;
+          let etBestP = 0, etGa = 0, etGb = 0;
+          for(let x=0; x<=3; x++) {
+            for(let y=0; y<=3; y++) {
+              const p = poissonPMF(x, etLam) * poissonPMF(y, etMu);
+              if(p > etBestP) { etBestP = p; etGa = x; etGb = y; }
+            }
+          }
+          ga += etGa; gb += etGb;
+          if(ga !== gb) { method = 'AET'; }
+          else {
+            if(composite(home) >= composite(away)) ga++; else gb++;
+            method = 'PSO';
+          }
+        }
+        
+        winners.push(winner);
+        res.push({a:home,ga,gb,b:away,method});
+      }
+    }
+    return [winners,res];
+  }
+  let[w1,r32r]=runRound(r32); let[w2,r16r]=runRound(w1); let[w3,qfr]=runRound(w2); let[w4,sfr]=runRound(w3);
+  const losers = qfr.map(m => m.a===w3[0] ? m.b : m.a);
+  
+  // Third place match
+  const [tLam, tMu] = goalExpect(losers[0], losers[1]);
+  let tga=1, tgb=0, tBestP=0;
+  for(let x=0;x<=6;x++) for(let y=0;y<=6;y++) { const p=poissonPMF(x,tLam)*poissonPMF(y,tMu); if(p>tBestP){tBestP=p;tga=x;tgb=y;} }
+  if(tga===tgb) { if(composite(losers[0])>=composite(losers[1])) tga++; else tgb++; }
+  const tm = tga!==tgb ? "90'" : 'PSO';
+  
+  // Final
+  const [fLam, fMu] = goalExpect(w4[0], w4[1]);
+  let fa=1, fb=0, fBestP=0;
+  for(let x=0;x<=6;x++) for(let y=0;y<=6;y++) { const p=poissonPMF(x,fLam)*poissonPMF(y,fMu); if(p>fBestP){fBestP=p;fa=x;fb=y;} }
+  if(fa===fb) { if(composite(w4[0])>=composite(w4[1])) fa++; else fb++; }
+  const fm = fa!==fb ? "90'" : 'PSO';
+  
+  ko.R32=r32r; ko.R16=r16r; ko.QF=qfr; ko.SF=sfr;
+  ko.Third={a:losers[0],ga:tga,gb:tgb,b:losers[1],method:tm};
+  ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
+  ko.Champion=fa>fb?w4[0]:w4[1];
+  currentResults={standings,matchResults,rankings,bestThirds,ko};
+  renderAll();
+  } catch(e) {
+    console.error('runSimulation error:', e);
+  }
+}
+
+function renderAll() { renderStandings(); renderMatches(); renderBracket(); }
+
+// ── Render Standings ─────────────────────────────────────────
+function renderStandings() {
+  const {standings,rankings,bestThirds} = currentResults;
+  let h = '<div class="groups-grid">';
+  GROUPS.forEach(g => {
+    h += `<div class="group-card"><div class="group-head"><h3>Group ${g}</h3></div>`;
+    h += `<table class="group-table"><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>ExpPts</th><th>Form</th><th>Elo</th><th>Δ</th></tr>`;
+    rankings[g].forEach((t,i) => {
+      const s = standings[g][t];
+      const form = TEAMS[t][4];
+      const formColor = form >= 0.65 ? 'var(--green)' : form >= 0.45 ? 'var(--orange)' : 'var(--red)';
+      const baseElo = TEAMS[t][0];
+      const dynElo = dynamicElo[t] || baseElo;
+      const eloDelta = dynElo - baseElo;
+      const deltaColor = eloDelta > 0 ? 'var(--green)' : eloDelta < 0 ? 'var(--red)' : 'var(--text3)';
+      const deltaStr = eloDelta > 0 ? `+${eloDelta}` : eloDelta < 0 ? `${eloDelta}` : '-';
+      const expPtsColor = s.ExpPts > s.Pts ? 'var(--green)' : s.ExpPts < s.Pts ? 'var(--red)' : 'var(--text2)';
+      let cls = i<2 ? '' : (bestThirds.includes(t) ? '' : 'eliminated');
+      h += `<tr class="${cls}">
+        <td><span class="pos pos-${i+1}">${i+1}</span></td>
+        <td>${fl(t)}</td>
+        <td>${s.P}</td>
+        <td>${s.W}</td>
+        <td>${s.D}</td>
+        <td>${s.L}</td>
+        <td>${s.GF.toFixed(1)}</td>
+        <td>${s.GA.toFixed(1)}</td>
+        <td>${s.GD>0?'+':''}${s.GD.toFixed(1)}</td>
+        <td><strong>${s.Pts}</strong></td>
+        <td style="font-weight:700;color:${expPtsColor}">${s.ExpPts.toFixed(1)}</td>
+        <td style="font-size:0.7rem;color:${formColor}">${(form*100).toFixed(0)}</td>
+        <td style="font-size:0.7rem;color:var(--blue)">${dynElo}</td>
+        <td style="font-size:0.7rem;color:${deltaColor}">${deltaStr}</td>
+      </tr>`;
+    });
+    h += '</table></div>';
+  });
+  h += '</div>';
+  document.getElementById('section-standings').innerHTML = h;
+}
+
+// ── Render Matches ───────────────────────────────────────────
+function renderMatches() {
+  const {matchResults,ko} = currentResults;
+  const state = loadState();
+  const actualResults = state.actualResults || [];
+  
+  let h = '<div class="matches-list">';
+  h += `<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px">
+    <span style="color:var(--green);font-weight:700">✓</span> = Actual result · 
+    <span style="color:var(--orange);font-weight:700">Pred</span> = Model prediction · 
+    <span style="font-size:0.65rem">W/D/L% = Win/Draw/Loss probabilities</span>
+  </div>`;
+  let ld = '';
+  matchResults.forEach(m => {
+    if(m.date!==ld) {
+      ld = m.date;
+      const d = new Date(m.date+'T00:00:00');
+      h += `<div class="match-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>`;
+    }
+    const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':'');
+    const wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
+    const actualBadge = m.actual ? '<span style="font-size:0.6rem;color:var(--green);font-weight:700;margin-left:4px">✓</span>' : '';
+    
+    // For actual matches, show prediction comparison
+    let predDisplay = '';
+    if (m.actual) {
+      // Find the stored prediction for this match
+      const stored = actualResults.find(r => r.team1 === m.ta && r.team2 === m.tb);
+      if (stored && stored.predGoals) {
+        const predH = parseFloat(stored.predGoals[0]);
+        const predA = parseFloat(stored.predGoals[1]);
+        const predW = stored.predicted === m.ta ? 'home' : (stored.predicted === m.tb ? 'away' : 'draw');
+        const predColor = stored.correct ? 'var(--green)' : 'var(--red)';
+        const predIcon = stored.correct ? '✓' : '✗';
+        predDisplay = `<span style="font-size:0.6rem;color:${predColor};margin-left:4px">Pred:${predH.toFixed(0)}-${predA.toFixed(0)} ${predIcon}</span>`;
+      }
+    }
+    
+    // Show probability bar for future matches
+    let probDisplay = '';
+    if (!m.actual && m.probs) {
+      const wPct = (m.probs.win * 100).toFixed(0);
+      const dPct = (m.probs.draw * 100).toFixed(0);
+      const lPct = (m.probs.loss * 100).toFixed(0);
+      probDisplay = `<span style="font-size:0.6rem;color:var(--text3);margin-left:4px">${wPct}/${dPct}/${lPct}</span>`;
+    }
+    
+    h += `<div class="match-card" ${m.actual ? 'style="border-left:3px solid var(--green)"' : ''}>
+      <span class="m-group">${m.grp}</span>
+      <span class="m-team home ${wA}">${fl(m.ta)}</span>
+      <span class="m-score">${m.sa} - ${m.sb}${actualBadge}</span>
+      <span class="m-team away ${wB}">${fl(m.tb)}</span>
+      <span class="m-method">${predDisplay}${probDisplay}</span>
+    </div>`;
+  });
+  [{k:'R32',l:'Round of 32 — Jun 28 - Jul 1'},{k:'R16',l:'Round of 16 — Jul 4-5'},{k:'QF',l:'Quarter-finals — Jul 8-9'},{k:'SF',l:'Semi-finals — Jul 14-15'}].forEach(r => {
+    h += `<div class="match-date">${r.l}</div>`;
+    ko[r.k].forEach(m => {
+      const wA=m.ga>m.gb?'winner':'loser', wB=m.gb>m.ga?'winner':'loser';
+      h += `<div class="match-card"><span class="m-group">KO</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${m.ga} - ${m.gb}</span><span class="m-team away ${wB}">${fl(m.b)}</span><span class="m-method">${m.method}</span></div>`;
+    });
+  });
+  const t=ko.Third;
+  h += `<div class="match-date">Third Place — Jul 18</div><div class="match-card"><span class="m-group">3rd</span><span class="m-team home ${t.ga>t.gb?'winner':'loser'}">${fl(t.a)}</span><span class="m-score">${t.ga} - ${t.gb}</span><span class="m-team away ${t.gb>t.ga?'winner':'loser'}">${fl(t.b)}</span><span class="m-method">${t.method}</span></div>`;
+  const f=ko.Final;
+  h += `<div class="match-date">FINAL — Jul 19 · MetLife Stadium</div><div class="match-card final-match"><span class="m-group" style="color:var(--gold)">FIN</span><span class="m-team home ${f.ga>f.gb?'winner':'loser'}">${fl(f.a)}</span><span class="m-score">${f.ga} - ${f.gb}</span><span class="m-team away ${f.gb>f.ga?'winner':'loser'}">${fl(f.b)}</span><span class="m-method">${f.method}</span></div>`;
+  h += '</div>';
+  document.getElementById('section-matches').innerHTML = h;
+}
+
+// ── Render Bracket ───────────────────────────────────────────
+function renderBracket() {
+  const {ko} = currentResults; const ch = ko.Champion;
+  let ph = '';
+  [{k:'R32',l:'Round of 32'},{k:'R16',l:'Round of 16'},{k:'QF',l:'Quarter-final'},{k:'SF',l:'Semi-final'}].forEach(r => {
+    ko[r.k].forEach(m => {
+      if(m.a===ch||m.b===ch) {
+        const op=m.a===ch?m.b:m.a, mg=m.a===ch?m.ga:m.gb, og=m.a===ch?m.gb:m.ga;
+        ph += `<div class="champ-path-item"><span class="cp-round">${r.l}</span><span class="cp-score">${mg}</span><span class="cp-vs">vs</span>${fl(op)}<span class="cp-score">${og}</span><span class="cp-method">${m.method}</span></div>`;
+      }
+    });
+  });
+  const f=ko.Final, fmg=f.a===ch?f.ga:f.gb, fog=f.a===ch?f.gb:f.ga, fop=f.a===ch?f.b:f.a;
+  ph += `<div class="champ-path-item"><span class="cp-round" style="color:var(--gold)">FINAL</span><span class="cp-score">${fmg}</span><span class="cp-vs">vs</span>${fl(fop)}<span class="cp-score">${fog}</span><span class="cp-method">${f.method}</span></div>`;
+  let h = `<div class="champion-hero"><div class="trophy-icon">🏆</div><h2>${fl(ch)}</h2><div class="champ-sub">2026 World Cup Champion</div><div class="champ-path">${ph}</div></div>`;
+  h += '<div class="bracket-wrap"><div class="bracket">';
+  function bc(title,matches) {
+    let s = `<div class="bracket-col"><div class="bracket-col-title">${title}</div>`;
+    matches.forEach(m => {
+      const wA=m.ga>m.gb?'w':'l', wB=m.gb>m.ga?'w':'l';
+      s += `<div class="b-match"><div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${m.a}</span><span class="b-score">${m.ga}</span></div><div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${m.b}</span><span class="b-score">${m.gb}</span></div>${m.method?`<div class="b-method">${m.method}</div>`:''}</div>`;
+    });
+    s += '</div>'; return s;
+  }
+  h += bc('Round of 32',ko.R32); h += bc('Round of 16',ko.R16); h += bc('Quarter-finals',ko.QF); h += bc('Semi-finals',ko.SF);
+  h += `<div class="bracket-col"><div class="bracket-col-title">Finals</div>`;
+  h += `<div class="b-match"><div style="font-size:0.55rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase;letter-spacing:0.05em">3rd Place</div><div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${ko.Third.a}</span><span class="b-score">${ko.Third.ga}</span></div><div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${ko.Third.b}</span><span class="b-score">${ko.Third.gb}</span></div>${ko.Third.method?`<div class="b-method">${ko.Third.method}</div>`:''}</div>`;
+  h += `<div class="b-match" style="background:linear-gradient(135deg,#fff9e6,#fff)"><div style="font-size:0.55rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase;letter-spacing:0.05em">FINAL</div><div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${ko.Final.a}</span><span class="b-score">${ko.Final.ga}</span></div><div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${ko.Final.b}</span><span class="b-score">${ko.Final.gb}</span></div>${ko.Final.method?`<div class="b-method">${ko.Final.method}</div>`:''}</div>`;
+  h += '</div></div></div>';
+  document.getElementById('section-bracket').innerHTML = h;
+}
+
+// ── Monte Carlo ──────────────────────────────────────────────
+function runMonteCarlo() {
+  const btn = document.querySelector('.btn-secondary');
+  btn.textContent = 'Running...'; btn.disabled = true;
+  const N = 10000;
+  const champ={}, finalist={}, semi={}, quarter={}, r16={};
+
+  // Initialize dynamic Elo and update from actual results
+  initDynamicElo();
+  const state = loadState();
+  const results = state.actualResults || [];
+  results.forEach(r => {
+    updateElo(r.team1, r.team2, r.score1, r.score2);
+  });
+  
+  // Recalculate dynamic form
+  calculateDynamicForm();
+
+  // Build actual results map once before simulations
+  const actualMap = buildActualResultsMap();
+
+  setTimeout(() => {
+    for(let i = 0; i < N; i++) {
+      const st = {};
+      GROUPS.forEach(g => {
+        st[g] = {};
+        GROUP_TEAMS[g].forEach(t => { st[g][t] = {P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0}; });
+      });
+      MATCHES.forEach(([d,ta,tb,grp]) => {
+        let sa, sb;
+        // Lock in actual results for completed matches
+        const actual = actualMap[`${ta}|${tb}|${d}`];
+        if (actual) {
+          sa = actual.score1; sb = actual.score2;
+        } else {
+          [sa,sb] = simMatch(ta, tb);
+        }
+        const a=st[grp][ta], b=st[grp][tb];
+        a.P++; b.P++; a.GF+=sa; a.GA+=sb; b.GF+=sb; b.GA+=sa;
+        if(sa>sb) { a.W++; a.Pts+=3; b.L++; } else if(sa<sb) { b.W++; b.Pts+=3; a.L++; } else { a.D++; a.Pts++; b.D++; b.Pts++; }
+        a.GD=a.GF-a.GA; b.GD=b.GF-b.GA;
+      });
+      const rk = {};
+      GROUPS.forEach(g => {
+        rk[g] = GROUP_TEAMS[g].slice().sort((a,b) => {
+          const sa=st[g][a], sb=st[g][b];
+          return sb.Pts-sa.Pts || sb.GD-sa.GD || sb.GF-sa.GF || composite(b)-composite(a);
+        });
+      });
+      const thirds = [];
+      GROUPS.forEach(g => thirds.push({team:rk[g][2],...st[g][rk[g][2]],group:g}));
+      thirds.sort((a,b) => b.Pts-a.Pts || b.GD-a.GD || b.GF-a.GF);
+      const bt = thirds.slice(0,8).map(t=>t.team);
+      const q = [];
+      GROUPS.forEach(g => { q.push(rk[g][0], rk[g][1]); });
+      // Shuffle bracket positions for each simulation
+      const seeded = shuffle(q);
+      bt.forEach(t => seeded.push(t));
+      const qShuffled = shuffle(seeded);
+      function rr(teams) {
+        const w = [];
+        for(let j=0;j<teams.length;j+=2) {
+          // Check for actual result first
+          const actual = getActualResult(teams[j], teams[j+1], '');
+          if(actual) {
+            w.push(actual.score1 > actual.score2 ? teams[j] : teams[j+1]);
+          } else {
+            const [ga,gb] = simKO(teams[j],teams[j+1]);
+            w.push(ga>gb?teams[j]:teams[j+1]);
+          }
+        }
+        return w;
+      }
+      qShuffled.forEach(t => { r16[t]=(r16[t]||0)+1; });
+      const w1=rr(qShuffled); w1.forEach(t => { quarter[t]=(quarter[t]||0)+1; });
+      const w2=rr(w1); w2.forEach(t => { semi[t]=(semi[t]||0)+1; });
+      const w3=rr(w2); w3.forEach(t => { finalist[t]=(finalist[t]||0)+1; });
+      const w4=rr(w3); champ[w4[0]]=(champ[w4[0]]||0)+1;
+    }
+    mcResults = {champ,finalist,semi,quarter,r16,N};
+    renderProbabilities();
+    btn.textContent = 'Monte Carlo (10000x)'; btn.disabled = false;
+  }, 50);
+}
+
+function renderProbabilities() {
+  try {
+  if(!mcResults) {
+    document.getElementById('section-probabilities').innerHTML = '<div style="text-align:center;padding:4rem;color:var(--text3)">Click "Monte Carlo (10000x)" to generate probability analysis</div>';
+    return;
+  }
+  const {champ,finalist,semi,quarter,r16,N} = mcResults;
+  const teams = Object.keys(TEAMS).sort((a,b) => (champ[b]||0)-(champ[a]||0));
+  let h = `<div class="stats-row">`;
+  h += `<div class="stat-pill"><div class="stat-num">${N.toLocaleString()}</div><div class="stat-lbl">Simulations</div></div>`;
+  h += `<div class="stat-pill"><div class="stat-num">${Object.keys(champ).length}</div><div class="stat-lbl">Unique Champions</div></div>`;
+  h += `<div class="stat-pill"><div class="stat-num">${fl(teams[0])}</div><div class="stat-lbl">Top Favorite</div></div>`;
+  h += `<div class="stat-pill"><div class="stat-num">${((champ[teams[0]]||0)/N*100).toFixed(1)}%</div><div class="stat-lbl">Win Rate</div></div>`;
+  h += `</div>`;
+  h += '<div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>Quarter</th><th>R16</th></tr>';
+  teams.forEach(t => {
+    const cp=(champ[t]||0)/N*100, fp=(finalist[t]||0)/N*100, sp=(semi[t]||0)/N*100, qp=(quarter[t]||0)/N*100, rp=(r16[t]||0)/N*100;
+    if(cp<0.05 && fp<0.3) return;
+    const baseElo = TEAMS[t][0];
+    const dynElo = dynamicElo[t] || baseElo;
+    const eloDelta = dynElo - baseElo;
+    const deltaColor = eloDelta > 0 ? 'var(--green)' : eloDelta < 0 ? 'var(--red)' : 'var(--text3)';
+    const deltaStr = eloDelta > 0 ? `+${eloDelta}` : eloDelta < 0 ? `${eloDelta}` : '-';
+    const odds = TEAMS[t][6];
+    const oddsProb = oddsToProb(odds);
+    h += `<tr><td>${fl(t)}</td>`;
+    h += `<td style="color:var(--blue);font-weight:700">${dynElo}</td>`;
+    h += `<td style="color:${deltaColor};font-size:0.7rem">${deltaStr}</td>`;
+    h += `<td style="color:var(--orange);font-size:0.7rem">${(oddsProb*100).toFixed(1)}%</td>`;
+    h += `<td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td>`;
+    h += `<td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td>`;
+    h += `<td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
+  });
+  h += '</table></div>';
+  h += `<div style="margin-top:1rem;font-size:0.72rem;color:var(--text3);line-height:1.6">
+    <strong>Model Components:</strong> Elo + FIFA + Market Value + Form + Experience + Bookmaker Odds + Dynamic Elo (auto-calibrated)<br>
+    <strong>Dynamic Elo:</strong> Updated after each match using standard Elo formula (K=60, World Cup weight)<br>
+    <strong>Form:</strong> Exponential decay (λ=0.05), recent matches weighted more heavily<br>
+    <strong>Odds%:</strong> Implied probability from DraftKings American odds</div>`;
+  document.getElementById('section-probabilities').innerHTML = h;
+  } catch(e) {
+    document.getElementById('section-probabilities').innerHTML = '<div class="data-card"><h4>⚠️ Error Loading Probabilities</h4><p style="color:var(--red)">' + e.message + '</p></div>';
+  }
+}
+
+// ── Model Analysis ───────────────────────────────────────────
+function renderModel() {
+  try {
+  // Use calibrated weights if available
+  const state = loadState();
+  const w = state.calibratedWeights || {
+    elo: BASE_W_ELO, fifa: BASE_W_FIFA, mv: BASE_W_MV,
+    form: BASE_W_FORM, xp: BASE_W_XP, odds: BASE_W_ODDS, dynamic: BASE_W_DYNAMIC
+  };
+  const isCalibrated = !!state.calibratedWeights;
+  
+  let h = '<div class="model-overview">';
+  h += `<div class="model-card"><h4>Dynamic Composite Rating Weights${isCalibrated ? ' <span style="color:var(--green);font-size:0.7rem">(Auto-Calibrated)</span>' : ''}</h4>`;
+  h += `<div class="factor"><span class="label">Dynamic Elo (K=60)</span><span class="weight">${(w.elo*100).toFixed(1)}%</span></div>`;
+  h += `<div class="factor"><span class="label">FIFA Ranking</span><span class="weight">${(w.fifa*100).toFixed(1)}%</span></div>`;
+  h += `<div class="factor"><span class="label">Market Value</span><span class="weight">${(w.mv*100).toFixed(1)}%</span></div>`;
+  h += `<div class="factor"><span class="label">Bookmaker Odds</span><span class="weight">${(w.odds*100).toFixed(1)}%</span></div>`;
+  h += `<div class="factor"><span class="label">Form Momentum</span><span class="weight">${(w.form*100).toFixed(1)}%</span></div>`;
+  h += `<div class="factor"><span class="label">WC Experience</span><span class="weight">${(w.xp*100).toFixed(1)}%</span></div>`;
+  h += `<div class="factor"><span class="label">Elo Change Δ</span><span class="weight">${(w.dynamic*100).toFixed(1)}%</span></div>`;
+  h += `</div>`;
+  h += `<div class="model-card"><h4>Dynamic Factors</h4>`;
+  h += `<div class="factor"><span class="label">Elo Update</span><span class="weight">K=60 (World Cup)</span></div>`;
+  h += `<div class="factor"><span class="label">Goal Index</span><span class="weight">G = (11+N)/8 for N≥3</span></div>`;
+  h += `<div class="factor"><span class="label">Form Decay</span><span class="weight">exp(-0.05 * days)</span></div>`;
+  h += `<div class="factor"><span class="label">Host Nation Bonus</span><span class="weight">+15% (MEX/USA) / +10% (CAN)</span></div>`;
+  h += `<div class="factor"><span class="label">Goal Model</span><span class="weight">Attack/Defense Split</span></div>`;
+  h += `<div class="factor"><span class="label">Distribution</span><span class="weight">Poisson λ</span></div>`;
+  h += `<div class="factor"><span class="label">Extra Time</span><span class="weight">55% base λ</span></div>`;
+  h += `<div class="factor"><span class="label">Penalties</span><span class="weight">Composite ratio</span></div>`;
+  h += `</div>`;
+  h += `<div class="model-card"><h4>Data Sources</h4>`;
+  h += `<div class="factor"><span class="label">Elo Ratings</span><span class="weight">eloratings.net (dynamic)</span></div>`;
+  h += `<div class="factor"><span class="label">FIFA Rankings</span><span class="weight">FIFA.com Jun 2026</span></div>`;
+  h += `<div class="factor"><span class="label">Market Values</span><span class="weight">Transfermarkt</span></div>`;
+  h += `<div class="factor"><span class="label">Bookmaker Odds</span><span class="weight">DraftKings Jun 10</span></div>`;
+  h += `<div class="factor"><span class="label">WC History</span><span class="weight">FIFA archives</span></div>`;
+  h += `</div>`;
+  h += `</div>`;
+
+  const allTeams = Object.keys(TEAMS).sort((a,b) => composite(b) - composite(a));
+  const stats = getCalibrationStats();
+  h += `<div class="team-breakdown"><h3>Team Strength Breakdown (Top 20)${stats ? ` — Accuracy: ${(stats.accuracy*100).toFixed(0)}%` : ''}</h3><div class="breakdown-grid">`;
+  allTeams.slice(0,20).forEach(t => {
+    const [elo,fifa,mv,wcApps,form,host,odds] = TEAMS[t];
+    const dynElo = dynamicElo[t] || elo;
+    const eloDelta = dynElo - elo;
+    const c = composite(t);
+    const eloPct = Math.max(0, (dynElo-1400)/800*100);
+    const fifaPct = Math.max(0, (fifa-900)/1000*100);
+    const mvPct = Math.min(mv/1000,1)*100;
+    const oddsProb = oddsToProb(odds);
+    const oddsPct = Math.min(oddsProb/0.22,1)*100;
+    const atkPct = Math.max(0, attackRating(t)*100);
+    const defPct = Math.max(0, defenseRating(t)*100);
+    const deltaColor = eloDelta > 0 ? 'var(--green)' : eloDelta < 0 ? 'var(--red)' : 'var(--text3)';
+    const deltaStr = eloDelta > 0 ? `+${eloDelta}` : eloDelta < 0 ? `${eloDelta}` : '0';
+    h += `<div class="breakdown-item">`;
+    h += `<div class="breakdown-header">${fl(t)}<span class="composite-score">${(c*100).toFixed(0)}</span></div>`;
+    h += `<div class="breakdown-bars">`;
+    h += `<div class="bar-row"><span class="bar-label" style="color:var(--blue)">Elo ${dynElo}</span><div class="bar-track"><div class="bar-fill elo" style="width:${eloPct}%"></div></div><span style="color:${deltaColor};font-size:0.6rem;margin-left:4px">${deltaStr}</span></div>`;
+    h += `<div class="bar-row"><span class="bar-label">FIFA ${fifa}</span><div class="bar-track"><div class="bar-fill fifa" style="width:${fifaPct}%"></div></div></div>`;
+    h += `<div class="bar-row"><span class="bar-label">Value €${mv}m</span><div class="bar-track"><div class="bar-fill mv" style="width:${mvPct}%"></div></div></div>`;
+    h += `<div class="bar-row"><span class="bar-label">Odds +${odds}</span><div class="bar-track"><div class="bar-fill odds" style="width:${oddsPct}%"></div></div></div>`;
+    h += `<div class="bar-row"><span class="bar-label">Attack</span><div class="bar-track"><div class="bar-fill atk" style="width:${atkPct}%"></div></div></div>`;
+    h += `<div class="bar-row"><span class="bar-label">Defense</span><div class="bar-track"><div class="bar-fill def" style="width:${defPct}%"></div></div></div>`;
+    if(host>0) h += `<div class="bar-row"><span class="bar-label" style="color:var(--green)">Host +${(host*100).toFixed(0)}%</span></div>`;
+    h += `</div></div>`;
+  });
+  h += '</div></div>';
+
+  document.getElementById('section-model').innerHTML = h;
+  } catch(e) {
+    document.getElementById('section-model').innerHTML = '<div class="data-card"><h4>⚠️ Error Loading Model</h4><p style="color:var(--red)">' + e.message + '</p></div>';
+  }
+}
+
+function showSection(id, btn) {
+  try {
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.segment button').forEach(b=>b.classList.remove('active'));
+    document.getElementById('section-'+id).classList.add('active');
+    if(btn) btn.classList.add('active');
+    if(id==='probabilities' && !mcResults) renderProbabilities();
+    if(id==='model') renderModel();
+    if(id==='data') renderData();
+    if(id==='radar') renderRadar();
+  } catch(e) {
+    console.error('showSection error:', e);
+  }
+}
+
+// ── Data Persistence ─────────────────────────────────────────
+const STORAGE_KEY = 'wc2026_data';
+
+function loadState() {
+  try {
+    if(typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) {
+        const state = JSON.parse(raw);
+        // Ensure all required fields exist
+        if(!state.actualResults) state.actualResults = [];
+        if(!state.customOdds) state.customOdds = {};
+        if(!state.weightHistory) state.weightHistory = [];
+        if(!state.apiKeys) state.apiKeys = {};
+        if(!state.fetchLog) state.fetchLog = [];
+        return state;
+      }
+    }
+  } catch(e) {}
+  return { customOdds:{}, actualResults:[], weightHistory:[], lastUpdate:null, apiKeys:{}, autoRefresh:false, fetchLog:[] };
+}
+
+function saveState(state) {
+  try { if(typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+// ── Deduplicate actual results (fix timezone date mismatches) ──
+function deduplicateResults() {
+  const state = loadState();
+  if (!state.actualResults || state.actualResults.length <= 1) return;
+  
+  const seen = new Map(); // team1|team2 -> index of first occurrence
+  const keep = [];
+  
+  for (const r of state.actualResults) {
+    const key = `${r.team1}|${r.team2}`;
+    if (!seen.has(key)) {
+      seen.set(key, keep.length);
+      keep.push(r);
+    }
+    // If duplicate exists, keep the one with the earlier date (likely more accurate)
+  }
+  
+  if (keep.length < state.actualResults.length) {
+    state.actualResults = keep;
+    saveState(state);
+    console.log(`Deduplicated results: ${state.actualResults.length} -> ${keep.length}`);
+  }
+}
+
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+// ── API Configuration ────────────────────────────────────────
+function saveApiKey(service, key) {
+  const state = loadState();
+  state.apiKeys[service] = key;
+  saveState(state);
+  showToast(`${service} API key saved`);
+}
+
+function getApiKey(service) {
+  return loadState().apiKeys[service] || '';
+}
+
+// ── Auto-fetch Odds (The-Odds-API) ──────────────────────────
+// Free tier: 500 req/month, supports browser CORS
+// Sign up: https://the-odds-api.com/
+async function fetchOdds() {
+  const apiKey = getApiKey('oddsapi');
+  if(!apiKey) {
+    showToast('Please set The-Odds-API key first');
+    return false;
+  }
+  
+  const statusEl = document.getElementById('fetch-status');
+  if(statusEl) statusEl.textContent = 'Fetching odds...';
+  
+  try {
+    const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?apiKey=${apiKey}&regions=us&markets=outrights&oddsFormat=american`;
+    const res = await fetch(url);
+    
+    if(!res.ok) {
+      const errText = await res.text();
+      if(statusEl) statusEl.textContent = `Error: ${res.status}`;
+      showToast(`Odds API error: ${res.status}`);
+      logFetch('odds', false, `HTTP ${res.status}: ${errText.substring(0,100)}`);
+      return false;
+    }
+    
+    const data = await res.json();
+    
+    // Check remaining requests
+    const remaining = res.headers.get('x-requests-remaining');
+    const used = res.headers.get('x-requests-used');
+    if(remaining !== null) {
+      logFetch('odds', true, `Remaining: ${remaining}, Used: ${used}`);
+    }
+    
+    // Parse odds data (outrights market)
+    const oddsMap = {};
+    if(Array.isArray(data) && data.length > 0) {
+      for(const event of data) {
+        for(const bookmaker of event.bookmakers || []) {
+          for(const market of bookmaker.markets || []) {
+            if(market.key === 'outrights' || market.key === 'h2h') {
+              for(const outcome of market.outcomes || []) {
+                const teamName = mapTeamName(outcome.name);
+                if(teamName && TEAMS[teamName]) {
+                  oddsMap[teamName] = outcome.price;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // If no odds found, log the response for debugging
+    if(Object.keys(oddsMap).length === 0) {
+      console.log('Odds API response:', data);
+      logFetch('odds', false, 'No odds found in response');
+    }
+    
+    if(Object.keys(oddsMap).length > 0) {
+      applyOddsMap(oddsMap);
+      showToast(`Fetched ${Object.keys(oddsMap).length} team odds from ${data[0]?.bookmakers?.[0]?.title || 'API'}`);
+      if(statusEl) statusEl.textContent = `Updated ${Object.keys(oddsMap).length} odds · ${new Date().toLocaleTimeString()}`;
+      return true;
+    } else {
+      if(statusEl) statusEl.textContent = 'No World Cup winner odds available';
+      showToast('No odds data found for World Cup winner market');
+      logFetch('odds', false, 'No data in response');
+      return false;
+    }
+  } catch(e) {
+    if(statusEl) statusEl.textContent = `Error: ${e.message}`;
+    showToast(`Fetch error: ${e.message}`);
+    logFetch('odds', false, e.message);
+    return false;
+  }
+}
+
+function mapTeamName(apiName) {
+  const nameMap = {
+    'Spain': 'Spain', 'France': 'France', 'Brazil': 'Brazil', 'Argentina': 'Argentina',
+    'England': 'England', 'Germany': 'Germany', 'Portugal': 'Portugal', 'Netherlands': 'Netherlands',
+    'Belgium': 'Belgium', 'Colombia': 'Colombia', 'Uruguay': 'Uruguay', 'Croatia': 'Croatia',
+    'Japan': 'Japan', 'Morocco': 'Morocco', 'Mexico': 'Mexico', 'USA': 'United States',
+    'United States': 'United States', 'USMNT': 'United States', 'Senegal': 'Senegal',
+    'Ecuador': 'Ecuador', 'Switzerland': 'Switzerland', 'Turkey': 'Turkey', 'Türkiye': 'Turkey',
+    'South Korea': 'South Korea', 'Korea Republic': 'South Korea', 'Korea': 'South Korea',
+    'Australia': 'Australia', 'Norway': 'Norway', 'Austria': 'Austria', 'Egypt': 'Egypt',
+    'Iran': 'Iran', 'Scotland': 'Scotland', 'Canada': 'Canada', 'Ghana': 'Ghana',
+    'Tunisia': 'Tunisia', 'Paraguay': 'Paraguay', 'Saudi Arabia': 'Saudi Arabia',
+    'Czech Republic': 'Czech Republic', 'Czechia': 'Czech Republic', 'Czech Rep.': 'Czech Republic',
+    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina', 'Bosnia Herzegovina': 'Bosnia Herzegovina',
+    'Bosnia-Herzegovina': 'Bosnia Herzegovina',
+    'Ivory Coast': 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast', "Côte d'Ivoire": 'Ivory Coast',
+    'Qatar': 'Qatar', 'Panama': 'Panama', 'Algeria': 'Algeria', 'Jordan': 'Jordan',
+    'Iraq': 'Iraq', 'Uzbekistan': 'Uzbekistan', 'DR Congo': 'DR Congo', 'Congo DR': 'DR Congo',
+    'DR Congo': 'DR Congo', 'Cape Verde': 'Cape Verde', 'Haiti': 'Haiti',
+    'New Zealand': 'New Zealand', 'South Africa': 'South Africa',
+    'Curacao': 'Curaçao', 'Curaçao': 'Curaçao',
+  };
+  return nameMap[apiName] || nameMap[apiName?.trim()] || null;
+}
+
+function applyOddsMap(oddsMap) {
+  const state = loadState();
+  for(const [team, odds] of Object.entries(oddsMap)) {
+    if(TEAMS[team] && typeof odds === 'number') {
+      TEAMS[team][6] = odds;
+      state.customOdds[team] = odds;
+    }
+  }
+  state.lastUpdate = new Date().toISOString();
+  saveState(state);
+}
+
+// ── Auto-fetch Results (Football-Data.org) ───────────────────
+// Free tier: 10 req/min, CORS supported with API key
+// Sign up: https://www.football-data.org/client/register
+async function fetchResults() {
+  const apiKey = getApiKey('football-data');
+  const statusEl = document.getElementById('fetch-status');
+  if(statusEl) statusEl.textContent = 'Fetching results...';
+  
+  if(!apiKey) {
+    if(statusEl) statusEl.textContent = 'Need API key (free at football-data.org)';
+    showToast('Set Football-Data.org API key (free) to auto-fetch results');
+    logFetch('results', false, 'No API key configured');
+    return false;
+  }
+  
+  try {
+    let data = null;
+    const apiUrl = `https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED`;
+    
+    // Try direct fetch with API key first
+    try {
+      const res = await fetch(apiUrl, {
+        headers: { 'X-Auth-Token': apiKey }
+      });
+      if(res.ok) {
+        data = await res.json();
+      } else {
+        const errText = await res.text();
+        logFetch('results', false, `HTTP ${res.status}: ${errText.substring(0,100)}`);
+      }
+    } catch(e) {
+      logFetch('results', false, `Direct fetch failed: ${e.message}`);
+    }
+    
+    // Fallback: try via CORS proxy that supports headers
+    if(!data) {
+      try {
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
+        const res2 = await fetch(proxyUrl, {
+          headers: { 'X-Auth-Token': apiKey }
+        });
+        if(res2.ok) {
+          data = await res2.json();
+          logFetch('results', true, 'Used CORS proxy');
+        }
+      } catch(e) {
+        logFetch('results', false, `CORS proxy failed: ${e.message}`);
+      }
+    }
+    
+    // Fallback 2: try another CORS proxy
+    if(!data) {
+      try {
+        const proxyUrl2 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`;
+        const res3 = await fetch(proxyUrl2, {
+          headers: { 'X-Auth-Token': apiKey }
+        });
+        if(res3.ok) {
+          data = await res3.json();
+          logFetch('results', true, 'Used CORS proxy 2');
+        }
+      } catch(e) {
+        logFetch('results', false, `CORS proxy 2 failed: ${e.message}`);
+      }
+    }
+    
+    // Fallback 3: try free World Cup JSON API (no auth required)
+    if(!data) {
+      try {
+        const wcApiUrl = 'https://worldcupjson.net/matches?status=completed';
+        const res4 = await fetch(wcApiUrl);
+        if(res4.ok) {
+          data = await res4.json();
+          logFetch('results', true, 'Used World Cup JSON API');
+        }
+      } catch(e) {
+        logFetch('results', false, `World Cup JSON API failed: ${e.message}`);
+      }
+    }
+    
+    if(!data) {
+      if(statusEl) statusEl.textContent = 'API request failed - try using local server';
+      showToast('All APIs blocked. Try: python -m http.server 8000');
+      return false;
+    }
+    
+    // Handle different API response formats
+    let matches = [];
+    let source = 'football-data.org';
+    
+    if(Array.isArray(data)) {
+      // worldcupjson.net format: array of matches
+      matches = data;
+      source = 'worldcupjson.net';
+    } else if(data.matches) {
+      // football-data.org format: {matches: [...]}
+      matches = data.matches;
+    }
+    
+    const state = loadState();
+    if(!state.actualResults) state.actualResults = [];
+    // Dedup by team names only (ignore date to handle timezone mismatches)
+    const existingKeys = new Set(state.actualResults.map(r => `${r.team1}|${r.team2}`));
+    let newCount = 0;
+    
+    for(const match of matches) {
+      // Handle different score formats
+      let score1, score2, team1, team2, matchDate;
+      
+      if(match.score) {
+        // football-data.org format
+        score1 = match.score.fullTime?.home;
+        score2 = match.score.fullTime?.away;
+        team1 = mapTeamName(match.homeTeam?.name);
+        team2 = mapTeamName(match.awayTeam?.name);
+        matchDate = match.utcDate?.substring(0,10) || '';
+      } else if(match.home_team && match.away_team) {
+        // worldcupjson.net format
+        score1 = match.home_team.goals;
+        score2 = match.away_team.goals;
+        team1 = mapTeamName(match.home_team.name);
+        team2 = mapTeamName(match.away_team.name);
+        matchDate = match.datetime?.substring(0,10) || '';
+      }
+      
+      if(score1 === undefined || score2 === undefined) continue;
+      if(!team1 || !team2 || !TEAMS[team1] || !TEAMS[team2]) continue;
+      
+      // Dedup by team names only (ignore date to handle timezone mismatches)
+      const key = `${team1}|${team2}`;
+      if(existingKeys.has(key)) continue;
+      
+      const pred = goalExpect(team1, team2);
+      const predResult = pred[0] > pred[1] ? team1 : (pred[1] > pred[0] ? team2 : 'draw');
+      const actualResult = score1 > score2 ? team1 : (score2 > score1 ? team2 : 'draw');
+      
+      state.actualResults.push({
+        team1, team2, score1, score2,
+        date: matchDate ? `${matchDate}T00:00:00Z` : new Date().toISOString(),
+        predicted: predResult, actual: actualResult,
+        correct: predResult === actualResult,
+        predGoals: [pred[0].toFixed(2), pred[1].toFixed(2)],
+        source: source
+      });
+      newCount++;
+      existingKeys.add(key);
+    }
+    
+    if(newCount > 0) {
+      state.lastUpdate = new Date().toISOString();
+      saveState(state);
+      calibrateModel();
+      // Re-run simulation to reflect new actual results
+      mcResults = null;
+      runSimulation();
+      showToast(`Fetched ${newCount} new match results`);
+      if(statusEl) statusEl.textContent = `+${newCount} results · ${new Date().toLocaleTimeString()}`;
+      logFetch('results', true, `${newCount} new, ${matches.length} total finished`);
+    } else {
+      showToast('No new results found');
+      if(statusEl) statusEl.textContent = `No new results · ${new Date().toLocaleTimeString()}`;
+      logFetch('results', true, `0 new, ${matches.length} finished`);
+    }
+    return true;
+  } catch(e) {
+    if(statusEl) statusEl.textContent = `Error: ${e.message}`;
+    showToast(`Results fetch error: ${e.message}`);
+    logFetch('results', false, e.message);
+    return false;
+  }
+}
+
+// ── Fetch Log ────────────────────────────────────────────────
+function logFetch(type, success, detail) {
+  const state = loadState();
+  if(!state.fetchLog) state.fetchLog = [];
+  state.fetchLog.unshift({
+    time: new Date().toISOString(),
+    type, success, detail
+  });
+  if(state.fetchLog.length > 50) state.fetchLog = state.fetchLog.slice(0, 50);
+  saveState(state);
+}
+
+// ── Odds Update ──────────────────────────────────────────────
+function applyCustomOdds() {
+  const state = loadState();
+  const textarea = document.getElementById('odds-json');
+  if(!textarea) return;
+  try {
+    const data = JSON.parse(textarea.value);
+    let count = 0;
+    for(const [team, odds] of Object.entries(data)) {
+      if(TEAMS[team] && typeof odds === 'number' && odds > 0) {
+        state.customOdds[team] = odds;
+        TEAMS[team][6] = odds;
+        count++;
+      }
+    }
+    state.lastUpdate = new Date().toISOString();
+    saveState(state);
+    showToast(`Updated ${count} team odds`);
+    runSimulation();
+    mcResults = null;
+  } catch(e) {
+    showToast('Invalid JSON format');
+  }
+}
+
+function resetOdds() {
+  const state = loadState();
+  state.customOdds = {};
+  saveState(state);
+  showToast('Odds reset to defaults — reload page');
+}
+
+function exportOddsJSON() {
+  const odds = {};
+  Object.keys(TEAMS).forEach(t => { odds[t] = TEAMS[t][6]; });
+  const textarea = document.getElementById('odds-json');
+  if(textarea) textarea.value = JSON.stringify(odds, null, 1);
+  showToast('Odds exported to text area');
+}
+
+// ── Match Results ────────────────────────────────────────────
+function addResult() {
+  const state = loadState();
+  const team1 = document.getElementById('res-team1').value;
+  const team2 = document.getElementById('res-team2').value;
+  const score1 = parseInt(document.getElementById('res-score1').value);
+  const score2 = parseInt(document.getElementById('res-score2').value);
+  if(!team1 || !team2 || isNaN(score1) || isNaN(score2) || team1 === team2) {
+    showToast('Invalid input');
+    return;
+  }
+  const entry = { team1, team2, score1, score2, date: new Date().toISOString(), source:'manual' };
+  const pred = goalExpect(team1, team2);
+  const predResult = pred[0] > pred[1] ? team1 : (pred[1] > pred[0] ? team2 : 'draw');
+  const actualResult = score1 > score2 ? team1 : (score2 > score1 ? team2 : 'draw');
+  entry.predicted = predResult;
+  entry.actual = actualResult;
+  entry.correct = predResult === actualResult;
+  entry.predGoals = [pred[0].toFixed(2), pred[1].toFixed(2)];
+  state.actualResults.push(entry);
+  state.lastUpdate = new Date().toISOString();
+  saveState(state);
+  calibrateModel();
+  showToast(`Result recorded: ${team1} ${score1}-${score2} ${team2}`);
+  renderData();
+}
+
+function clearResults() {
+  const state = loadState();
+  state.actualResults = [];
+  state.weightHistory = [];
+  saveState(state);
+  showToast('All results cleared');
+  renderData();
+}
+
+function importResults() {
+  const state = loadState();
+  const textarea = document.getElementById('results-json');
+  if(!textarea) return;
+  try {
+    const data = JSON.parse(textarea.value);
+    if(!Array.isArray(data)) throw new Error('Expected array');
+    let count = 0;
+    for(const r of data) {
+      if(r.team1 && r.team2 && typeof r.score1 === 'number' && typeof r.score2 === 'number') {
+        const pred = goalExpect(r.team1, r.team2);
+        const predResult = pred[0] > pred[1] ? r.team1 : (pred[1] > pred[0] ? r.team2 : 'draw');
+        const actualResult = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
+        state.actualResults.push({
+          ...r, date: r.date || new Date().toISOString(),
+          predicted: predResult, actual: actualResult,
+          correct: predResult === actualResult,
+          predGoals: [pred[0].toFixed(2), pred[1].toFixed(2)],
+          source: 'import'
+        });
+        count++;
+      }
+    }
+    state.lastUpdate = new Date().toISOString();
+    saveState(state);
+    calibrateModel();
+    showToast(`Imported ${count} results`);
+    renderData();
+  } catch(e) {
+    showToast('Invalid JSON: expected [{team1,team2,score1,score2}]');
+  }
+}
+
+// ── Calibration ──────────────────────────────────────────────
+function calibrateModel() {
+  const state = loadState();
+  const results = state.actualResults || [];
+  if(results.length < 5) return; // Need enough data to calibrate
+  
+  let correct = 0, total = results.length;
+  let brierSum = 0;
+  results.forEach(r => {
+    if(r.correct) correct++;
+    const predProb = composite(r.predicted === r.team1 ? r.team1 : r.team2);
+    const actual = r.correct ? 1 : 0;
+    brierSum += Math.pow(predProb - actual, 2);
+  });
+  const accuracy = correct / total;
+  const brier = brierSum / total;
+  
+  // Record current state
+  const state2 = loadState();
+  state2.weightHistory.push({
+    date: new Date().toISOString(), accuracy, brier, total,
+    weights: { elo: BASE_W_ELO, fifa: BASE_W_FIFA, mv: BASE_W_MV, form: BASE_W_FORM, xp: BASE_W_XP, odds: BASE_W_ODDS, dynamic: BASE_W_DYNAMIC }
+  });
+  saveState(state2);
+  
+  // ── Adaptive Weight Adjustment ──────────────────────────────
+  // If accuracy is low, boost form/dynamic weights (more reactive to recent results)
+  // If accuracy is high, keep current weights
+  // Brier score < 0.25 = good, > 0.30 = needs adjustment
+  
+  if(results.length >= 10) {
+    const ADJUST_RATE = 0.02; // Max adjustment per calibration cycle
+    
+    if(brier > 0.28) {
+      // Model is underperforming — boost dynamic factors
+      const boost = Math.min(ADJUST_RATE, (brier - 0.25) * 0.1);
+      const newForm = Math.min(0.20, BASE_W_FORM + boost);
+      const newDynamic = Math.min(0.20, BASE_W_DYNAMIC + boost);
+      const totalOther = BASE_W_ELO + BASE_W_FIFA + BASE_W_MV + BASE_W_XP + BASE_W_ODDS;
+      const scale = (1 - newForm - newDynamic) / totalOther;
+      
+      // Apply scaled weights (don't mutate globals, just record for next run)
+      state2.calibratedWeights = {
+        elo: BASE_W_ELO * scale,
+        fifa: BASE_W_FIFA * scale,
+        mv: BASE_W_MV * scale,
+        form: newForm,
+        xp: BASE_W_XP * scale,
+        odds: BASE_W_ODDS * scale,
+        dynamic: newDynamic
+      };
+      saveState(state2);
+    } else if(brier < 0.20 && accuracy > 0.65) {
+      // Model is doing well — slightly boost base factors
+      const boost = Math.min(ADJUST_RATE * 0.5, 0.01);
+      const newElo = Math.min(0.35, BASE_W_ELO + boost);
+      const newOdds = Math.min(0.30, BASE_W_ODDS + boost * 0.5);
+      const totalOther = BASE_W_FIFA + BASE_W_MV + BASE_W_FORM + BASE_W_XP + BASE_W_DYNAMIC;
+      const scale = (1 - newElo - newOdds) / totalOther;
+      
+      state2.calibratedWeights = {
+        elo: newElo,
+        fifa: BASE_W_FIFA * scale,
+        mv: BASE_W_MV * scale,
+        form: BASE_W_FORM * scale,
+        xp: BASE_W_XP * scale,
+        odds: newOdds,
+        dynamic: BASE_W_DYNAMIC * scale
+      };
+      saveState(state2);
+    }
+  }
+}
+
+function getCalibrationStats() {
+  const state = loadState();
+  const results = state.actualResults || [];
+  if(results.length === 0) return null;
+  let correct = 0, total = results.length;
+  let brierSum = 0, logLossSum = 0;
+  results.forEach(r => {
+    if(r.correct) correct++;
+    const predTeam = r.predicted === r.team1 ? r.team1 : r.team2;
+    const p = Math.max(0.01, Math.min(0.99, composite(predTeam)));
+    const actual = r.correct ? 1 : 0;
+    brierSum += Math.pow(p - actual, 2);
+    logLossSum -= (actual * Math.log(p) + (1-actual) * Math.log(1-p));
+  });
+  return { total, correct, accuracy: correct/total, brier: brierSum/total, logLoss: logLossSum/total };
+}
+
+// ── Refresh (all-in-one) ─────────────────────────────────────
+async function refreshData() {
+  const btn = document.querySelector('[onclick="refreshData()"]');
+  if(btn) { btn.textContent = '⟳ Fetching...'; btn.disabled = true; }
+  
+  const state = loadState();
+  let resultsOk = false, oddsOk = false;
+  
+  // Fetch results
+  try { resultsOk = await fetchResults(); } catch(e) {}
+  
+  // Fetch odds (if key configured)
+  if(getApiKey('oddsapi')) {
+    try { oddsOk = await fetchOdds(); } catch(e) {}
+  }
+  
+  // Apply any remaining custom odds
+  for(const [team, odds] of Object.entries(state.customOdds)) {
+    if(TEAMS[team]) TEAMS[team][6] = odds;
+  }
+  
+  calibrateModel();
+  mcResults = null;
+  runSimulation();
+  // Also re-run Monte Carlo if it was previously run
+  if(document.getElementById('section-probabilities')?.querySelector('.prob-table')) {
+    runMonteCarlo();
+  }
+  
+  const state2 = loadState();
+  state2.lastUpdate = new Date().toISOString();
+  saveState(state2);
+  
+  if(btn) { btn.textContent = '⟳ Refresh'; btn.disabled = false; }
+  showToast('Data refreshed & model recalibrated');
+  if(document.getElementById('section-data').classList.contains('active')) renderData();
+}
+
+// ── Auto-refresh Timer ───────────────────────────────────────
+let autoRefreshTimer = null;
+
+function toggleAutoRefresh() {
+  const state = loadState();
+  state.autoRefresh = !state.autoRefresh;
+  saveState(state);
+  
+  if(state.autoRefresh) {
+    autoRefreshTimer = setInterval(() => refreshData(), 30 * 60 * 1000); // every 30 min
+    showToast('Auto-refresh ON (every 30 min)');
+  } else {
+    if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+    showToast('Auto-refresh OFF');
+  }
+  renderData();
+}
+
+// ── Render Data Section ──────────────────────────────────────
+function renderData() {
+  try {
+  const state = loadState();
+  const stats = getCalibrationStats();
+  const hasOddsKey = !!getApiKey('oddsapi');
+  const hasResultsKey = !!getApiKey('football-data');
+  
+  let h = '<div class="data-grid">';
+  
+  // Setup Wizard - shows when no API keys configured
+  if(!hasOddsKey && !hasResultsKey) {
+    h += `<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))">
+      <h4>🚀 Quick Setup (2 minutes)</h4>
+      <p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem;line-height:1.5">
+        To enable live data fetching, get free API keys from these services:
+      </p>
+      <div style="display:flex;flex-direction:column;gap:0.8rem">
+        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+          <span style="font-size:1.2rem">⚽</span>
+          <div style="flex:1">
+            <div style="font-size:0.8rem;font-weight:600">Football-Data.org</div>
+            <div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div>
+          </div>
+          <a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">Get Key →</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+          <span style="font-size:1.2rem">💰</span>
+          <div style="flex:1">
+            <div style="font-size:0.8rem;font-weight:600">The-Odds-API</div>
+            <div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div>
+          </div>
+          <a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">Get Key →</a>
+        </div>
+      </div>
+      <p style="font-size:0.7rem;color:var(--text3);margin-top:0.8rem">
+        After getting keys, paste them below and click Save.
+      </p>
+    </div>`;
+  }
+  
+  // Auto-Fetch Card
+  h += `<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch Data</h4>`;
+  h += `<div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem;min-height:1.2em">${state.lastUpdate ? 'Last: ' + new Date(state.lastUpdate).toLocaleString() : 'Not yet fetched'}</div>`;
+  h += `<div class="data-actions">`;
+  h += `<button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ Fetch Results</button>`;
+  h += `<button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasOddsKey?'':'disabled title="Set Odds API key first"'}>💰 Fetch Odds</button>`;
+  h += `<button class="data-btn data-btn-green" onclick="refreshData()">⟳ Fetch All</button>`;
+  h += `<button class="data-btn ${state.autoRefresh?'data-btn-danger':'data-btn-secondary'}" onclick="toggleAutoRefresh()">${state.autoRefresh?'⏹ Stop Auto':'▶ Auto 30m'}</button>`;
+  h += `</div>`;
+  h += `</div>`;
+  
+  // API Keys Card
+  h += `<div class="data-card"><h4>🔑 API Keys (Free Sign-up)</h4>`;
+  h += `<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem">`;
+  h += `<span style="font-size:0.72rem;min-width:5.5rem">Results:</span>`;
+  h += `<input type="text" id="key-football-data" value="${getApiKey('football-data')}" placeholder="Free key at football-data.org/client/register" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)">`;
+  h += `<button class="data-btn data-btn-primary" onclick="saveApiKey('football-data', document.getElementById('key-football-data').value); renderData()">Save</button>`;
+  h += `</div>`;
+  h += `<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem">`;
+  h += `<span style="font-size:0.72rem;min-width:5.5rem">Odds:</span>`;
+  h += `<input type="text" id="key-oddsapi" value="${getApiKey('oddsapi')}" placeholder="Free key at the-odds-api.com" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)">`;
+  h += `<button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi', document.getElementById('key-oddsapi').value); renderData()">Save</button>`;
+  h += `</div>`;
+  h += `<div style="font-size:0.65rem;color:var(--text3)">Both are free · Results: 10 req/min · Odds: 500 req/month</div>`;
+  h += `</div>`;
+  
+  // Calibration Card
+  h += `<div class="data-card calibration-card"><h4>📊 Model Calibration</h4>`;
+  if(stats && stats.total >= 3) {
+    const accClass = stats.accuracy >= 0.6 ? 'metric-good' : (stats.accuracy >= 0.45 ? 'metric-warn' : 'metric-bad');
+    const brierClass = stats.brier <= 0.25 ? 'metric-good' : (stats.brier <= 0.35 ? 'metric-warn' : 'metric-bad');
+    h += `<div class="calib-metric"><span class="metric-label">Prediction Accuracy</span><span class="metric-val ${accClass}">${(stats.accuracy*100).toFixed(1)}%</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">Brier Score</span><span class="metric-val ${brierClass}">${stats.brier.toFixed(4)}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">Log Loss</span><span class="metric-val">${stats.logLoss.toFixed(4)}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">Results Used</span><span class="metric-val">${stats.total}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">Correct / Total</span><span class="metric-val">${stats.correct} / ${stats.total}</span></div>`;
+  } else {
+    h += `<div style="color:var(--text3);font-size:0.8rem;text-align:center;padding:1rem">Click "Fetch Results" to auto-load match results, or enter 3+ manually</div>`;
+  }
+  h += `</div>`;
+  
+  // Dynamic Form Status
+  h += `<div class="data-card"><h4>📈 Dynamic Form Status</h4>`;
+  const formTeams = Object.keys(TEAMS).map(t => ({ team: t, form: TEAMS[t][4] })).sort((a,b) => b.form - a.form);
+  const topForm = formTeams.slice(0, 10);
+  const bottomForm = formTeams.slice(-5);
+  h += `<div style="font-size:0.75rem;margin-bottom:0.5rem"><strong>Top 10 Form:</strong></div>`;
+  topForm.forEach(t => {
+    const formColor = t.form >= 0.65 ? 'var(--green)' : t.form >= 0.45 ? 'var(--orange)' : 'var(--red)';
+    h += `<div style="display:flex;justify-content:space-between;font-size:0.72rem;padding:0.15rem 0"><span>${fl(t.team)}</span><span style="color:${formColor};font-weight:600">${(t.form*100).toFixed(0)}%</span></div>`;
+  });
+  h += `<div style="font-size:0.75rem;margin:0.5rem 0 0.3rem"><strong>Bottom 5:</strong></div>`;
+  bottomForm.forEach(t => {
+    const formColor = t.form >= 0.65 ? 'var(--green)' : t.form >= 0.45 ? 'var(--orange)' : 'var(--red)';
+    h += `<div style="display:flex;justify-content:space-between;font-size:0.72rem;padding:0.15rem 0"><span>${fl(t.team)}</span><span style="color:${formColor};font-weight:600">${(t.form*100).toFixed(0)}%</span></div>`;
+  });
+  h += `<div style="font-size:0.65rem;color:var(--text3);margin-top:0.5rem">Form calculated from last 5 actual match results (exponential decay)</div>`;
+  h += `</div>`;
+  
+  // Manual Odds Update
+  h += `<div class="data-card"><h4>💰 Manual Odds (American Format)</h4>`;
+  h += `<textarea id="odds-json" placeholder='Paste odds JSON, e.g.:\n{"Spain":450,"France":500,"England":700}'></textarea>`;
+  h += `<div class="data-actions">`;
+  h += `<button class="data-btn data-btn-primary" onclick="applyCustomOdds()">Apply</button>`;
+  h += `<button class="data-btn data-btn-secondary" onclick="exportOddsJSON()">Export</button>`;
+  h += `<button class="data-btn data-btn-danger" onclick="resetOdds()">Reset</button>`;
+  h += `</div>`;
+  h += `</div>`;
+  
+  // Manual Results Entry
+  h += `<div class="data-card"><h4>⚽ Manual Result Entry</h4>`;
+  h += `<div class="result-entry">`;
+  h += `<select id="res-team1">${Object.keys(TEAMS).map(t=>`<option value="${t}">${t}</option>`).join('')}</select>`;
+  h += `<span style="color:var(--text3)">vs</span>`;
+  h += `<select id="res-team2">${Object.keys(TEAMS).map(t=>`<option value="${t}">${t}</option>`).join('')}</select>`;
+  h += `</div>`;
+  h += `<div class="result-entry" style="margin-top:0.3rem">`;
+  h += `<input type="number" id="res-score1" min="0" max="20" placeholder="0">`;
+  h += `<span style="color:var(--text3)">-</span>`;
+  h += `<input type="number" id="res-score2" min="0" max="20" placeholder="0">`;
+  h += `</div>`;
+  h += `<div class="data-actions" style="margin-top:0.5rem">`;
+  h += `<button class="data-btn data-btn-green" onclick="addResult()">+ Add</button>`;
+  h += `<button class="data-btn data-btn-danger" onclick="clearResults()">Clear All</button>`;
+  h += `</div>`;
+  h += `</div>`;
+  
+  // Batch Import
+  h += `<div class="data-card"><h4>📥 Batch Import</h4>`;
+  h += `<textarea id="results-json" placeholder='[{"team1":"Spain","team2":"Brazil","score1":2,"score2":1}]'></textarea>`;
+  h += `<div class="data-actions">`;
+  h += `<button class="data-btn data-btn-primary" onclick="importResults()">Import</button>`;
+  h += `<button class="data-btn data-btn-secondary" onclick="exportResults()">Export</button>`;
+  h += `</div>`;
+  h += `</div>`;
+  
+  h += '</div>';
+  
+  // Results History
+  if(state.actualResults && state.actualResults.length > 0) {
+    h += `<div class="data-card"><h4>📋 Results History (${state.actualResults.length} matches)</h4>`;
+    h += `<div style="max-height:300px;overflow-y:auto">`;
+    [...state.actualResults].reverse().forEach(r => {
+      const icon = r.correct ? '✓' : '✗';
+      const cls = r.correct ? 'metric-good' : 'metric-bad';
+      const predStr = r.predGoals ? ` (pred: ${r.predGoals[0]}-${r.predGoals[1]})` : '';
+      const src = r.source ? ` [${r.source}]` : '';
+      h += `<div class="log-entry"><span class="log-result ${cls}">${icon}</span> ${fl(r.team1)} ${r.score1} - ${r.score2} ${fl(r.team2)} <span style="color:var(--text3)">${predStr}${src}</span></div>`;
+    });
+    h += '</div></div>';
+  }
+  
+  // Fetch Log
+  if(state.fetchLog && state.fetchLog.length > 0) {
+    h += `<div class="data-card"><h4>📡 Fetch Log (last 20)</h4>`;
+    h += `<div style="max-height:200px;overflow-y:auto">`;
+    state.fetchLog.slice(0,20).forEach(l => {
+      const icon = l.success ? '✓' : '✗';
+      const cls = l.success ? 'metric-good' : 'metric-bad';
+      const t = new Date(l.time).toLocaleTimeString();
+      h += `<div class="log-entry"><span class="log-result ${cls}">${icon}</span> <span class="log-time">${t}</span> ${l.type}: ${l.detail}</div>`;
+    });
+    h += '</div></div>';
+  }
+  
+  // Quick Odds Editor
+  h += `<div class="data-card"><h4>🔧 Quick Odds Editor</h4>`;
+  h += `<div class="odds-input-grid">`;
+  Object.keys(TEAMS).sort((a,b) => TEAMS[a][6] - TEAMS[b][6]).forEach(t => {
+    h += `<span>${fl(t)}</span><input type="number" value="${TEAMS[t][6]}" min="100" step="50" onchange="quickOddsUpdate('${t}', this.value)">`;
+  });
+  h += `</div></div>`;
+  
+  document.getElementById('section-data').innerHTML = h;
+  } catch(e) {
+    document.getElementById('section-data').innerHTML = '<div class="data-card"><h4>⚠️ Error Loading Data</h4><p style="color:var(--red)">' + e.message + '</p><p style="color:var(--text3)">Try opening in Chrome or using a local server (e.g., python -m http.server)</p></div>';
+  }
+}
+
+function quickOddsUpdate(team, val) {
+  const odds = parseInt(val);
+  if(TEAMS[team] && odds > 0) {
+    TEAMS[team][6] = odds;
+    const state = loadState();
+    state.customOdds[team] = odds;
+    saveState(state);
+  }
+}
+
+function exportResults() {
+  const state = loadState();
+  const textarea = document.getElementById('results-json');
+  if(textarea) textarea.value = JSON.stringify(state.actualResults, null, 1);
+  showToast('Results exported');
+}
+
+// ── Polymarket Integration ───────────────────────────────────
+// Fetch real-time market probabilities from Polymarket
+let marketData = { matches: {}, champion: {}, lastFetch: null };
+
+// Map Polymarket question to team name
+function mapPolymarketTeam(question) {
+  const patterns = [
+    /Will (.+?) win the/i,
+    /Will (.+?) win/i,
+    /(.+?) to win/i,
+  ];
+  for(const pat of patterns) {
+    const m = question.match(pat);
+    if(m) return mapTeamName(m[1].trim());
+  }
+  return null;
+}
+
+async function fetchPolymarketData() {
+  const statusEl = document.getElementById('radar-status');
+  if(statusEl) statusEl.textContent = 'Fetching Polymarket data...';
+  
+  try {
+    // Step 1: Get World Cup Winner event
+    const eventRes = await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
+    if(!eventRes.ok) throw new Error(`Events API: ${eventRes.status}`);
+    const events = await eventRes.json();
+    if(!events || events.length === 0) throw new Error('No World Cup event found');
+    
+    const event = events[0];
+    const newChampion = {};
+    let fetchedCount = 0;
+    
+    // Step 2: Get prices from CLOB API for each market
+    for(const market of (event.markets || [])) {
+      try {
+        const clobRes = await fetch(`https://clob.polymarket.com/markets/${market.conditionId}`);
+        if(!clobRes.ok) continue;
+        const clobData = await clobRes.json();
+        
+        const teamName = mapPolymarketTeam(clobData.question || market.question || '');
+        if(!teamName || !TEAMS[teamName]) continue;
+        
+        // Find "Yes" token price
+        const yesToken = (clobData.tokens || []).find(t => t.outcome === 'Yes');
+        if(yesToken && yesToken.price > 0) {
+          newChampion[teamName] = yesToken.price;
+          fetchedCount++;
+        }
+      } catch(e) {
+        // Skip individual market errors
+      }
+    }
+    
+    // Step 3: Also try to get match-level data
+    const newMatches = {};
+    try {
+      const matchEvents = await fetch('https://gamma-api.polymarket.com/events?closed=false&limit=200');
+      if(matchEvents.ok) {
+        const allEvents = await matchEvents.json();
+        for(const evt of allEvents) {
+          const title = (evt.title || '').toLowerCase();
+          if(!title.includes('world cup') && !title.includes('wc2026')) continue;
+          
+          for(const market of (evt.markets || [])) {
+            const question = (market.question || '').toLowerCase();
+            // Match pattern: "Will X beat Y?" or "X vs Y"
+            const vsMatch = question.match(/(.+?)\s+vs\.?\s+(.+)/i) || 
+                           question.match(/will\s+(.+?)\s+beat\s+(.+)/i);
+            if(!vsMatch) continue;
+            
+            try {
+              const clobRes = await fetch(`https://clob.polymarket.com/markets/${market.conditionId}`);
+              if(!clobRes.ok) continue;
+              const clobData = await clobRes.json();
+              
+              const team1 = mapTeamName(vsMatch[1].trim());
+              const team2 = mapTeamName(vsMatch[2].trim());
+              if(!team1 || !team2 || !TEAMS[team1] || !TEAMS[team2]) continue;
+              
+              const tokens = clobData.tokens || [];
+              if(tokens.length >= 2) {
+                const key = `${team1}|${team2}`;
+                newMatches[key] = {
+                  home: tokens[0]?.price || 0,
+                  away: tokens[1]?.price || 0,
+                  source: 'polymarket'
+                };
+              }
+            } catch(e) {}
+          }
+        }
+      }
+    } catch(e) {}
+    
+    // De-vig champion probabilities
+    const champTotal = Object.values(newChampion).reduce((s,v) => s+v, 0);
+    if(champTotal > 0) {
+      for(const team of Object.keys(newChampion)) {
+        newChampion[team] = newChampion[team] / champTotal;
+      }
+    }
+    
+    marketData = {
+      matches: newMatches,
+      champion: newChampion,
+      lastFetch: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    const state = loadState();
+    state.marketData = marketData;
+    saveState(state);
+    
+    if(statusEl) statusEl.textContent = `Updated ${fetchedCount} champion markets, ${Object.keys(newMatches).length} matches · ${new Date().toLocaleTimeString()}`;
+    showToast(`Polymarket: ${fetchedCount} champion probabilities updated`);
+    return true;
+  } catch(e) {
+    if(statusEl) statusEl.textContent = `Error: ${e.message}`;
+    showToast(`Polymarket error: ${e.message}`);
+    return false;
+  }
+}
+
+// ── Cold Radar: Model vs Market Comparison ───────────────────
+function renderRadar() {
+  const state = loadState();
+  const savedMarket = state.marketData || marketData;
+  const hasChampion = Object.keys(savedMarket.champion || {}).length > 0;
+  const hasMatches = Object.keys(savedMarket.matches || {}).length > 0;
+  
+  let h = '';
+  
+  // Header
+  h += `<div style="margin-bottom:1.5rem">`;
+  h += `<h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem">Cold Radar — Model vs Market</h3>`;
+  h += `<p style="font-size:0.75rem;color:var(--text3);line-height:1.5">
+    Comparing our Poisson model predictions with Polymarket real-money prices.<br>
+    <strong style="color:var(--orange)">Divergence ≠ guaranteed upset</strong> — market often knows things the model doesn't (injuries, tactics, weather).
+  </p>`;
+  h += `</div>`;
+  
+  // Fetch button
+  h += `<div style="margin-bottom:1rem">`;
+  h += `<button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(() => renderRadar())">Fetch Polymarket Data</button>`;
+  h += `<span id="radar-status" style="font-size:0.72rem;color:var(--text3);margin-left:0.5rem">${savedMarket.lastFetch ? 'Last: ' + new Date(savedMarket.lastFetch).toLocaleString() : 'Not fetched yet'}</span>`;
+  h += `</div>`;
+  
+  if(!hasChampion && !hasMatches) {
+    h += `<div style="text-align:center;padding:3rem;color:var(--text3)">Click "Fetch Polymarket Data" to load market prices</div>`;
+    document.getElementById('section-radar').innerHTML = h;
+    return;
+  }
+  
+  // Match divergences (if available)
+  if(hasMatches) {
+    const divergences = [];
+    for(const [key, market] of Object.entries(savedMarket.matches)) {
+      const [team1, team2] = key.split('|');
+      if(!TEAMS[team1] || !TEAMS[team2]) continue;
+      
+      const modelProbs = matchProbabilities(team1, team2);
+      const marketProbs = { win: market.home, draw: market.draw, loss: market.away };
+      
+      const div = Math.abs(modelProbs.win - marketProbs.win) + 
+                  Math.abs(modelProbs.draw - marketProbs.draw) + 
+                  Math.abs(modelProbs.loss - marketProbs.loss);
+      
+      divergences.push({
+        team1, team2,
+        model: modelProbs,
+        market: marketProbs,
+        divergence: div,
+        modelWinner: modelProbs.win > modelProbs.loss ? team1 : team2,
+        marketWinner: marketProbs.win > marketProbs.loss ? team1 : team2
+      });
+    }
+    
+    divergences.sort((a,b) => b.divergence - a.divergence);
+    
+    h += `<h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">Match Divergences</h4>`;
+    h += `<div class="prob-wrap"><table class="prob-table">`;
+    h += `<tr><th>Match</th><th>Model W/D/L</th><th>Market W/D/L</th><th>Divergence</th><th>Signal</th></tr>`;
+    
+    divergences.slice(0, 20).forEach(d => {
+      const divColor = d.divergence > 0.2 ? 'var(--red)' : d.divergence > 0.1 ? 'var(--orange)' : 'var(--text3)';
+      const signal = d.modelWinner !== d.marketWinner ? 
+        `<span style="color:var(--orange);font-weight:700">CONFLICT</span>` : 
+        `<span style="color:var(--green)">AGREE</span>`;
+      
+      h += `<tr>
+        <td>${fl(d.team1)} vs ${fl(d.team2)}</td>
+        <td style="font-size:0.72rem">${(d.model.win*100).toFixed(0)}/${(d.model.draw*100).toFixed(0)}/${(d.model.loss*100).toFixed(0)}</td>
+        <td style="font-size:0.72rem">${(d.market.win*100).toFixed(0)}/${(d.market.draw*100).toFixed(0)}/${(d.market.loss*100).toFixed(0)}</td>
+        <td style="color:${divColor};font-weight:700">${(d.divergence*100).toFixed(1)}%</td>
+        <td>${signal}</td>
+      </tr>`;
+    });
+    
+    h += `</table></div>`;
+  } else {
+    h += `<div style="padding:1rem;background:rgba(0,122,255,0.04);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;color:var(--text2)">
+      Match-level market data not yet available. Champion probabilities shown below.
+    </div>`;
+  }
+  
+  // Champion comparison
+  if(Object.keys(savedMarket.champion).length > 0) {
+    h += `<div style="margin-top:1.5rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">Champion Probability: Model vs Market</h4>`;
+    h += `<div class="prob-wrap"><table class="prob-table">`;
+    h += `<tr><th>Team</th><th>Model</th><th>Market</th><th>Diff</th></tr>`;
+    
+    const allTeams = Object.keys(TEAMS).sort((a,b) => {
+      const mktA = savedMarket.champion[a] || 0;
+      const mktB = savedMarket.champion[b] || 0;
+      return mktB - mktA;
+    });
+    
+    allTeams.slice(0, 15).forEach(t => {
+      const mktProb = savedMarket.champion[t] || 0;
+      if(mktProb < 0.001) return;
+      
+      // Use Monte Carlo result if available, otherwise composite
+      const modelProb = mcResults ? ((mcResults.champ[t] || 0) / mcResults.N) : (composite(t) * 0.2);
+      const diff = modelProb - mktProb;
+      const diffColor = diff > 0.02 ? 'var(--green)' : diff < -0.02 ? 'var(--red)' : 'var(--text3)';
+      
+      h += `<tr>
+        <td>${fl(t)}</td>
+        <td style="font-size:0.72rem">${(modelProb*100).toFixed(1)}%</td>
+        <td style="font-size:0.72rem">${(mktProb*100).toFixed(1)}%</td>
+        <td style="color:${diffColor};font-weight:700">${diff > 0 ? '+' : ''}${(diff*100).toFixed(1)}%</td>
+      </tr>`;
+    });
+    
+    h += `</table></div></div>`;
+  }
+  
+  document.getElementById('section-radar').innerHTML = h;
+}
+
+// ── Init: Load persisted data & auto-refresh ─────────────────
+(function init() {
+  // Show warning if loaded from file:// protocol
+  if(window.location.protocol === 'file:') {
+    const warning = document.getElementById('file-protocol-warning');
+    if(warning) warning.style.display = 'block';
+  }
+  
+  // Check URL parameters for API keys
+  const urlParams = new URLSearchParams(window.location.search);
+  const oddsKey = urlParams.get('odds_key');
+  const resultsKey = urlParams.get('results_key');
+  
+  if(oddsKey || resultsKey) {
+    const state = loadState();
+    if(oddsKey) state.apiKeys['oddsapi'] = oddsKey;
+    if(resultsKey) state.apiKeys['football-data'] = resultsKey;
+    saveState(state);
+    showToast('API keys saved from URL parameters');
+  }
+  
+  // Load persisted custom odds
+  const state = loadState();
+  for(const [team, odds] of Object.entries(state.customOdds)) {
+    if(TEAMS[team]) TEAMS[team][6] = odds;
+  }
+  
+  // Initialize with known match results (June 11, 2026 - World Cup Day 1)
+  // These are the actual results that have already been played
+  if(!state.actualResults) {
+    state.actualResults = [];
+  }
+  if(state.actualResults.length === 0) {
+    const initialResults = [
+      { team1: 'Mexico', team2: 'South Africa', score1: 2, score2: 0, date: '2026-06-11T00:00:00Z', source: 'official' },
+      { team1: 'South Korea', team2: 'Czech Republic', score1: 2, score2: 1, date: '2026-06-11T00:00:00Z', source: 'official' }
+    ];
+    
+    for(const r of initialResults) {
+      const pred = goalExpect(r.team1, r.team2);
+      const predResult = pred[0] > pred[1] ? r.team1 : (pred[1] > pred[0] ? r.team2 : 'draw');
+      const actualResult = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
+      state.actualResults.push({
+        ...r,
+        predicted: predResult,
+        actual: actualResult,
+        correct: predResult === actualResult,
+        predGoals: [pred[0].toFixed(2), pred[1].toFixed(2)]
+      });
+    }
+    state.lastUpdate = new Date().toISOString();
+    saveState(state);
+  }
+  
+  if(state.autoRefresh) {
+    autoRefreshTimer = setInterval(() => refreshData(), 30 * 60 * 1000);
+  }
+  
+  // Clean up duplicate results (timezone date mismatch fix)
+  deduplicateResults();
+  
+  // Load saved market data from Polymarket
+  const savedMarket = state.marketData;
+  if(savedMarket && savedMarket.matches) {
+    marketData = savedMarket;
+  }
+  
+  // Initialize dynamic Elo ratings
+  initDynamicElo();
+})();
+
+runSimulation();
+
+// Auto-fetch latest results in background after page load
+(async () => {
+  try {
+    const hasKey = getApiKey('football-data');
+    if (hasKey) {
+      const ok = await fetchResults();
+      if (ok) {
+        // fetchResults already calls runSimulation() if new data found
+        console.log('Auto-fetch completed');
+      }
+    }
+  } catch(e) {
+    console.log('Auto-fetch failed:', e.message);
+  }
+})();
+</script>
+</body>
+</html>
