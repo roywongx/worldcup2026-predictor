@@ -8,29 +8,31 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Taste-skill: one accent color, saturation < 80%, neutral base */
-  --bg: #f8f9fa;
+  /* Design tokens: IBM Carbon colors + Vercel shadows + Linear radius */
+  --bg: #f6f8fa;
   --card: #fff;
-  --text: #1a1a2e;
-  --text2: #4a5568;
-  --text3: #a0aec0;
-  --blue: #2563eb;
-  --green: #059669;
-  --red: #dc2626;
-  --orange: #d97706;
-  --gold: #ca8a04;
-  --purple: #7c3aed;
-  --border: rgba(0,0,0,0.08);
-  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
-  --radius: 12px;
-  --radius-sm: 8px;
+  --text: #1f2328;
+  --text2: #656d76;
+  --text3: #8b949e;
+  --blue: #0969da;
+  --green: #1a7f37;
+  --red: #cf222e;
+  --orange: #bf8700;
+  --gold: #9a6700;
+  --purple: #8250df;
+  --border: #d0d7de;
+  --shadow-sm: 0 1px 2px rgba(31,35,40,0.04);
+  --shadow: 0 1px 3px rgba(31,35,40,0.06), 0 1px 2px rgba(31,35,40,0.04);
+  --shadow-lg: 0 8px 24px rgba(31,35,40,0.12);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
 }
 
 html { font-size: 14px; -webkit-font-smoothing: antialiased; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -39,8 +41,9 @@ body {
 
 .hero {
   text-align: center;
-  padding: 3rem 1.5rem 2rem;
-  background: linear-gradient(180deg, #fff 0%, var(--bg) 100%);
+  padding: 2.5rem 1.5rem 2rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .hero-badge {
@@ -123,9 +126,9 @@ body {
 }
 
 .segment button.active {
-  background: #fff;
+  background: var(--card);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
 }
 
@@ -152,7 +155,7 @@ body {
 }
 
 .btn-primary { background: var(--blue); color: #fff; }
-.btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+.btn-primary:hover { background: #0550ae; }
 .btn-secondary { background: rgba(0,0,0,0.05); color: var(--text); }
 .btn-secondary:hover { background: rgba(0,0,0,0.08); }
 
@@ -198,14 +201,14 @@ body {
 }
 
 .group-table th {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.65rem;
-  color: var(--text3);
-  padding: 0.5rem 0.35rem;
+  color: var(--text2);
+  padding: 0.6rem 0.4rem;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
 }
 
 .group-table th:nth-child(2) { text-align: left; }
@@ -255,15 +258,15 @@ body {
   display: flex;
   align-items: center;
   background: var(--card);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 1rem;
-  margin-bottom: 0.35rem;
-  box-shadow: var(--shadow);
-  transition: transform 0.15s ease;
+  border-radius: var(--radius);
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 0.3rem;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease;
   border: 1px solid var(--border);
 }
 
-.match-card:hover { transform: translateY(-1px); }
+.match-card:hover { background: #f6f8fa; }
 
 .match-card.final-match {
   background: linear-gradient(135deg, #fffbeb, #fff);
@@ -346,8 +349,8 @@ body {
 
 .b-match {
   background: var(--card);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   margin: 0.25rem 0;
   border: 1px solid var(--border);
@@ -384,12 +387,12 @@ body {
 
 .champion-hero {
   text-align: center;
-  padding: 2.5rem 1.5rem 2rem;
-  background: linear-gradient(135deg, #fffbeb, #fef3c7, #fff);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  padding: 2rem 1.5rem;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   margin-bottom: 2rem;
-  border: 1px solid rgba(202,138,4,0.15);
+  border: 1px solid var(--border);
 }
 
 .champion-hero .trophy-icon { font-size: 3.5rem; margin-bottom: 0.3rem; }
@@ -453,10 +456,10 @@ body {
 
 .stat-pill {
   background: var(--card);
-  border-radius: var(--radius-sm);
-  padding: 1rem 0.8rem;
+  border-radius: var(--radius);
+  padding: 0.8rem;
   text-align: center;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
 }
 
@@ -479,7 +482,7 @@ body {
 .prob-wrap {
   background: var(--card);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   border: 1px solid var(--border);
 }
@@ -538,8 +541,8 @@ body {
 .model-card {
   background: var(--card);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 1.2rem;
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
   border: 1px solid var(--border);
 }
 
@@ -638,8 +641,8 @@ body {
 .data-card {
   background: var(--card);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 1.2rem;
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
   border: 1px solid var(--border);
 }
 
@@ -690,7 +693,7 @@ body {
 }
 
 .data-btn-primary { background: var(--blue); color: #fff; }
-.data-btn-primary:hover { background: #0066d6; }
+.data-btn-primary:hover { background: #0550ae; }
 .data-btn-secondary { background: rgba(0,0,0,0.05); color: var(--text); }
 .data-btn-secondary:hover { background: rgba(0,0,0,0.08); }
 .data-btn-danger { background: rgba(255,59,48,0.1); color: var(--red); }
@@ -767,7 +770,7 @@ body {
   background: var(--text);
   color: #fff;
   padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   font-size: 0.8rem;
   font-weight: 600;
   z-index: 9999;
@@ -784,9 +787,11 @@ body {
 
 .footer {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   font-size: 0.7rem;
   color: var(--text3);
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
 }
 
 @keyframes slideUp {
