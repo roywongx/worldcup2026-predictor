@@ -435,41 +435,44 @@ body {
   letter-spacing: 0.08em;
 }
 
-/* Two-pyramid bracket layout */
+/* Two-pyramid bracket: tip-to-tip layout */
 .bracket-pyramid {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0;
   overflow-x: auto;
   padding: 1rem 0;
   -webkit-overflow-scrolling: touch;
+  min-width: 1100px;
 }
 
 .pyramid-side {
   display: flex;
   align-items: center;
-  min-width: 200px;
 }
 
-.pyramid-left {
-  flex-direction: row;
-}
+.pyramid-left { flex-direction: row; }
+.pyramid-right { flex-direction: row-reverse; }
 
-.pyramid-right {
-  flex-direction: row-reverse;
-}
-
+/* Each round column: matches spaced by round depth */
 .pyramid-round {
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
-  min-width: 160px;
-  padding: 0 0.3rem;
+  min-width: 155px;
+  padding: 0 0.2rem;
 }
 
+/* R32: wide base — matches spread far apart */
+.pyramid-round.r32 { gap: 0.3rem; }
+/* R16: closer */
+.pyramid-round.r16 { gap: 1.8rem; }
+/* QF: tighter */
+.pyramid-round.qf { gap: 4.5rem; }
+/* SF: tip — matches right next to center */
+.pyramid-round.sf { gap: 9rem; }
+
 .pyramid-round-title {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: var(--text2);
   text-transform: uppercase;
@@ -480,18 +483,14 @@ body {
   border-bottom: 2px solid var(--border);
 }
 
-.pyramid-match {
-  display: flex;
-  flex-direction: column;
-}
-
 .pyramid-center {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 180px;
-  padding: 0 0.5rem;
+  min-width: 170px;
+  padding: 0 0.3rem;
+  gap: 0.6rem;
 }
   padding: 0.1rem;
   text-transform: uppercase;
@@ -2714,15 +2713,7 @@ function renderMatches(){
 function renderBracket(){
   const{ko}=currentResults;const ch=ko.Champion;
 
-  // Champion path
-  let ph='';
-  [{k:'R32',l:t('ko.r32')},{k:'R16',l:t('ko.r16')},{k:'QF',l:t('ko.qf')},{k:'SF',l:t('ko.sf')}].forEach(r=>{
-    ko[r.k].forEach(m=>{if(m.a===ch||m.b===ch){const op=m.a===ch?m.b:m.a,mg=m.a===ch?m.ga:m.gb,og=m.a===ch?m.gb:m.ga;
-      ph+=`<div class="champ-path-item"><span class="cp-round">${r.l}</span><span class="cp-score">${mg}</span><span class="cp-vs">vs</span>${fl(op)}<span class="cp-score">${og}</span><span class="cp-method">${m.method}</span></div>`;}});
-  });
-  const ff=ko.Final,fmg=ff.a===ch?ff.ga:ff.gb,fog=ff.a===ch?ff.gb:ff.ga,fop=ff.a===ch?ff.b:ff.a;
-  ph+=`<div class="champ-path-item"><span class="cp-round" style="color:var(--gold)">${currentLang==='zh'?'决赛':'FINAL'}</span><span class="cp-score">${fmg}</span><span class="cp-vs">vs</span>${fl(fop)}<span class="cp-score">${fog}</span><span class="cp-method">${ff.method}</span></div>`;
-  let h=`<div class="champion-hero"><div class="trophy-icon">🏆</div><h2>${fl(ch)}</h2><div class="champ-sub">${t('ko.champion')}</div><div class="champ-path">${ph}</div></div>`;
+  let h='';
 
   // Two-pyramid bracket layout
   h+='<div class="bracket-pyramid">';
@@ -2749,22 +2740,18 @@ function renderBracket(){
   const sfL = ko.SF.slice(0, 1);
   const sfR = ko.SF.slice(1, 2);
 
-  // LEFT PYRAMID (narrowing toward center)
+  // LEFT PYRAMID (wide base on left, tip pointing right)
   h+=`<div class="pyramid-side pyramid-left">`;
-  // R32
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
+  h+=`<div class="pyramid-round r32"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
   r32L.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
-  // R16
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
+  h+=`<div class="pyramid-round r16"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
   r16L.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
-  // QF
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
+  h+=`<div class="pyramid-round qf"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
   qfL.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
-  // SF
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
+  h+=`<div class="pyramid-round sf"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
   sfL.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
   h+=`</div>`;
@@ -2789,22 +2776,18 @@ function renderBracket(){
   h+=`<div class="bracket-champion"><div class="trophy">🏆</div><div class="name">${fl(ch)}</div><div class="label">${t('ko.champion')}</div></div>`;
   h+=`</div>`;
 
-  // RIGHT PYRAMID (mirrored, narrowing toward center)
+  // RIGHT PYRAMID (tip pointing left, wide base on right)
   h+=`<div class="pyramid-side pyramid-right">`;
-  // SF
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
+  h+=`<div class="pyramid-round sf"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
   sfR.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
-  // QF
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
+  h+=`<div class="pyramid-round qf"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
   qfR.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
-  // R16
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
+  h+=`<div class="pyramid-round r16"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
   r16R.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
-  // R32
-  h+=`<div class="pyramid-round"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
+  h+=`<div class="pyramid-round r32"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
   r32R.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
   h+=`</div>`;
   h+=`</div>`;
