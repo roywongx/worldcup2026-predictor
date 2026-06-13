@@ -1167,8 +1167,9 @@ function simKO(home, away, formMap) {
     method = "90'";
   } else {
     const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
-    const etH = poissonSample(lh * 0.33);
-    const etA = poissonSample(la * 0.33);
+    // Extra time: 30 min + fatigue effect → historically ~40% of regular time goals
+    const etH = poissonSample(lh * 0.40);
+    const etA = poissonSample(la * 0.40);
     ga += etH; gb += etA;
     if (ga !== gb) {
       method = 'AET';
@@ -1176,7 +1177,9 @@ function simKO(home, away, formMap) {
       const eloH = getEffectiveElo(home);
       const eloA = getEffectiveElo(away);
       const eloDiff = eloH - eloA;
-      const pHome = 0.5 + Math.max(-0.25, Math.min(0.25, eloDiff / 800));
+      // PSO: historically ~50/50 with slight Elo edge
+      // 200 Elo diff → ~55/45, 400 Elo → ~60/40, capped at ±20%
+      const pHome = 0.5 + Math.max(-0.20, Math.min(0.20, eloDiff / 1500));
       if (Math.random() < pHome) ga++; else gb++;
       method = 'PSO';
     }
@@ -2098,8 +2101,8 @@ function renderModel(){
   h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">33% base λ (30/90 min)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 + Elo edge</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">40% base λ (fatigue)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 20% Elo</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.mc')}</span><span class="weight">${MC_DEFAULT.toLocaleString()}</span></div>`;
   h+=`</div>`;
   h+=`<div class="model-card"><h4>${t('model.ds')}</h4>`;
