@@ -816,9 +816,9 @@ body {
 </div>
 
 <div class="hero">
-  <div class="hero-badge">FIFA World Cup 26</div>
-  <h1>World Cup <span>2026</span></h1>
-  <div class="hero-sub">Market-Aware Prediction Engine</div>
+  <div class="hero-badge" id="hero-badge">FIFA World Cup 26</div>
+  <h1 id="hero-title">World Cup <span>2026</span></h1>
+  <div class="hero-sub" id="hero-sub">Market-Aware Prediction Engine</div>
   <div class="chips">
     <span class="chip">Poisson Expected Values</span>
     <span class="chip">Dynamic Elo Rating</span>
@@ -827,17 +827,20 @@ body {
     <span class="chip">Deterministic Knockout</span>
     <span class="chip">Monte Carlo 10k</span>
   </div>
+  <div style="margin-top:1rem">
+    <button class="data-btn data-btn-secondary" onclick="toggleLang()" id="lang-toggle" style="font-size:0.75rem;padding:0.3rem 0.8rem">🌐 中文/EN</button>
+  </div>
 </div>
 
 <div class="segment-wrap">
   <div class="segment">
-    <button class="active" onclick="showSection('standings', this)">Standings</button>
-    <button onclick="showSection('matches', this)">All Matches</button>
-    <button onclick="showSection('bracket', this)">Bracket</button>
-    <button onclick="showSection('probabilities', this)">Probabilities</button>
-    <button onclick="showSection('model', this)">Model</button>
-    <button onclick="showSection('data', this)">Data</button>
-    <button onclick="showSection('radar', this)">Radar</button>
+    <button class="active" onclick="showSection('standings', this)" data-i18n="tab.standings">Standings</button>
+    <button onclick="showSection('matches', this)" data-i18n="tab.matches">All Matches</button>
+    <button onclick="showSection('bracket', this)" data-i18n="tab.bracket">Bracket</button>
+    <button onclick="showSection('probabilities', this)" data-i18n="tab.probabilities">Probabilities</button>
+    <button onclick="showSection('model', this)" data-i18n="tab.model">Model</button>
+    <button onclick="showSection('data', this)" data-i18n="tab.data">Data</button>
+    <button onclick="showSection('radar', this)" data-i18n="tab.radar">Radar</button>
   </div>
 </div>
 
@@ -855,13 +858,13 @@ body {
 <div id="section-data" class="section"></div>
 <div id="section-radar" class="section"></div>
 
-<div class="footer">
-  Group stage: Poisson expected values (win/draw/loss probabilities → expected points)<br>
-  Knockout stage: Deterministic winners based on win probability<br>
-  Dynamic Elo (K=60) + FIFA + Market Value + Bookmaker Odds + Form Momentum<br>
-  Radar: Polymarket real-money prices vs model predictions<br>
-  Monte Carlo 10k for probability distributions · Data persisted in localStorage<br>
-  For entertainment only — football is unpredictable
+<div class="footer" id="footer-text">
+  <span data-i18n="footer.group">Group stage: Poisson expected values (win/draw/loss probabilities → expected points)</span><br>
+  <span data-i18n="footer.ko">Knockout stage: Deterministic winners based on win probability</span><br>
+  <span data-i18n="footer.model">Dynamic Elo (K=60) + FIFA + Market Value + Bookmaker Odds + Form Momentum</span><br>
+  <span data-i18n="footer.radar">Radar: Polymarket real-money prices vs model predictions</span><br>
+  <span data-i18n="footer.mc">Monte Carlo 10k for probability distributions · Data persisted in localStorage</span><br>
+  <span data-i18n="footer.disclaimer">For entertainment only — football is unpredictable</span>
 </div>
 
 <script>
@@ -869,6 +872,188 @@ body {
 if(window.location.protocol === 'file:') {
   console.warn('Running from file:// protocol. Some features may not work in Edge. Use Chrome or a local server for best experience.');
 }
+
+// ── i18n System ─────────────────────────────────────────────
+let currentLang = localStorage.getItem('wc2026_lang') || 'zh';
+
+const I18N = {
+  zh: {
+    // Hero
+    'hero.badge': 'FIFA 世界杯 26',
+    'hero.title': '世界杯 <span>2026</span>',
+    'hero.sub': '市场感知预测引擎',
+    // Tabs
+    'tab.standings': '积分榜',
+    'tab.matches': '全部比赛',
+    'tab.bracket': '对阵图',
+    'tab.probabilities': '概率分析',
+    'tab.model': '模型',
+    'tab.data': '数据',
+    'tab.radar': '雷达',
+    // Buttons
+    'btn.newSim': '新模拟',
+    'btn.montecarlo': '蒙特卡洛 (10000x)',
+    'btn.refresh': '刷新',
+    // Data page
+    'data.setup': '快速设置（2分钟）',
+    'data.setup.desc': '要启用实时数据获取，请获取免费的 API Key：',
+    'data.getKey': '获取 Key →',
+    'data.apiKeys': 'API Key（免费注册）',
+    'data.results': '比赛结果：',
+    'data.odds': '博彩赔率：',
+    'data.save': '保存',
+    'data.fetchResults': '获取赛果',
+    'data.fetchOdds': '获取赔率',
+    'data.fetchAll': '获取全部',
+    'data.calibration': '模型校准',
+    'data.accuracy': '预测准确率',
+    'data.brier': 'Brier 分数',
+    'data.logLoss': '对数损失',
+    'data.resultsUsed': '使用结果数',
+    'data.correctTotal': '正确 / 总数',
+    'data.formStatus': '动态状态',
+    'data.topForm': '状态最好 Top 10：',
+    'data.bottomForm': '状态最差 Bottom 5：',
+    'data.formDesc': '基于最近 5 场实际比赛结果计算（指数衰减）',
+    'data.manualOdds': '手动赔率（美式格式）',
+    'data.apply': '应用',
+    'data.export': '导出',
+    'data.reset': '重置',
+    'data.manualResult': '手动录入结果',
+    'data.add': '添加',
+    'data.clearAll': '清空全部',
+    'data.batchImport': '批量导入',
+    'data.import': '导入',
+    // Radar
+    'radar.title': '冷门雷达 — 模型 vs 市场',
+    'radar.desc': '对比 Poisson 模型预测与 Polymarket 真金白银价格。',
+    'radar.desc2': '分歧 ≠ 保证冷门 — 市场通常知道模型不知道的事（伤病、战术、天气）。',
+    'radar.fetch': '获取 Polymarket 数据',
+    'radar.matchDivergences': '比赛分歧',
+    'radar.model': '模型',
+    'radar.market': '市场',
+    'radar.divergence': '分歧',
+    'radar.signal': '信号',
+    'radar.conflict': '冲突',
+    'radar.agree': '一致',
+    'radar.champion': '冠军概率：模型 vs 市场',
+    'radar.diff': '差值',
+    'radar.noMatch': '单场比赛数据暂不可用。显示冠军概率如下。',
+    // Footer
+    'footer.group': '小组赛：Poisson 期望值（胜/平/负概率 → 期望积分）',
+    'footer.ko': '淘汰赛：基于胜率的确定性胜者',
+    'footer.model': '动态 Elo (K=60) + FIFA + 球队市值 + 博彩赔率 + 状态动量',
+    'footer.radar': '雷达：Polymarket 真金白银价格 vs 模型预测',
+    'footer.mc': '蒙特卡洛 10k 概率分布 · 数据持久化在 localStorage',
+    'footer.disclaimer': '仅供娱乐 — 足球不可预测',
+  },
+  en: {
+    // Hero
+    'hero.badge': 'FIFA World Cup 26',
+    'hero.title': 'World Cup <span>2026</span>',
+    'hero.sub': 'Market-Aware Prediction Engine',
+    // Tabs
+    'tab.standings': 'Standings',
+    'tab.matches': 'All Matches',
+    'tab.bracket': 'Bracket',
+    'tab.probabilities': 'Probabilities',
+    'tab.model': 'Model',
+    'tab.data': 'Data',
+    'tab.radar': 'Radar',
+    // Buttons
+    'btn.newSim': 'New Simulation',
+    'btn.montecarlo': 'Monte Carlo (10000x)',
+    'btn.refresh': 'Refresh',
+    // Data page
+    'data.setup': 'Quick Setup (2 minutes)',
+    'data.setup.desc': 'To enable live data fetching, get free API keys from these services:',
+    'data.getKey': 'Get Key →',
+    'data.apiKeys': 'API Keys (Free Sign-up)',
+    'data.results': 'Results:',
+    'data.odds': 'Odds:',
+    'data.save': 'Save',
+    'data.fetchResults': 'Fetch Results',
+    'data.fetchOdds': 'Fetch Odds',
+    'data.fetchAll': 'Fetch All',
+    'data.calibration': 'Model Calibration',
+    'data.accuracy': 'Prediction Accuracy',
+    'data.brier': 'Brier Score',
+    'data.logLoss': 'Log Loss',
+    'data.resultsUsed': 'Results Used',
+    'data.correctTotal': 'Correct / Total',
+    'data.formStatus': 'Dynamic Form Status',
+    'data.topForm': 'Top 10 Form:',
+    'data.bottomForm': 'Bottom 5:',
+    'data.formDesc': 'Form calculated from last 5 actual match results (exponential decay)',
+    'data.manualOdds': 'Manual Odds (American Format)',
+    'data.apply': 'Apply',
+    'data.export': 'Export',
+    'data.reset': 'Reset',
+    'data.manualResult': 'Manual Result Entry',
+    'data.add': '+ Add',
+    'data.clearAll': 'Clear All',
+    'data.batchImport': 'Batch Import',
+    'data.import': 'Import',
+    // Radar
+    'radar.title': 'Cold Radar — Model vs Market',
+    'radar.desc': 'Comparing our Poisson model predictions with Polymarket real-money prices.',
+    'radar.desc2': 'Divergence ≠ guaranteed upset — market often knows things the model doesn\'t (injuries, tactics, weather).',
+    'radar.fetch': 'Fetch Polymarket Data',
+    'radar.matchDivergences': 'Match Divergences',
+    'radar.model': 'Model',
+    'radar.market': 'Market',
+    'radar.divergence': 'Divergence',
+    'radar.signal': 'Signal',
+    'radar.conflict': 'CONFLICT',
+    'radar.agree': 'AGREE',
+    'radar.champion': 'Champion Probability: Model vs Market',
+    'radar.diff': 'Diff',
+    'radar.noMatch': 'Match-level market data not yet available. Champion probabilities shown below.',
+    // Footer
+    'footer.group': 'Group stage: Poisson expected values (win/draw/loss probabilities → expected points)',
+    'footer.ko': 'Knockout stage: Deterministic winners based on win probability',
+    'footer.model': 'Dynamic Elo (K=60) + FIFA + Market Value + Bookmaker Odds + Form Momentum',
+    'footer.radar': 'Radar: Polymarket real-money prices vs model predictions',
+    'footer.mc': 'Monte Carlo 10k for probability distributions · Data persisted in localStorage',
+    'footer.disclaimer': 'For entertainment only — football is unpredictable',
+  }
+};
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || (I18N['en'] && I18N['en'][key]) || key;
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('wc2026_lang', currentLang);
+  applyLang();
+}
+
+function applyLang() {
+  // Hero
+  const badge = document.getElementById('hero-badge');
+  if(badge) badge.textContent = t('hero.badge');
+  const title = document.getElementById('hero-title');
+  if(title) title.innerHTML = t('hero.title');
+  const sub = document.getElementById('hero-sub');
+  if(sub) sub.textContent = t('hero.sub');
+  // Tabs
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  // Re-render active section
+  const active = document.querySelector('.section.active');
+  if(active) {
+    const id = active.id.replace('section-', '');
+    if(id === 'data') renderData();
+    if(id === 'radar') renderRadar();
+  }
+  // Update lang button text
+  const langBtn = document.getElementById('lang-toggle');
+  if(langBtn) langBtn.textContent = currentLang === 'zh' ? '🌐 EN/中文' : '🌐 中文/EN';
+}
+
 const FLAGS = {
   "Mexico":"mx","South Africa":"za","South Korea":"kr","Czech Republic":"cz",
   "Canada":"ca","Bosnia Herzegovina":"ba","Qatar":"qa","Switzerland":"ch",
@@ -2589,9 +2774,9 @@ function renderData() {
   // Setup Wizard - shows when no API keys configured
   if(!hasOddsKey && !hasResultsKey) {
     h += `<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))">
-      <h4>🚀 Quick Setup (2 minutes)</h4>
+      <h4>🚀 ${t('data.setup')}</h4>
       <p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem;line-height:1.5">
-        To enable live data fetching, get free API keys from these services:
+        ${t('data.setup.desc')}
       </p>
       <div style="display:flex;flex-direction:column;gap:0.8rem">
         <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)">
@@ -2600,7 +2785,7 @@ function renderData() {
             <div style="font-size:0.8rem;font-weight:600">Football-Data.org</div>
             <div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div>
           </div>
-          <a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">Get Key →</a>
+          <a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a>
         </div>
         <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)">
           <span style="font-size:1.2rem">💰</span>
@@ -2608,12 +2793,9 @@ function renderData() {
             <div style="font-size:0.8rem;font-weight:600">The-Odds-API</div>
             <div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div>
           </div>
-          <a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">Get Key →</a>
+          <a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a>
         </div>
       </div>
-      <p style="font-size:0.7rem;color:var(--text3);margin-top:0.8rem">
-        After getting keys, paste them below and click Save.
-      </p>
     </div>`;
   }
   
@@ -2621,59 +2803,59 @@ function renderData() {
   h += `<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch Data</h4>`;
   h += `<div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem;min-height:1.2em">${state.lastUpdate ? 'Last: ' + new Date(state.lastUpdate).toLocaleString() : 'Not yet fetched'}</div>`;
   h += `<div class="data-actions">`;
-  h += `<button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ Fetch Results</button>`;
-  h += `<button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasOddsKey?'':'disabled title="Set Odds API key first"'}>💰 Fetch Odds</button>`;
-  h += `<button class="data-btn data-btn-green" onclick="refreshData()">⟳ Fetch All</button>`;
+  h += `<button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button>`;
+  h += `<button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasOddsKey?'':'disabled title="Set Odds API key first"'}>💰 ${t('data.fetchOdds')}</button>`;
+  h += `<button class="data-btn data-btn-green" onclick="refreshData()">⟳ ${t('data.fetchAll')}</button>`;
   h += `<button class="data-btn ${state.autoRefresh?'data-btn-danger':'data-btn-secondary'}" onclick="toggleAutoRefresh()">${state.autoRefresh?'⏹ Stop Auto':'▶ Auto 30m'}</button>`;
   h += `</div>`;
   h += `</div>`;
   
   // API Keys Card
-  h += `<div class="data-card"><h4>🔑 API Keys (Free Sign-up)</h4>`;
+  h += `<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4>`;
   h += `<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem">`;
-  h += `<span style="font-size:0.72rem;min-width:5.5rem">Results:</span>`;
+  h += `<span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span>`;
   h += `<input type="text" id="key-football-data" value="${getApiKey('football-data')}" placeholder="Free key at football-data.org/client/register" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)">`;
-  h += `<button class="data-btn data-btn-primary" onclick="saveApiKey('football-data', document.getElementById('key-football-data').value); renderData()">Save</button>`;
+  h += `<button class="data-btn data-btn-primary" onclick="saveApiKey('football-data', document.getElementById('key-football-data').value); renderData()">${t('data.save')}</button>`;
   h += `</div>`;
   h += `<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem">`;
-  h += `<span style="font-size:0.72rem;min-width:5.5rem">Odds:</span>`;
+  h += `<span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span>`;
   h += `<input type="text" id="key-oddsapi" value="${getApiKey('oddsapi')}" placeholder="Free key at the-odds-api.com" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)">`;
-  h += `<button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi', document.getElementById('key-oddsapi').value); renderData()">Save</button>`;
+  h += `<button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi', document.getElementById('key-oddsapi').value); renderData()">${t('data.save')}</button>`;
   h += `</div>`;
   h += `<div style="font-size:0.65rem;color:var(--text3)">Both are free · Results: 10 req/min · Odds: 500 req/month</div>`;
   h += `</div>`;
   
   // Calibration Card
-  h += `<div class="data-card calibration-card"><h4>📊 Model Calibration</h4>`;
+  h += `<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   if(stats && stats.total >= 3) {
     const accClass = stats.accuracy >= 0.6 ? 'metric-good' : (stats.accuracy >= 0.45 ? 'metric-warn' : 'metric-bad');
     const brierClass = stats.brier <= 0.25 ? 'metric-good' : (stats.brier <= 0.35 ? 'metric-warn' : 'metric-bad');
-    h += `<div class="calib-metric"><span class="metric-label">Prediction Accuracy</span><span class="metric-val ${accClass}">${(stats.accuracy*100).toFixed(1)}%</span></div>`;
-    h += `<div class="calib-metric"><span class="metric-label">Brier Score</span><span class="metric-val ${brierClass}">${stats.brier.toFixed(4)}</span></div>`;
-    h += `<div class="calib-metric"><span class="metric-label">Log Loss</span><span class="metric-val">${stats.logLoss.toFixed(4)}</span></div>`;
-    h += `<div class="calib-metric"><span class="metric-label">Results Used</span><span class="metric-val">${stats.total}</span></div>`;
-    h += `<div class="calib-metric"><span class="metric-label">Correct / Total</span><span class="metric-val">${stats.correct} / ${stats.total}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">${t('data.accuracy')}</span><span class="metric-val ${accClass}">${(stats.accuracy*100).toFixed(1)}%</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">${t('data.brier')}</span><span class="metric-val ${brierClass}">${stats.brier.toFixed(4)}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">${t('data.logLoss')}</span><span class="metric-val">${stats.logLoss.toFixed(4)}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">${t('data.resultsUsed')}</span><span class="metric-val">${stats.total}</span></div>`;
+    h += `<div class="calib-metric"><span class="metric-label">${t('data.correctTotal')}</span><span class="metric-val">${stats.correct} / ${stats.total}</span></div>`;
   } else {
     h += `<div style="color:var(--text3);font-size:0.8rem;text-align:center;padding:1rem">Click "Fetch Results" to auto-load match results, or enter 3+ manually</div>`;
   }
   h += `</div>`;
   
   // Dynamic Form Status
-  h += `<div class="data-card"><h4>📈 Dynamic Form Status</h4>`;
+  h += `<div class="data-card"><h4>📈 ${t('data.formStatus')}</h4>`;
   const formTeams = Object.keys(TEAMS).map(t => ({ team: t, form: TEAMS[t][4] })).sort((a,b) => b.form - a.form);
   const topForm = formTeams.slice(0, 10);
   const bottomForm = formTeams.slice(-5);
-  h += `<div style="font-size:0.75rem;margin-bottom:0.5rem"><strong>Top 10 Form:</strong></div>`;
+  h += `<div style="font-size:0.75rem;margin-bottom:0.5rem"><strong>${t('data.topForm')}</strong></div>`;
   topForm.forEach(t => {
     const formColor = t.form >= 0.65 ? 'var(--green)' : t.form >= 0.45 ? 'var(--orange)' : 'var(--red)';
     h += `<div style="display:flex;justify-content:space-between;font-size:0.72rem;padding:0.15rem 0"><span>${fl(t.team)}</span><span style="color:${formColor};font-weight:600">${(t.form*100).toFixed(0)}%</span></div>`;
   });
-  h += `<div style="font-size:0.75rem;margin:0.5rem 0 0.3rem"><strong>Bottom 5:</strong></div>`;
+  h += `<div style="font-size:0.75rem;margin:0.5rem 0 0.3rem"><strong>${t('data.bottomForm')}</strong></div>`;
   bottomForm.forEach(t => {
     const formColor = t.form >= 0.65 ? 'var(--green)' : t.form >= 0.45 ? 'var(--orange)' : 'var(--red)';
     h += `<div style="display:flex;justify-content:space-between;font-size:0.72rem;padding:0.15rem 0"><span>${fl(t.team)}</span><span style="color:${formColor};font-weight:600">${(t.form*100).toFixed(0)}%</span></div>`;
   });
-  h += `<div style="font-size:0.65rem;color:var(--text3);margin-top:0.5rem">Form calculated from last 5 actual match results (exponential decay)</div>`;
+  h += `<div style="font-size:0.65rem;color:var(--text3);margin-top:0.5rem">${t('data.formDesc')}</div>`;
   h += `</div>`;
   
   // Manual Odds Update
@@ -2908,21 +3090,21 @@ function renderRadar() {
   
   // Header
   h += `<div style="margin-bottom:1.5rem">`;
-  h += `<h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem">Cold Radar — Model vs Market</h3>`;
+  h += `<h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem">${t('radar.title')}</h3>`;
   h += `<p style="font-size:0.75rem;color:var(--text3);line-height:1.5">
-    Comparing our Poisson model predictions with Polymarket real-money prices.<br>
-    <strong style="color:var(--orange)">Divergence ≠ guaranteed upset</strong> — market often knows things the model doesn't (injuries, tactics, weather).
+    ${t('radar.desc')}<br>
+    <strong style="color:var(--orange)">${t('radar.desc2').split('—')[0]}</strong>—${t('radar.desc2').split('—')[1] || ''}
   </p>`;
   h += `</div>`;
   
   // Fetch button
   h += `<div style="margin-bottom:1rem">`;
-  h += `<button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(() => renderRadar())">Fetch Polymarket Data</button>`;
+  h += `<button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(() => renderRadar())">${t('radar.fetch')}</button>`;
   h += `<span id="radar-status" style="font-size:0.72rem;color:var(--text3);margin-left:0.5rem">${savedMarket.lastFetch ? 'Last: ' + new Date(savedMarket.lastFetch).toLocaleString() : 'Not fetched yet'}</span>`;
   h += `</div>`;
   
   if(!hasChampion && !hasMatches) {
-    h += `<div style="text-align:center;padding:3rem;color:var(--text3)">Click "Fetch Polymarket Data" to load market prices</div>`;
+    h += `<div style="text-align:center;padding:3rem;color:var(--text3)">${t('radar.fetch')}</div>`;
     document.getElementById('section-radar').innerHTML = h;
     return;
   }
@@ -2953,15 +3135,15 @@ function renderRadar() {
     
     divergences.sort((a,b) => b.divergence - a.divergence);
     
-    h += `<h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">Match Divergences</h4>`;
+    h += `<h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.matchDivergences')}</h4>`;
     h += `<div class="prob-wrap"><table class="prob-table">`;
-    h += `<tr><th>Match</th><th>Model W/D/L</th><th>Market W/D/L</th><th>Divergence</th><th>Signal</th></tr>`;
+    h += `<tr><th>Match</th><th>${t('radar.model')} W/D/L</th><th>${t('radar.market')} W/D/L</th><th>${t('radar.divergence')}</th><th>${t('radar.signal')}</th></tr>`;
     
     divergences.slice(0, 20).forEach(d => {
       const divColor = d.divergence > 0.2 ? 'var(--red)' : d.divergence > 0.1 ? 'var(--orange)' : 'var(--text3)';
       const signal = d.modelWinner !== d.marketWinner ? 
-        `<span style="color:var(--orange);font-weight:700">CONFLICT</span>` : 
-        `<span style="color:var(--green)">AGREE</span>`;
+        `<span style="color:var(--orange);font-weight:700">${t('radar.conflict')}</span>` : 
+        `<span style="color:var(--green)">${t('radar.agree')}</span>`;
       
       h += `<tr>
         <td>${fl(d.team1)} vs ${fl(d.team2)}</td>
@@ -2975,15 +3157,15 @@ function renderRadar() {
     h += `</table></div>`;
   } else {
     h += `<div style="padding:1rem;background:rgba(0,122,255,0.04);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;color:var(--text2)">
-      Match-level market data not yet available. Champion probabilities shown below.
+      ${t('radar.noMatch')}
     </div>`;
   }
   
   // Champion comparison
   if(Object.keys(savedMarket.champion).length > 0) {
-    h += `<div style="margin-top:1.5rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">Champion Probability: Model vs Market</h4>`;
+    h += `<div style="margin-top:1.5rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.champion')}</h4>`;
     h += `<div class="prob-wrap"><table class="prob-table">`;
-    h += `<tr><th>Team</th><th>Model</th><th>Market</th><th>Diff</th></tr>`;
+    h += `<tr><th>Team</th><th>${t('radar.model')}</th><th>${t('radar.market')}</th><th>${t('radar.diff')}</th></tr>`;
     
     const allTeams = Object.keys(TEAMS).sort((a,b) => {
       const mktA = savedMarket.champion[a] || 0;
@@ -3086,6 +3268,7 @@ function renderRadar() {
 })();
 
 runSimulation();
+applyLang();
 
 // Auto-fetch latest results in background after page load
 (async () => {
