@@ -5,11 +5,11 @@ to bypass browser CORS restrictions."""
 
 import http.server
 import json
-import os
 import sys
 import urllib.request
 import urllib.parse
 from pathlib import Path
+from datetime import datetime
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 9090
 DIR = Path(__file__).parent
@@ -23,30 +23,63 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._proxy_football_data()
         elif self.path.startswith('/api/odds'):
             self._proxy_odds_api()
+        elif self.path.startswith('/api/test'):
+            self._test_key()
         else:
             super().do_GET()
 
-    def _proxy_football_data(self):
-        """Proxy to football-data.org with API key from query param or header."""
+    def _log(self, msg):
+        ts = datetime.now().strftime('%H:%M:%S')
+        print(f'  [{ts}] {msg}')
+
+    def _test_key(self):
+        """Test if a football-data.org API key is valid."""
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         api_key = params.get('key', [''])[0]
         if not api_key:
-            api_key = self.headers.get('X-Api-Key', '')
-
-        if not api_key:
-            self._json_response({'error': 'Missing API key. Pass ?key=YOUR_KEY'}, 400)
+            self._json_response({'error': 'Pass ?key=YOUR_KEY'}, 400)
             return
 
-        url = 'https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED'
+        url = 'https://api.football-data.org/v4/competitions'
         req = urllib.request.Request(url, headers={'X-Auth-Token': api_key})
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
+                comps = [c['code'] + ' (' + c['name'] + ')' for c in data.get('competitions', [])]
+                self._json_response({'ok': True, 'plan': data.get('plan', '?'), 'competitions': comps})
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='replace')[:300]
+            self._json_response({'ok': False, 'error': f'HTTP {e.code}: {body}'}, e.code)
+        except Exception as e:
+            self._json_response({'ok': False, 'error': str(e)}, 502)
+
+    def _proxy_football_data(self):
+        """Proxy to football-data.org with API key from query param."""
+        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        api_key = params.get('key', [''])[0]
+
+        if not api_key:
+            self._json_response({'error': 'Missing API key'}, 400)
+            return
+
+        url = 'https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED'
+        req = urllib.request.Request(url, headers={
+            'X-Auth-Token': api_key,
+            'Accept': 'application/json',
+        })
+        self._log(f'football-data.org → key={api_key[:8]}...')
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+                count = len(data.get('matches', []))
+                self._log(f'football-data.org ✓ {count} matches')
                 self._json_response(data)
         except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8', errors='replace')[:200]
+            body = e.read().decode('utf-8', errors='replace')[:300]
+            self._log(f'football-data.org ✗ HTTP {e.code}: {body[:80]}')
             self._json_response({'error': f'HTTP {e.code}: {body}'}, e.code)
         except Exception as e:
+            self._log(f'football-data.org ✗ {e}')
             self._json_response({'error': str(e)}, 502)
 
     def _proxy_odds_api(self):
@@ -54,20 +87,24 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         api_key = params.get('key', [''])[0]
         if not api_key:
-            self._json_response({'error': 'Missing API key. Pass ?key=YOUR_KEY'}, 400)
+            self._json_response({'error': 'Missing API key'}, 400)
             return
 
         url = f'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?apiKey={api_key}&regions=us&markets=outrights&oddsFormat=american'
         req = urllib.request.Request(url)
+        self._log(f'the-odds-api.com → key={api_key[:8]}...')
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
                 remaining = resp.headers.get('x-requests-remaining', '')
+                self._log(f'the-odds-api.com ✓ remaining={remaining}')
                 self._json_response({'data': data, 'remaining': remaining})
         except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8', errors='replace')[:200]
+            body = e.read().decode('utf-8', errors='replace')[:300]
+            self._log(f'the-odds-api.com ✗ HTTP {e.code}')
             self._json_response({'error': f'HTTP {e.code}: {body}'}, e.code)
         except Exception as e:
+            self._log(f'the-odds-api.com ✗ {e}')
             self._json_response({'error': str(e)}, 502)
 
     def _json_response(self, data, status=200):
@@ -79,14 +116,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, format, *args):
-        # Suppress noisy request logs, only log errors
-        if args and '404' in str(args[1]) if len(args) > 1 else False:
-            super().log_message(format, *args)
-
-print(f'🏆 World Cup Predictor server running at:')
-print(f'   Local:   http://localhost:{PORT}')
-print(f'   Network: http://0.0.0.0:{PORT}')
-print(f'   Proxy:   /api/results?key=... and /api/odds?key=...')
+print(f'🏆 World Cup Predictor server')
+print(f'   http://localhost:{PORT}')
+print(f'   http://0.0.0.0:{PORT}')
+print(f'   Test key: http://localhost:{PORT}/api/test?key=YOUR_KEY')
+print()
 
 http.server.HTTPServer(('0.0.0.0', PORT), ProxyHandler).serve_forever()
