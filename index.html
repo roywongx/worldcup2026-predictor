@@ -1221,10 +1221,7 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
   const defH = TEAMS[home] ? TEAMS[home][8] : 1.0;
   const atkA = TEAMS[away] ? TEAMS[away][7] : 1.0;
   const defA = TEAMS[away] ? TEAMS[away][8] : 1.0;
-  // Pass market odds for Elo-Market blending (index [6] = American odds)
-  const homeOdds = TEAMS[home] ? TEAMS[home][6] : 0;
-  const awayOdds = TEAMS[away] ? TEAMS[away][6] : 0;
-  const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout, homeOdds, awayOdds);
+  const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout);
 
   // Apply form adjustment: form 0.5 = neutral, >0.5 = boost, <0.5 = penalty
   // Max adjustment: ±15% of lambda
@@ -1274,18 +1271,6 @@ function temperatureScale(pW, pD, pL, T) {
   return { win: rW / rSum, draw: rD / rSum, loss: rL / rSum };
 }
 
-/** Draw-aware prediction: when teams are closely matched and draw probability is
- *  significant, prefer draw over arbitrary win/loss choice.
- *  Based on: Gemini suggestion — draw threshold calibration */
-function predictOutcome(probs) {
-  const { win, draw, loss } = probs;
-  // When draw > 28% and win/loss difference < 15%, prefer draw
-  if (draw > 0.28 && Math.abs(win - loss) < 0.15) {
-    return 'draw';
-  }
-  return win > loss ? 'home' : 'away';
-}
-
 /** Get effective Elo for a team (dynamic if available, else static) */
 function getEffectiveElo(team) {
   return (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : TEAMS[team][0];
@@ -1322,23 +1307,6 @@ function oddsToProb(usOdds) {
 }
 
 
-
-/** Track prediction accuracy over time (打脸榜 / Brier tracking).
- *  Stores rolling Brier scores for model vs market comparison. */
-function trackPrediction(matchKey, modelProbs, marketProbs, actualOutcome) {
-  const state = loadState();
-  if (!state.predictionLog) state.predictionLog = [];
-  state.predictionLog.push({
-    match: matchKey,
-    model: { w: modelProbs.win, d: modelProbs.draw, l: modelProbs.loss },
-    market: marketProbs ? { w: marketProbs.win, d: marketProbs.draw, l: marketProbs.loss } : null,
-    outcome: actualOutcome, // 0=home, 1=draw, 2=away
-    timestamp: Date.now()
-  });
-  // Keep last 200 predictions
-  if (state.predictionLog.length > 200) state.predictionLog = state.predictionLog.slice(-200);
-  saveState(state);
-}
 
 /** Compute rolling Brier scores for model and market */
 function computeBrierScores() {

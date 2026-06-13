@@ -72,7 +72,7 @@ Enter keys in the **Data** tab. Use the **🔍 Test** button to verify they work
 ### Features
 
 - **Dixon-Coles Poisson engine** — academic gold standard for football prediction
-- **Elo-Market blending** — 70% Elo + 30% market odds (captures injuries, tactics, morale)
+- **Polymarket match odds integration** — 30% market blend from real-money prices
 - **Temperature scaling** — reduces overconfidence (T=1.15, probability clipping)
 - **FIFA Annex C 495-combination bracket** — correct knockout stage pairings
 - **Monte Carlo 10,000** — full tournament simulations with chunked progress
@@ -82,8 +82,6 @@ Enter keys in the **Data** tab. Use the **🔍 Test** button to verify they work
 - **2022 WC backtest** — out-of-sample validation on historical data (48 matches)
 - **Dynamic Elo** — updates after each match (K=60 group, K=80 knockout)
 - **Attack/defense ratings** — differentiates Brazil (high attack) from Morocco (high defense)
-- **De-vig normalization** — removes bookmaker margin from odds
-- **Brier Score tracker (打脸榜)** — model vs market accuracy comparison
 - **Prediction comparison** — shows predicted vs actual for each completed match
 - **Reliability diagram** — visual calibration chart
 - **Bilingual** — full Chinese/English toggle
@@ -95,7 +93,7 @@ Enter keys in the **Data** tab. Use the **🔍 Test** button to verify they work
 |-----------|-------|--------|
 | Base goals (λ) | 1.15 per team (2.30 total) | Calibrated for realistic distribution |
 | Elo → λ | Logistic mapping: `0.3 + 1.4 × W_H` | Physically bounded [0.3, 1.7] |
-| Market blending | 70% Elo + 30% odds | Captures soft information |
+| Market blending | 70% model + 30% Polymarket match odds | Captures soft information |
 | Dixon-Coles ρ | -0.13 | Calibrated for international cups |
 | Temperature T | 1.15 | Reduces overconfidence |
 | Attack/defense | Power 0.45 damping | Prevents extreme amplification |
@@ -139,7 +137,8 @@ Enter keys in the **Data** tab. Use the **🔍 Test** button to verify they work
 | Elo ratings | eloratings.net | June 2026 |
 | FIFA rankings | FIFA.com | June 2026 |
 | Market values | Transfermarkt | 2026 |
-| Bookmaker odds | DraftKings | June 10, 2026 |
+| Match odds | Polymarket (series_slug=soccer-fifwc) | Real-time |
+| Tournament odds | DraftKings | June 10, 2026 |
 | Match schedule | FIFA official (cross-verified NDTV/ESPN) | June 13, 2026 |
 | Bracket matrix | FIFA Regulations Annex C (via Wikipedia) | June 2026 |
 | Attack/defense | Composite of Elo + FIFA + recent form | Estimated |
@@ -212,7 +211,7 @@ python3 server.py 9090
 ### 功能特性
 
 - **Dixon-Coles Poisson 引擎** — 学术界足球预测黄金标准
-- **Elo-Market 混合评级** — 70% Elo + 30% 市场赔率（捕获伤病、战术、士气）
+- **Polymarket 单场赔率集成** — 真金白银市场价格 30% 权重混合
 - **温度收缩** — 降低过度自信（T=1.15，概率裁剪）
 - **FIFA Annex C 495 组合矩阵** — 正确的淘汰赛对阵
 - **蒙特卡洛 10,000 次** — 完整锦标赛模拟（分块处理带进度条）
@@ -222,8 +221,6 @@ python3 server.py 9090
 - **2022 WC 回测** — 历史数据样本外验证（48 场）
 - **动态 Elo** — 每场比赛后更新（小组赛 K=60，淘汰赛 K=80）
 - **进攻/防守评分** — 区分巴西（高进攻）和摩洛哥（高防守）
-- **去水归一化** — 去除博彩公司抽水
-- **Brier Score 追踪（打脸榜）** — 模型 vs 市场准确度对比
 - **预测对比** — 每场已完成比赛显示预测 vs 实际
 - **可靠性图表** — 可视化校准图
 - **中英文切换** — 完整双语支持
@@ -235,7 +232,7 @@ python3 server.py 9090
 |------|-----|------|
 | 基础进球 (λ) | 每队 1.15（总 2.30） | 校准以获得合理分布 |
 | Elo → λ | 逻辑映射: `0.3 + 1.4 × W_H` | 物理有界 [0.3, 1.7] |
-| 市场混合 | 70% Elo + 30% 赔率 | 捕获软信息 |
+| 市场混合 | 70% 模型 + 30% Polymarket 单场赔率 | 捕获软信息 |
 | Dixon-Coles ρ | -0.13 | 国际杯赛校准 |
 | 温度 T | 1.15 | 降低过度自信 |
 | 攻防阻尼 | Power 0.45 | 防止极端放大 |
@@ -271,7 +268,8 @@ python3 server.py 9090
 | Elo 评分 | eloratings.net | 2026年6月 |
 | FIFA 排名 | FIFA.com | 2026年6月 |
 | 球队市值 | Transfermarkt | 2026年 |
-| 博彩赔率 | DraftKings | 2026年6月10日 |
+| 单场赔率 | Polymarket (series_slug=soccer-fifwc) | 实时 |
+| 锦标赛冠军赔率 | DraftKings | 2026年6月10日 |
 | 赛程 | FIFA 官方（经 NDTV/ESPN 交叉验证） | 2026年6月13日 |
 | 对阵矩阵 | FIFA 规程 Annex C（经 Wikipedia） | 2026年6月 |
 | 进攻/防守 | Elo + FIFA + 近期表现综合 | 估算 |
@@ -292,27 +290,52 @@ python3 server.py 9090
 | 06-14 | 校准用赛后 Elo 重算 | 改用存储的预测概率 |
 | 06-14 | Ensemble 模型不一致（7.8pp 差异） | 移除，使用单一 Dixon-Coles |
 | 06-14 | PSO 被回退到过度激进参数 | 恢复 eloDiff/1500 ±20% |
+| 06-14 | ρ 值在代码/注释/i18n 中不一致 | 统一为 -0.13 |
+| 06-14 | GOALS_BASE/GOALS_PER_400/HOME_CONTINENTAL 死代码 | 移除 |
+| 06-14 | 蒙特卡洛阻塞主线程 | 分块执行 (500/batch + setTimeout) |
+| 06-14 | 积分计算逻辑重复 3 处 | 抽取 applyGroupResult() |
+| 06-14 | getVenue() O(n) 遍历 | 预构建 VENUE_MAP 查找表 |
+| 06-14 | --text3 对比度不达标 (2.3:1) | 改为 #76767a (4.5:1) |
+| 06-14 | API key 输入框 type=text | 改为 type=password |
+| 06-14 | 2022 回测跳过缺失队伍 | 添加 WC2022_TEAMS 补全 48 场 |
+| 06-14 | 锦标赛冠军赔率误用为比赛赔率 | 移除错误混合，改用 Polymarket 单场赔率 |
+| 06-14 | Polymarket 队名映射缺失 (6 队) | 补全 Bosnia-Herzegovina/Cabo Verde 等 |
+| 06-14 | fetchPolymarketMatchOdds 用错 API 端点 | 改用 series_slug=soccer-fifwc |
+
+### Polymarket API 集成
+
+**端点**: `GET https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc`
+- 无需认证，完全免费
+- 每个事件 = 一场 WC 比赛，包含 3 个 moneyline 市场
+- 市场格式: "Will X win on DATE?" (Yes/No), "Will X vs Y end in a draw?" (Yes/No)
+- 分页: limit=100, offset=0/100/200/...
+- 赔率混入模型: 30% market + 70% model (在 getFormAdjustedLambdas 中)
 
 ### 必须验证的检查项
 
-- [ ] `validateData()` 在控制台无警告
+- [ ] `RHO = -0.13` 且所有注释/i18n 一致
+- [ ] `getLambdas` 签名: `(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, isKnockout)` — 无 marketOdds 参数
+- [ ] `getFormAdjustedLambdas` 签名包含 `marketProbs` 参数
+- [ ] `fetchPolymarketMatchOdds` 使用 `series_slug=soccer-fifwc`
+- [ ] `fetchPolymarketMatchOdds` 中队名匹配用原始 Polymarket 名（非映射后规范名）
 - [ ] 总 λ 平均 2.5-2.7（不是 3.0+）
 - [ ] 1-1 最可能比分占比 <40%（不是 80%+）
 - [ ] 平局概率 20-28%（不是 5% 或 50%）
 - [ ] PSO 200 Elo 差 ~55/45（不是 75/25）
 - [ ] ET 因子 ~0.40（不是 0.33 或 0.55）
-- [ ] matchProbs 一致性（不同参数调用结果相同）
 - [ ] Bracket 无同组对阵
-- [ ] 赛程日期对照 FIFA 官方
 - [ ] 英格兰 = gb-eng，苏格兰 = gb-sct
+- [ ] API key 输入 type="password"
+- [ ] --text3 = #76767a
 
 ### 常见回归模式（给下一个 AI）
 
 1. **不要回退已修复的参数** — PSO 和 ET 被修复后又被回退。修改前检查 `git log`。
 2. **检查聚合分布，不只看单点** — 1-1 的单场概率 ~13% 看起来合理，但在 72 场中出现 82% 就不正常。
-3. **不要添加 ensemble/混合模型** — 已证明产生不一致。用单一模型。
+3. **锦标赛冠军赔率 ≠ 比赛赔率** — TEAMS[6] 是 48 队冠军赔率，不能用于 matchProbs。
 4. **不要添加 fatigueMap 到 lambda** — 双方等罚无意义。ET 因子已含疲劳。
-5. **审计数据，不只是代码** — 赛程、国旗、Elo 等事实数据需要对照外部来源验证。
+5. **Polymarket 队名需要映射** — "Côte d'Ivoire"/"Cabo Verde"/"IR Iran" 等需要在 mapTeamName 中处理。
+6. **审计数据，不只是代码** — 赛程、国旗、Elo 等事实数据需要对照外部来源验证。
 
 ### License
 
