@@ -1167,8 +1167,8 @@ function simKO(home, away, formMap) {
     method = "90'";
   } else {
     const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
-    const etH = poissonSample(lh * 0.55);
-    const etA = poissonSample(la * 0.55);
+    const etH = poissonSample(lh * 0.33);
+    const etA = poissonSample(la * 0.33);
     ga += etH; gb += etA;
     if (ga !== gb) {
       method = 'AET';
@@ -1176,7 +1176,7 @@ function simKO(home, away, formMap) {
       const eloH = getEffectiveElo(home);
       const eloA = getEffectiveElo(away);
       const eloDiff = eloH - eloA;
-      const pHome = 0.5 + Math.max(-0.15, Math.min(0.15, eloDiff / 2000));
+      const pHome = 0.5 + Math.max(-0.25, Math.min(0.25, eloDiff / 800));
       if (Math.random() < pHome) ga++; else gb++;
       method = 'PSO';
     }
@@ -1577,12 +1577,14 @@ function calculateDynamicForm(actualResults) {
     teamMatches[r.team2].push({ opponent: r.team1, score1: r.score2, score2: r.score1, daysAgo });
   }
 
-  const LAMBDA = 0.05;
+  const LAMBDA = 0.15; // Faster decay for tournament context (14-day window)
   const formMap = {};
 
   for (const team of Object.keys(TEAMS)) {
     const matches = teamMatches[team] || [];
-    if (matches.length === 0) { formMap[team] = TEAMS[team][4]; continue; }
+    const preTournamentForm = TEAMS[team][4];
+
+    if (matches.length === 0) { formMap[team] = preTournamentForm; continue; }
 
     let formScore = 0, totalWeight = 0;
     for (const m of matches) {
@@ -1594,7 +1596,15 @@ function calculateDynamicForm(actualResults) {
       formScore += weight * (points + gdBonus);
       totalWeight += weight;
     }
-    formMap[team] = Math.max(0, Math.min(1, formScore / totalWeight));
+    const wcForm = Math.max(0, Math.min(1, formScore / totalWeight));
+
+    // Blend pre-tournament form with WC form based on match count
+    // 1 match: 70% pre-tournament, 30% WC
+    // 2 matches: 49% pre, 51% WC
+    // 3 matches: 34% pre, 66% WC
+    // 4+ matches: WC form dominates
+    const wcWeight = 1 - Math.pow(0.7, matches.length);
+    formMap[team] = preTournamentForm * (1 - wcWeight) + wcForm * wcWeight;
   }
 
   return formMap;
@@ -1883,14 +1893,15 @@ function runSimulation(){
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
       if(actual){const ga=actual.score1,gb=actual.score2;winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method:ga!==gb?"90'":'PSO'});}
-      else{const[ga,gb,method]=simKO(home,away);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
+      else{const[ga,gb,method]=simKO(home,away,formMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
     }return[winners,res];}
   let[w1,r32r]=runKORound(koBracket);let[w2,r16r]=runKORound(w1);let[w3,qfr]=runKORound(w2);let[w4,sfr]=runKORound(w3);
-  const losers=qfr.map(m=>m.a===w3[0]?m.b:m.a);
-  const[tga,tgb,tm]=simKO(losers[0],losers[1]);
-  const[fa,fb,fm]=simKO(w4[0],w4[1]);
+  // Fix: use SF results (sfr) to identify semi-final losers, not QF results
+  const sfLosers=sfr.map(m=>m.ga>m.gb?m.b:m.a);
+  const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],formMap);
+  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap);
   ko.R32=r32r;ko.R16=r16r;ko.QF=qfr;ko.SF=sfr;
-  ko.Third={a:losers[0],ga:tga,gb:tgb,b:losers[1],method:tm};
+  ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
   ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
   ko.Champion=fa>fb?w4[0]:w4[1];
   currentResults={standings,matchResults,rankings,bestThirds,ko,formMap};
@@ -2086,8 +2097,8 @@ function renderModel(){
   h+=`<div class="model-card"><h4>${t('model.elo')}</h4>`;
   h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.05 × days)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">55% base λ</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">33% base λ (30/90 min)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 + Elo edge</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.mc')}</span><span class="weight">${MC_DEFAULT.toLocaleString()}</span></div>`;
   h+=`</div>`;

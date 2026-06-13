@@ -41,7 +41,7 @@ Both keys are entered in the **Data** tab. Use the **🔍 Test** button to verif
 ```
 Actual Match Results ──→ Dynamic Elo Update (K=60)
                               ↓
-                     Form Calculation (exp decay λ=0.05)
+                     Form Calculation (exp decay λ=0.15 + pre-tournament blend)
                               ↓
               getEffectiveElo() + getFormAdjustedLambdas()
                               ↓
@@ -70,9 +70,10 @@ Actual Match Results ──→ Dynamic Elo Update (K=60)
 
 **Form-Adjusted Goal Expectancy**
 - `getFormAdjustedLambdas(home, away)` combines Elo + form
-- Form = exponential decay weighted results: `weight = exp(-0.05 × days_ago)`
+- Form = exponential decay weighted results: `weight = exp(-0.15 × days_ago)` (tournament-tuned)
+- Pre-tournament form blended with WC results: 1 match = 70% pre / 30% WC, converging to WC form by 3+ matches
 - Adjustment range: ±15% of base lambda (form 0.5 = neutral)
-- Recent matches weighted more heavily (5-match window)
+- Recent matches weighted more heavily
 
 **Knockout Bracket — FIFA Annex C**
 - Complete 495-combination matrix parsed from FIFA Regulations
@@ -119,6 +120,18 @@ Actual Match Results ──→ Dynamic Elo Update (K=60)
 
 ### Audit Log
 
+**2026-06-13: Prediction accuracy optimization pass**
+
+Bugs found and fixed:
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| 1 | 🔴 Critical | Third Place match used QF losers instead of SF losers — `losers = qfr.map(...)` iterated 4 QF matches, producing wrong teams | Changed to `sfLosers = sfr.map(m => m.ga > m.gb ? m.b : m.a)` — correctly identifies 2 semi-final losers |
+| 2 | 🔴 Critical | `simKO` calls inside `runKORound` omitted `formMap` — knockout predictions used stale/null global form data | Added `formMap` parameter to all `simKO` calls in `runKORound`, Third Place, and Final |
+| 3 | 🟡 Medium | Extra time expected goals factor 0.55 overestimated by 65% — ET is 30/90 min = 0.33, causing too few penalty shootouts | Changed from `lh * 0.55` to `lh * 0.33` (proportional to 30-minute duration) |
+| 4 | 🟡 Medium | Penalty shootout model near coin-flip — Elo advantage capped at ±0.15 with divisor 2000 (400 Elo diff = only ±0.046) | Widened to ±0.25 with divisor 800, matching historical ~60-65% strong team PSO win rate |
+| 5 | 🟡 Medium | Form decay λ=0.05 too slow for 14-day tournament window; 1 WC match completely overrode pre-tournament form | Increased λ to 0.15 (tournament-tuned); added pre-tournament form blending: `wcWeight = 1 - 0.7^n` |
+
 **2026-06-14: Deep audit and comprehensive fix**
 
 Bugs found and fixed:
@@ -149,7 +162,7 @@ Design decisions documented:
 - **Prediction comparison**: shows predicted vs actual for each completed match
 - **Accuracy dashboard**: RPS, Brier, ECE, win/draw/loss accuracy
 - **Dynamic Elo**: K=60, goal-difference multiplier, updates after each match
-- **Form momentum**: exponential decay (λ=0.05), recent matches weighted more
+- **Form momentum**: tournament-tuned exponential decay (λ=0.15), pre-tournament form blended for stability
 - **Live data**: proxy server bypasses CORS for football-data.org and the-odds-api.com
 - **Polymarket radar**: real-money prediction market comparison
 - **Bilingual**: full Chinese/English toggle with technical terms preserved
@@ -210,7 +223,7 @@ python3 server.py 9090
 ```
 实际比赛结果 ──→ 动态 Elo 更新 (K=60)
                       ↓
-                状态计算 (指数衰减 λ=0.05)
+                状态计算 (指数衰减 λ=0.15 + 赛前状态混合)
                       ↓
           getEffectiveElo() + getFormAdjustedLambdas()
                       ↓
@@ -239,9 +252,10 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 
 **状态调整的期望进球**
 - `getFormAdjustedLambdas(home, away)` 组合 Elo + 状态
-- 状态 = 指数衰减加权结果：`weight = exp(-0.05 × days_ago)`
+- 状态 = 指数衰减加权结果：`weight = exp(-0.15 × days_ago)`（赛会制调优）
+- 赛前状态与 WC 结果混合：1 场 = 70% 赛前 / 30% WC，3+ 场后 WC 状态主导
 - 调整范围：基础 lambda 的 ±15%（状态 0.5 = 中性）
-- 近期比赛权重更高（5 场窗口）
+- 近期比赛权重更高
 
 **淘汰赛对阵 — FIFA Annex C**
 - 从 FIFA 官方规程解析完整 495 种组合矩阵
@@ -288,6 +302,18 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 
 ### 审计日志
 
+**2026-06-13：预测精度优化**
+
+发现并修复的 Bug：
+
+| # | 严重性 | 问题 | 修复 |
+|---|--------|------|------|
+| 1 | 🔴 严重 | 三四名决赛用 QF 负者而非 SF 负者 — `losers = qfr.map(...)` 遍历 4 场八强赛，产生错误球队 | 改为 `sfLosers = sfr.map(m => m.ga > m.gb ? m.b : m.a)`，正确识别 2 支半决赛负者 |
+| 2 | 🔴 严重 | `simKO` 调用遗漏 `formMap` — 淘汰赛预测使用过期/空的全局状态数据 | 在 `runKORound`、三四名决赛、决赛的所有 `simKO` 调用中传入 `formMap` |
+| 3 | 🟡 中等 | 加时赛期望进球系数 0.55 高估 65% — 加时 30/90 分钟 = 0.33，导致点球触发率偏低 | 从 `lh * 0.55` 改为 `lh * 0.33`（等比例缩放） |
+| 4 | 🟡 中等 | 点球模型接近抛硬币 — Elo 优势上限 ±0.15，除数 2000（400 Elo 差仅 ±0.046） | 扩大至 ±0.25，除数 800，符合历史强队 ~60-65% 点球胜率 |
+| 5 | 🟡 中等 | 状态衰减 λ=0.05 在 14 天赛会窗口过慢；1 场 WC 比赛完全覆盖赛前状态 | λ 提高至 0.15（赛会制调优）；引入赛前状态混合：`wcWeight = 1 - 0.7^n` |
+
 **2026-06-14：深度审计与全面修复**
 
 发现并修复的 Bug：
@@ -318,7 +344,7 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 - **预测对比**：每场已完成比赛显示预测 vs 实际
 - **准确度仪表板**：RPS、Brier、ECE、胜平负准确率
 - **动态 Elo**：K=60，进球差乘数，每场比赛后更新
-- **状态动量**：指数衰减（λ=0.05），近期比赛权重更高
+- **状态动量**：赛会制调优指数衰减（λ=0.15），赛前状态混合保障稳定性
 - **实时数据**：代理服务器绕过 CORS，对接 football-data.org 和 the-odds-api.com
 - **Polymarket 雷达**：真金白银预测市场价格对比
 - **中英文切换**：完整翻译，技术术语保留英文
