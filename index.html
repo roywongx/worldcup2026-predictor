@@ -1371,6 +1371,60 @@ function computeBrierScores() {
   };
 }
 
+// ---- Probability Snapshot Tracking (概率变化追踪) ----
+// Records champion probabilities over time to show how each match result
+// affects the tournament outlook. Inspired by wcforcast.com trend charts.
+
+/** Take a snapshot of current champion probabilities.
+ *  Called before and after each result is processed. */
+function takeProbSnapshot(trigger) {
+  const state = loadState();
+  if (!state.probHistory) state.probHistory = [];
+
+  // Get current champion probabilities from mcResults or compute from composite
+  const probs = {};
+  if (mcResults && mcResults.champ) {
+    for (const t of Object.keys(TEAMS)) {
+      probs[t] = (mcResults.champ[t] || 0) / mcResults.N;
+    }
+  } else {
+    // Fallback: use composite rating as proxy
+    for (const t of Object.keys(TEAMS)) {
+      probs[t] = composite(t) * 0.15; // rough estimate
+    }
+  }
+
+  state.probHistory.push({
+    timestamp: Date.now(),
+    trigger: trigger || 'manual',
+    probs
+  });
+
+  // Keep last 50 snapshots
+  if (state.probHistory.length > 50) state.probHistory = state.probHistory.slice(-50);
+  saveState(state);
+  return probs;
+}
+
+/** Get probability trend data for display */
+function getProbTrend() {
+  const state = loadState();
+  const history = state.probHistory || [];
+  if (history.length < 2) return null;
+
+  const latest = history[history.length - 1];
+  const previous = history[history.length - 2];
+
+  const changes = {};
+  for (const t of Object.keys(TEAMS)) {
+    const now = latest.probs[t] || 0;
+    const prev = previous.probs[t] || 0;
+    changes[t] = now - prev;
+  }
+
+  return { latest: latest.probs, previous: previous.probs, changes, history };
+}
+
 // ---- Composite rating (UI display only, not used in core model) ----
 
 /** Weighted composite team strength score (0-1) for display.
@@ -2142,6 +2196,7 @@ const I18N = {
     'prob.apply':'应用','prob.clear':'清除','prob.invalidMatch':'请选择有效的对阵',
     'prob.noData':'无数据','prob.noMatch':'该比分组合从未出现',
     'prob.conditionalResults':'条件概率结果','prob.filteredSims':'次过滤模拟',
+    'prob.trend':'概率走势','prob.trendDesc':'夺冠概率随比赛结果变化','prob.snapshots':'个快照',
     // Model
     'model.dc':'Dixon-Coles Poisson 模型','model.elo':'Elo 系统',
     'model.base':'基础 λ (总进球)','model.rate':'Elo→进球率','model.host':'东道主加成','model.floor':'最低 λ','model.grid':'比分网格',
@@ -2203,6 +2258,7 @@ const I18N = {
     'prob.apply':'Apply','prob.clear':'Clear','prob.invalidMatch':'Please select valid teams',
     'prob.noData':'No data','prob.noMatch':'This score combination never occurred',
     'prob.conditionalResults':'Conditional Results','prob.filteredSims':'filtered simulations',
+    'prob.trend':'Probability Trend','prob.trendDesc':'Champion probability changes with match results','prob.snapshots':'snapshots',
     // Model
     'model.dc':'Dixon-Coles Poisson Model','model.elo':'Elo System',
     'model.base':'Base λ (total goals)','model.rate':'Elo→Goal rate','model.host':'Host advantage','model.floor':'Floor λ','model.grid':'Score grid',
@@ -2349,6 +2405,8 @@ function runSimulation(){
   }
 
   currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,isoParams};
+  // Take probability snapshot for trend tracking
+  takeProbSnapshot(results.length > 0 ? 'simulation' : 'init');
   renderAll();
   }catch(e){console.error('runSimulation:',e);}
 }
@@ -2668,6 +2726,46 @@ function renderProbabilities(){
   h+=`</div>`;
   h+=`<div id="whatif-result-display"></div>`;
   h+=`</div>`;
+
+  // Probability Trend Chart (概率走势图)
+  const trend = getProbTrend();
+  if(trend && trend.history.length >= 2) {
+    h+=`<div style="margin-top:2rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">📈 ${t('prob.trend')}</h4>`;
+    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.8rem">${t('prob.trendDesc')} (${trend.history.length} ${t('prob.snapshots')})</div>`;
+
+    // Show top 8 teams with trend arrows
+    const topTeams = Object.keys(trend.latest).sort((a,b) => trend.latest[b] - trend.latest[a]).slice(0, 8);
+    h+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.5rem">`;
+    for(const team of topTeams) {
+      const now = trend.latest[team] || 0;
+      const delta = trend.changes[team] || 0;
+      const dc = delta > 0.005 ? 'var(--green)' : delta < -0.005 ? 'var(--red)' : 'var(--text3)';
+      const arrow = delta > 0.005 ? '▲' : delta < -0.005 ? '▼' : '—';
+      h+=`<div style="text-align:center;padding:0.5rem;background:var(--bg);border-radius:8px">`;
+      h+=`<div style="font-size:0.65rem">${fl(team)}</div>`;
+      h+=`<div style="font-size:1.1rem;font-weight:700">${(now*100).toFixed(1)}%</div>`;
+      h+=`<div style="font-size:0.6rem;color:${dc}">${arrow} ${delta>0?'+':''}${(delta*100).toFixed(1)}pp</div>`;
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+
+    // ASCII sparkline for top 3 teams
+    if(trend.history.length >= 3) {
+      h+=`<div style="margin-top:0.8rem;font-size:0.65rem;color:var(--text3)">`;
+      for(const team of topTeams.slice(0,3)) {
+        const vals = trend.history.map(s => (s.probs[team] || 0) * 100);
+        const min = Math.min(...vals), max = Math.max(...vals);
+        const spark = vals.map(v => {
+          const normalized = max > min ? (v - min) / (max - min) : 0.5;
+          const blocks = ['▁','▂','▃','▄','▅','▆','▇','█'];
+          return blocks[Math.min(7, Math.floor(normalized * 7))];
+        }).join('');
+        h+=`<div style="margin-bottom:0.2rem">${fl(team)} ${spark} ${(vals[vals.length-1]).toFixed(1)}%</div>`;
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  }
 
   document.getElementById('section-probabilities').innerHTML=h;
   // Show existing What-If results if any
