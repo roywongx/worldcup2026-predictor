@@ -2495,43 +2495,34 @@ function renderMatches(){
         ${predLine}
       </div>`;
     } else {
-      // Future match: show model vs Polymarket comparison with visual bars
-      let probBar = '';
+      // Future match: show model vs Polymarket comparison with colored pills
+      let probLine = '';
       if(m.probs) {
         const wPct = (m.probs.win*100).toFixed(0);
         const dPct = (m.probs.draw*100).toFixed(0);
         const lPct = (m.probs.loss*100).toFixed(0);
-        // Model bar
-        probBar += `<div style="display:flex;gap:0.3rem;align-items:center;margin-top:0.3rem;padding-left:2.5rem">`;
-        probBar += `<span style="font-size:0.6rem;color:var(--blue);font-weight:600;min-width:1.5rem">M</span>`;
-        probBar += `<div style="flex:1;height:6px;background:rgba(0,0,0,0.04);border-radius:3px;display:flex;overflow:hidden">`;
-        probBar += `<div style="width:${wPct}%;background:var(--blue);opacity:0.7" title="Win ${wPct}%"></div>`;
-        probBar += `<div style="width:${dPct}%;background:var(--text3);opacity:0.5" title="Draw ${dPct}%"></div>`;
-        probBar += `<div style="width:${lPct}%;background:var(--red);opacity:0.5" title="Loss ${lPct}%"></div>`;
-        probBar += `</div>`;
-        probBar += `<span style="font-size:0.55rem;color:var(--text3);min-width:3rem;text-align:right">${wPct}/${dPct}/${lPct}</span>`;
-        probBar += `</div>`;
-        // Market bar (if available)
+        probLine += `<div style="display:flex;gap:0.3rem;align-items:center;margin-top:0.3rem;padding-left:2.5rem;flex-wrap:wrap">`;
+        // Model prediction pills
+        probLine += `<span style="font-size:0.55rem;background:rgba(0,122,255,0.12);color:var(--blue);padding:0.15rem 0.4rem;border-radius:4px;font-weight:600">Model W${wPct}%</span>`;
+        probLine += `<span style="font-size:0.55rem;background:rgba(0,0,0,0.06);color:var(--text2);padding:0.15rem 0.4rem;border-radius:4px">D${dPct}%</span>`;
+        probLine += `<span style="font-size:0.55rem;background:rgba(255,59,48,0.1);color:var(--red);padding:0.15rem 0.4rem;border-radius:4px">L${lPct}%</span>`;
+        // Market comparison (if available)
         if(mkt) {
           const mwPct = (mkt.win*100).toFixed(0);
           const mdPct = (mkt.draw*100).toFixed(0);
           const mlPct = (mkt.loss*100).toFixed(0);
-          // Divergence color
           const div = Math.abs(m.probs.win - mkt.win) + Math.abs(m.probs.draw - mkt.draw);
           const divColor = div > 0.15 ? 'var(--red)' : div > 0.08 ? 'var(--orange)' : 'var(--green)';
-          probBar += `<div style="display:flex;gap:0.3rem;align-items:center;padding-left:2.5rem">`;
-          probBar += `<span style="font-size:0.6rem;color:var(--purple);font-weight:600;min-width:1.5rem">Mkt</span>`;
-          probBar += `<div style="flex:1;height:6px;background:rgba(0,0,0,0.04);border-radius:3px;display:flex;overflow:hidden">`;
-          probBar += `<div style="width:${mwPct}%;background:var(--purple);opacity:0.6" title="Win ${mwPct}%"></div>`;
-          probBar += `<div style="width:${mdPct}%;background:var(--text3);opacity:0.4" title="Draw ${mdPct}%"></div>`;
-          probBar += `<div style="width:${mlPct}%;background:var(--red);opacity:0.4" title="Loss ${mlPct}%"></div>`;
-          probBar += `</div>`;
-          probBar += `<span style="font-size:0.55rem;color:var(--text3);min-width:3rem;text-align:right">${mwPct}/${mdPct}/${mlPct}</span>`;
-          probBar += `<span style="font-size:0.5rem;color:${divColor};font-weight:700;min-width:2rem;text-align:right" title="Model-Market divergence">${(div*100).toFixed(0)}%</span>`;
-          probBar += `</div>`;
+          const divBg = div > 0.15 ? 'rgba(255,59,48,0.1)' : div > 0.08 ? 'rgba(255,149,0,0.1)' : 'rgba(52,199,89,0.1)';
+          probLine += `<span style="font-size:0.55rem;color:var(--text3);margin-left:0.3rem">│</span>`;
+          probLine += `<span style="font-size:0.55rem;background:rgba(175,82,222,0.12);color:var(--purple);padding:0.15rem 0.4rem;border-radius:4px;font-weight:600">Mkt W${mwPct}%</span>`;
+          probLine += `<span style="font-size:0.55rem;background:rgba(0,0,0,0.06);color:var(--text2);padding:0.15rem 0.4rem;border-radius:4px">D${mdPct}%</span>`;
+          probLine += `<span style="font-size:0.55rem;background:rgba(255,59,48,0.1);color:var(--red);padding:0.15rem 0.4rem;border-radius:4px">L${mlPct}%</span>`;
+          probLine += `<span style="font-size:0.55rem;background:${divBg};color:${divColor};padding:0.15rem 0.4rem;border-radius:4px;font-weight:700">Δ${(div*100).toFixed(0)}%</span>`;
         }
+        probLine += `</div>`;
       }
-      h+=`<div class="match-card" style="flex-wrap:wrap"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span>${venueHtml}${probBar}</div>`;
+      h+=`<div class="match-card" style="flex-wrap:wrap"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span>${venueHtml}${probLine}</div>`;
     }
   });
   [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
