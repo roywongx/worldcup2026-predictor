@@ -2151,12 +2151,13 @@ function mapTeamName(apiName) {
     'Iran': 'Iran', 'Scotland': 'Scotland', 'Canada': 'Canada', 'Ghana': 'Ghana',
     'Tunisia': 'Tunisia', 'Paraguay': 'Paraguay', 'Saudi Arabia': 'Saudi Arabia',
     'Czech Republic': 'Czech Republic', 'Czechia': 'Czech Republic',
-    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina',
-    'Ivory Coast': 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast',
+    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina', 'Bosnia-Herzegovina': 'Bosnia Herzegovina',
+    'Ivory Coast': 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast', "Côte d'Ivoire": 'Ivory Coast',
     'Qatar': 'Qatar', 'Panama': 'Panama', 'Algeria': 'Algeria', 'Jordan': 'Jordan',
     'Iraq': 'Iraq', 'Uzbekistan': 'Uzbekistan', 'DR Congo': 'DR Congo', 'Congo DR': 'DR Congo',
-    'Cape Verde': 'Cape Verde', 'Haiti': 'Haiti', 'New Zealand': 'New Zealand',
-    'South Africa': 'South Africa', 'Curacao': 'Curaçao',
+    'Cape Verde': 'Cape Verde', 'Cabo Verde': 'Cape Verde', 'Haiti': 'Haiti', 'New Zealand': 'New Zealand',
+    'South Africa': 'South Africa', 'Curacao': 'Curaçao', 'Curaçao': 'Curaçao',
+    'Sweden': 'Sweden', 'IR Iran': 'Iran',
   };
   return nameMap[apiName] || nameMap[apiName.trim()] || null;
 }
@@ -3131,6 +3132,8 @@ async function fetchPolymarketMatchOdds() {
         if (!date) continue;
         // Find win/draw markets
         let pWin1 = 0, pWin2 = 0, pDraw = 0;
+        const raw1 = tm[1].trim().toLowerCase();
+        const raw2 = tm[2].trim().toLowerCase();
         for (const m of (ev.markets || [])) {
           const q = (m.question || '').toLowerCase();
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
@@ -3138,9 +3141,9 @@ async function fetchPolymarketMatchOdds() {
           if (isNaN(yesPrice) || yesPrice <= 0) continue;
           if (q.includes('end in a draw')) {
             pDraw = yesPrice;
-          } else if (q.includes('will ' + team1.toLowerCase()) || q.includes('will ' + tm[1].trim().toLowerCase())) {
+          } else if (q.includes(raw1) && !q.includes(raw2)) {
             pWin1 = yesPrice;
-          } else if (q.includes('will ' + team2.toLowerCase()) || q.includes('will ' + tm[2].trim().toLowerCase())) {
+          } else if (q.includes(raw2) && !q.includes(raw1)) {
             pWin2 = yesPrice;
           }
         }
