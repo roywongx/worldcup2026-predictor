@@ -1612,10 +1612,13 @@ function expectedCalibrationError(predictions, outcomes, nBins) {
 // Based on: Walsh & Joshi (2023) "ML for sports betting: calibration > accuracy"
 // Platt scaling: P(outcome=1) = 1 / (1 + exp(-(a * logit(p) + b)))
 
-/** Fit Platt scaling parameters from historical predictions.
- *  Returns {win: {a, b}, draw: {a, b}, loss: {a, b}} for each outcome class. */
-function fitPlattScaling(actualResults) {
-  if (!actualResults || actualResults.length < 10) return null;
+/** Isotonic regression calibration using PAVA (Pool Adjacent Violators Algorithm).
+ *  Non-parametric: assumes only monotonicity, not logistic shape.
+ *  Reference: Wilkens (2026) "Can simple models predict football?"
+ *  Returns calibration maps: {win: [{p, calP}], draw: [...], loss: [...]}
+ *  Each map is a sorted lookup table from predicted probability to calibrated probability. */
+function fitIsotonicCalibration(actualResults) {
+  if (!actualResults || actualResults.length < 8) return null;
 
   const outcomes = { win: [], draw: [], loss: [] };
   for (const r of actualResults) {
@@ -1629,43 +1632,67 @@ function fitPlattScaling(actualResults) {
   const result = {};
   for (const cls of ['win', 'draw', 'loss']) {
     const data = outcomes[cls];
-    if (data.length < 5) { result[cls] = { a: 1, b: 0 }; continue; }
+    if (data.length < 5) { result[cls] = null; continue; }
 
-    // Simple gradient descent for logistic regression
-    // logit(p) = log(p / (1-p)), fit y ~ sigmoid(a * logit(p) + b)
-    let a = 1.0, b = 0.0;
-    const lr = 0.01;
-    for (let iter = 0; iter < 200; iter++) {
-      let gradA = 0, gradB = 0;
-      for (const d of data) {
-        const p = Math.max(0.001, Math.min(0.999, d.p));
-        const logit = Math.log(p / (1 - p));
-        const pred = 1 / (1 + Math.exp(-(a * logit + b)));
-        const err = pred - d.y;
-        gradA += err * logit;
-        gradB += err;
+    // Sort by predicted probability
+    data.sort((a, b) => a.p - b.p);
+
+    // PAVA: Pool Adjacent Violators Algorithm
+    // Create bins: each data point is a bin with (sumPredicted, sumActual, count)
+    let bins = data.map(d => ({ sumP: d.p, sumY: d.y, count: 1 }));
+
+    // Merge adjacent violators (where observed frequency decreases)
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const newBins = [];
+      for (let i = 0; i < bins.length; i++) {
+        if (newBins.length > 0) {
+          const prev = newBins[newBins.length - 1];
+          const prevRate = prev.sumY / prev.count;
+          const currRate = bins[i].sumY / bins[i].count;
+          if (currRate < prevRate) {
+            // Violation: merge
+            prev.sumP += bins[i].sumP;
+            prev.sumY += bins[i].sumY;
+            prev.count += bins[i].count;
+            changed = true;
+            continue;
+          }
+        }
+        newBins.push({ ...bins[i] });
       }
-      a -= lr * gradA / data.length;
-      b -= lr * gradB / data.length;
+      bins = newBins;
     }
-    result[cls] = { a, b };
+
+    // Create calibration lookup: predicted -> calibrated
+    result[cls] = bins.map(b => ({
+      p: b.sumP / b.count,      // average predicted probability in this bin
+      calP: b.sumY / b.count    // observed frequency in this bin
+    }));
   }
   return result;
 }
 
-/** Apply Platt scaling calibration to a probability triplet. */
-function applyPlattCalibration(probs, platt) {
-  if (!platt) return probs;
+/** Apply isotonic calibration to a probability triplet using lookup table. */
+function applyIsotonicCalibration(probs, iso) {
+  if (!iso) return probs;
 
-  const calibrate = (p, params) => {
+  const calibrate = (p, lookup) => {
+    if (!lookup || lookup.length === 0) return p;
     p = Math.max(0.001, Math.min(0.999, p));
-    const logit = Math.log(p / (1 - p));
-    return 1 / (1 + Math.exp(-(params.a * logit + params.b)));
+    // Find the bin where this prediction falls
+    let best = lookup[0];
+    for (const bin of lookup) {
+      if (p >= bin.p) best = bin;
+      else break;
+    }
+    return best.calP;
   };
 
-  let cW = calibrate(probs.win, platt.win);
-  let cD = calibrate(probs.draw, platt.draw);
-  let cL = calibrate(probs.loss, platt.loss);
+  let cW = calibrate(probs.win, iso.win);
+  let cD = calibrate(probs.draw, iso.draw);
+  let cL = calibrate(probs.loss, iso.loss);
 
   // Normalize
   const total = cW + cD + cL;
@@ -1713,6 +1740,9 @@ function getCalibrationStats(actualResults) {
     logLossSum += logLoss(predArr, outcome);
   }
 
+  // Fit isotonic calibration from stored predictions
+  const isoParams = fitIsotonicCalibration(actualResults);
+
   // Reliability diagram bins (10 bins from 0 to 1)
   const nBins = 10;
   const bins = Array.from({length: nBins}, () => ({count: 0, sumProb: 0, sumOutcome: 0}));
@@ -1734,7 +1764,8 @@ function getCalibrationStats(actualResults) {
     brier: brierSum / total,
     logLoss: logLossSum / total,
     ece: expectedCalibrationError(predictions, outcomes),
-    bins: bins
+    bins: bins,
+    isoParams: isoParams
   };
 }
 
@@ -2155,15 +2186,15 @@ function runSimulation(){
   ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
   ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
   ko.Champion=fa>fb?w4[0]:w4[1];
-  // Compute Platt scaling calibration from actual results
-  const plattParams = fitPlattScaling(results);
-  if (plattParams) {
+  // Compute isotonic regression calibration from actual results (PAVA algorithm)
+  const isoParams = fitIsotonicCalibration(results);
+  if (isoParams) {
     const state2 = loadState();
-    state2.plattParams = plattParams;
+    state2.isoParams = isoParams;
     saveState(state2);
   }
 
-  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,plattParams};
+  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,isoParams};
   renderAll();
   }catch(e){console.error('runSimulation:',e);}
 }
@@ -2404,13 +2435,22 @@ function renderData(){
   h+=`<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   if(stats&&stats.total>=3){
     const ac=stats.accuracy>=0.6?'metric-good':(stats.accuracy>=0.45?'metric-warn':'metric-bad');
-    const rc=stats.rps<=0.20?'metric-good':(stats.rps<=0.25?'metric-warn':'metric-bad');
-    h+=`<div class="calib-metric"><span class="metric-label">${t('data.rps')}</span><span class="metric-val ${rc}">${stats.rps.toFixed(4)}</span></div>`;
+    const lc=stats.logLoss<=0.90?'metric-good':(stats.logLoss<=1.05?'metric-warn':'metric-bad');
+    const bc=stats.brier<=0.25?'metric-good':(stats.brier<=0.35?'metric-warn':'metric-bad');
+    // Log Loss is primary (per research: strongest local scoring rule)
+    h+=`<div class="calib-metric"><span class="metric-label">Log Loss</span><span class="metric-val ${lc}">${stats.logLoss.toFixed(4)}</span></div>`;
+    h+=`<div class="calib-metric"><span class="metric-label">${t('data.brier')}</span><span class="metric-val ${bc}">${stats.brier.toFixed(4)}</span></div>`;
+    h+=`<div class="calib-metric"><span class="metric-label">${t('data.rps')}</span><span class="metric-val">${stats.rps.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.accuracy')}</span><span class="metric-val ${ac}">${(stats.accuracy*100).toFixed(1)}%</span></div>`;
-    h+=`<div class="calib-metric"><span class="metric-label">${t('data.brier')}</span><span class="metric-val">${stats.brier.toFixed(4)}</span></div>`;
-    h+=`<div class="calib-metric"><span class="metric-label">${t('data.logLoss')}</span><span class="metric-val">${stats.logLoss.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.ece')}</span><span class="metric-val">${(stats.ece*100).toFixed(1)}%</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">${t('data.correctTotal')}</span><span class="metric-val">${stats.correct}/${stats.total}</span></div>`;
+    // Isotonic calibration status
+    if(stats.isoParams){
+      const hasWin=stats.isoParams.win&&stats.isoParams.win.length>1;
+      h+=`<div class="calib-metric"><span class="metric-label">Isotonic校准</span><span class="metric-val metric-good">✓ Active (${hasWin?stats.isoParams.win.length:'-'} bins)</span></div>`;
+    } else {
+      h+=`<div class="calib-metric"><span class="metric-label">Isotonic校准</span><span class="metric-val" style="color:var(--text3)">需要 8+ 场结果</span></div>`;
+    }
     // Reliability diagram (ASCII bar chart)
     if(stats.bins){
       h+=`<div style="margin-top:0.8rem"><div style="font-size:0.7rem;font-weight:700;margin-bottom:0.4rem">Reliability Diagram (predicted vs actual)</div>`;
