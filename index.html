@@ -2470,18 +2470,17 @@ function renderMatches(){
     const mkt=marketOdds[mktKey]||marketOdds[mktKey2]||null;
 
     if(m.actual){
-      // Actual match: show result + prediction comparison + market comparison
+      // Actual match: show result + prediction comparison
       const stored=actualResults.find(r=>r.team1===m.ta&&r.team2===m.tb);
       let predLine='';
       if(stored&&stored.predGoals){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
         const predW=predH>predA?m.ta:(predA>predH?m.tb:'Draw');
         const isCorrect=stored.correct;
-        const predProb=stored.probs?`W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%`:'';
-        predLine=`<div style="font-size:0.6rem;color:var(--text3);margin-top:1px;padding-left:2.5rem">
-          <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?t('match.predCorrect'):t('match.predWrong')}</span>
+        predLine=`<div style="font-size:0.6rem;color:var(--text3);margin-top:2px;padding-left:2.5rem">
+          <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓':'✗'}</span>
           <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
-          <span style="margin-left:4px;color:var(--text3)">${predProb}</span>
+          ${stored.probs?`<span style="margin-left:4px">W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%</span>`:''}
           ${mkt?`<span style="margin-left:4px;color:var(--purple)">Mkt: W:${(mkt.win*100).toFixed(0)}% D:${(mkt.draw*100).toFixed(0)}% L:${(mkt.loss*100).toFixed(0)}%</span>`:''}
         </div>`;
       }
@@ -2496,14 +2495,43 @@ function renderMatches(){
         ${predLine}
       </div>`;
     } else {
-      // Future match: show model + Polymarket de-vigged odds
-      let modelLine='';
-      if(m.probs){modelLine=`<span style="font-size:0.6rem;color:var(--blue);font-weight:600">M:${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
-      let mktLine='';
-      if(mkt){
-        mktLine=`<span style="font-size:0.6rem;color:var(--purple);margin-left:4px">P:${(mkt.win*100).toFixed(0)}/${(mkt.draw*100).toFixed(0)}/${(mkt.loss*100).toFixed(0)}</span>`;
+      // Future match: show model vs Polymarket comparison with visual bars
+      let probBar = '';
+      if(m.probs) {
+        const wPct = (m.probs.win*100).toFixed(0);
+        const dPct = (m.probs.draw*100).toFixed(0);
+        const lPct = (m.probs.loss*100).toFixed(0);
+        // Model bar
+        probBar += `<div style="display:flex;gap:0.3rem;align-items:center;margin-top:0.3rem;padding-left:2.5rem">`;
+        probBar += `<span style="font-size:0.6rem;color:var(--blue);font-weight:600;min-width:1.5rem">M</span>`;
+        probBar += `<div style="flex:1;height:6px;background:rgba(0,0,0,0.04);border-radius:3px;display:flex;overflow:hidden">`;
+        probBar += `<div style="width:${wPct}%;background:var(--blue);opacity:0.7" title="Win ${wPct}%"></div>`;
+        probBar += `<div style="width:${dPct}%;background:var(--text3);opacity:0.5" title="Draw ${dPct}%"></div>`;
+        probBar += `<div style="width:${lPct}%;background:var(--red);opacity:0.5" title="Loss ${lPct}%"></div>`;
+        probBar += `</div>`;
+        probBar += `<span style="font-size:0.55rem;color:var(--text3);min-width:3rem;text-align:right">${wPct}/${dPct}/${lPct}</span>`;
+        probBar += `</div>`;
+        // Market bar (if available)
+        if(mkt) {
+          const mwPct = (mkt.win*100).toFixed(0);
+          const mdPct = (mkt.draw*100).toFixed(0);
+          const mlPct = (mkt.loss*100).toFixed(0);
+          // Divergence color
+          const div = Math.abs(m.probs.win - mkt.win) + Math.abs(m.probs.draw - mkt.draw);
+          const divColor = div > 0.15 ? 'var(--red)' : div > 0.08 ? 'var(--orange)' : 'var(--green)';
+          probBar += `<div style="display:flex;gap:0.3rem;align-items:center;padding-left:2.5rem">`;
+          probBar += `<span style="font-size:0.6rem;color:var(--purple);font-weight:600;min-width:1.5rem">Mkt</span>`;
+          probBar += `<div style="flex:1;height:6px;background:rgba(0,0,0,0.04);border-radius:3px;display:flex;overflow:hidden">`;
+          probBar += `<div style="width:${mwPct}%;background:var(--purple);opacity:0.6" title="Win ${mwPct}%"></div>`;
+          probBar += `<div style="width:${mdPct}%;background:var(--text3);opacity:0.4" title="Draw ${mdPct}%"></div>`;
+          probBar += `<div style="width:${mlPct}%;background:var(--red);opacity:0.4" title="Loss ${mlPct}%"></div>`;
+          probBar += `</div>`;
+          probBar += `<span style="font-size:0.55rem;color:var(--text3);min-width:3rem;text-align:right">${mwPct}/${mdPct}/${mlPct}</span>`;
+          probBar += `<span style="font-size:0.5rem;color:${divColor};font-weight:700;min-width:2rem;text-align:right" title="Model-Market divergence">${(div*100).toFixed(0)}%</span>`;
+          probBar += `</div>`;
+        }
       }
-      h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${modelLine}${mktLine}</span>${venueHtml}</div>`;
+      h+=`<div class="match-card" style="flex-wrap:wrap"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span>${venueHtml}${probBar}</div>`;
     }
   });
   [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
