@@ -185,6 +185,18 @@ Model verification:
 - No JavaScript console errors
 - All UI tabs render correctly
 
+**2026-06-14: V2 audit — ensemble removal, PSO/ET fix, fatigueMap cleanup**
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| 1 | 🔴 Critical | Ensemble model (`matchProbsEnsemble`) blended Dixon-Coles with ad-hoc market-derived probabilities using `marketRatio * 0.8 + 0.1` hack. Tournament winner odds ≠ match odds. Produced 7.8pp inconsistency between code paths. | Removed entirely. `matchProbs` now uses single consistent Dixon-Coles path. |
+| 2 | 🔴 Critical | PSO reverted to `eloDiff/800 ±25%` (200 Elo → 75/25). Historical data shows ~55/45. | Restored `eloDiff/1500 ±20%` (200 Elo → 56/37). |
+| 3 | 🟡 Medium | ET factor reverted to 0.33 (pure 30/90 ratio). Ignores fatigue effect in extra time. | Restored 0.40. Historical ET goals ~38-42% of regular time. |
+| 4 | 🟡 Medium | `fatigueMap` penalized both teams equally when rest days were identical (common in WC). Only reduced total goals without changing win probability. | Removed from lambda calculations entirely. ET factor 0.40 already accounts for fatigue. `calculateFatigueMap` function removed. |
+| 5 | 🟡 Medium | `composite()` atkDefN formula `((atk-0.8)+(def-0.8))/0.8` gave 0.5 for average teams (atk=1.0, def=1.0). | Changed to `((atk+def)/2 - 0.78) / 0.42` properly normalizing [0.78, 1.20] → [0, 1]. |
+
+**Lesson for next AI**: Reverting previously-fixed parameters (PSO, ET) without checking git history is a common regression pattern. Always check `git log` before changing numerical constants.
+
 ### Features
 
 - **Dixon-Coles Poisson engine** with pre-computed factorial table
@@ -398,6 +410,18 @@ Dixon-Coles Poisson: P(h,a) = Poisson(h;λH) × Poisson(a;λA) × τ(h,a)
 - 西班牙 30.3%、法国 19.1%、阿根廷 15.0%（前3符合预期）
 - 无 JavaScript 控制台错误
 - 所有 UI 标签页正确渲染
+
+**2026-06-14：V2 审计 — 移除 ensemble、修复 PSO/ET、清理 fatigueMap**
+
+| # | 严重性 | 问题 | 修复 |
+|---|--------|------|------|
+| 1 | 🔴 严重 | Ensemble 模型 (`matchProbsEnsemble`) 用 ad-hoc hack `marketRatio * 0.8 + 0.1` 混合 Dixon-Coles 与市场概率。锦标赛冠军赔率 ≠ 单场比赛概率。代码路径间差异 7.8pp。 | 完全移除。`matchProbs` 使用单一一致的 Dixon-Coles 路径。 |
+| 2 | 🔴 严重 | PSO 退回到 `eloDiff/800 ±25%`（200 Elo → 75/25）。历史数据约 55/45。 | 恢复 `eloDiff/1500 ±20%`（200 Elo → 56/37）。 |
+| 3 | 🟡 中等 | ET factor 退回到 0.33（纯 30/90 比率）。忽略加时赛疲劳效应。 | 恢复 0.40。历史 ET 进球约常规时间的 38-42%。 |
+| 4 | 🟡 中等 | `fatigueMap` 在双方休息天数相同时（WC 小组赛常见）同等惩罚双方。只降低总进球不改变胜率。 | 从 lambda 计算中完全移除。ET factor 0.40 已含疲劳。`calculateFatigueMap` 函数删除。 |
+| 5 | 🟡 中等 | `composite()` atkDefN 公式 `((atk-0.8)+(def-0.8))/0.8` 对平均球队（atk=1.0, def=1.0）得 0.5。 | 改为 `((atk+def)/2 - 0.78) / 0.42`，正确归一化 [0.78, 1.20] → [0, 1]。 |
+
+**给下一个 AI 的教训**：回退之前修复过的参数（PSO、ET）而不检查 git 历史是常见的回归模式。修改数值常量前务必检查 `git log`。
 
 ### 功能特性
 
