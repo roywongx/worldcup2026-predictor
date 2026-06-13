@@ -875,10 +875,10 @@ body {
 /** Pre-computed factorial table for Poisson PMF (0-15) */
 const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800,87178291200,1307674368000];
 
-/** Dixon-Coles correlation parameter.
- *  Reduced from -0.12: log-linear model already produces realistic draw rates,
- *  so we need less low-score correction. -0.05 is sufficient. */
-const RHO = -0.05;
+/** Dixon-Coles correlation parameter (ρ = -0.10).
+ *  Inflates low-score draws (0-0, 1-1) to match real football rates.
+ *  Calibrated with tanh model (β=0.002) to achieve ~21% draw rate. */
+const RHO = -0.10;
 
 /** Elo-to-lambda parameters (400 Elo ≈ 1 goal) */
 const GOALS_BASE = 2.7;
@@ -1161,20 +1161,24 @@ function getForm(team, formMap) {
 }
 
 /** Convert Elo ratings to Poisson lambda (expected goals).
- *  Log-linear model: λ = BASE/2 × exp(β × Δelo) × √(atk/def) + host
- *  β = 0.001 calibrated so avg total λ ≈ 2.7 across all matchups.
- *  Attack/defense uses √ dampening to prevent extreme amplification.
- *  Reference: TDS 2026, cup26matches.com, LeadAfrik methodology */
+ *  Hybrid model: tanh saturation + attack/defense dampening.
+ *  λ = base × (1 + tanh(β×Δelo)) × dampen(atk/def) + host
+ *  Key property: tanh is bounded [-1,1], so total λ stays near 2.70
+ *  while creating realistic spread between strong and weak teams.
+ *  Attack/defense uses linear dampening: 1 + (ratio-1) × 0.15
+ *  Reference: Dixon-Coles (1997), TDS 2026, cup26matches.com */
 function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) {
-  const BETA = 0.001;
+  const BETA = 0.002;
   const base = GOALS_BASE / 2; // 1.35 per team (2.7 total)
-  const logDiff = BETA * (eloH - eloA);
-  // Attack/defense: √ dampening prevents extreme values
-  // e.g. atk=1.20/def=0.78 → ratio=1.54 → √1.54=1.24 (not 1.54)
-  const atkModH = Math.sqrt((atkH || 1.0) / (defA || 1.0));
-  const atkModA = Math.sqrt((atkA || 1.0) / (defH || 1.0));
-  const lh = Math.max(0.15, base * atkModH * Math.exp(logDiff) + hostBonusH);
-  const la = Math.max(0.15, base * atkModA * Math.exp(-logDiff) + hostBonusA);
+  const tanhDiff = Math.tanh(BETA * (eloH - eloA));
+  // Attack/defense: linear dampening (weak effect, prevents extreme values)
+  // atk=1.20/def=0.78 → ratio=1.54 → dampened = 1 + 0.54*0.15 = 1.081
+  const atkRatioH = (atkH || 1.0) / (defA || 1.0);
+  const atkRatioA = (atkA || 1.0) / (defH || 1.0);
+  const dampH = 1 + (atkRatioH - 1) * 0.15;
+  const dampA = 1 + (atkRatioA - 1) * 0.15;
+  const lh = Math.max(0.15, base * (1 + tanhDiff) * dampH + hostBonusH);
+  const la = Math.max(0.15, base * (1 - tanhDiff) * dampA + hostBonusA);
   return [lh, la];
 }
 
