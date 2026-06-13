@@ -2142,7 +2142,8 @@ const I18N = {
     // Standings table headers
     'sth.team':'球队','sth.group':'小组',
     // Match display
-    'match.legend':'<span style="color:var(--green);font-weight:700">✓</span>=实际 · <span style="color:var(--orange);font-weight:700">Pred</span>=预测 · W/D/L%',
+    'match.legend':'<span style="color:var(--green);font-weight:700">✓</span>=实际 · <span style="color:var(--blue);font-weight:700">M:</span>=模型 · <span style="color:var(--purple);font-weight:700">P:</span>=市场(去水)',
+    'match.legendActual':'实际','match.legendModel':'模型','match.legendMarket':'市场(去水)',
     'match.predCorrect':'✓ 预测正确','match.predWrong':'✗ 预测错误','match.pred':'预测',
     // Accuracy card
     'acc.title':'📊 模型准确度','acc.accuracy':'胜平负准确率','acc.correct':'正确/总数','acc.rps':'RPS (↓更好)',
@@ -2204,7 +2205,8 @@ const I18N = {
     // Standings
     'sth.team':'Team','sth.group':'Group',
     // Match display
-    'match.legend':'<span style="color:var(--green);font-weight:700">✓</span>=Actual · <span style="color:var(--orange);font-weight:700">Pred</span>=Model · W/D/L%',
+    'match.legend':'<span style="color:var(--green);font-weight:700">✓</span>=Actual · <span style="color:var(--blue);font-weight:700">M:</span>=Model · <span style="color:var(--purple);font-weight:700">P:</span>=Market(de-vig)',
+    'match.legendActual':'Actual','match.legendModel':'Model','match.legendMarket':'Market(de-vig)',
     'match.predCorrect':'✓ Correct','match.predWrong':'✗ Wrong','match.pred':'Pred',
     // Accuracy card
     'acc.title':'📊 Model Accuracy','acc.accuracy':'Win/Draw/Loss Accuracy','acc.correct':'Correct/Total','acc.rps':'RPS (↓ better)',
@@ -2444,7 +2446,14 @@ function renderMatches(){
   }
 
   // Match legend
-  h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px">${t('match.legend')}</div>`;
+  h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px">`;
+  h+=`<span style="color:var(--green);font-weight:700">✓</span>=${t('match.legendActual')} · `;
+  h+=`<span style="color:var(--blue);font-weight:700">M:</span>=${t('match.legendModel')} · `;
+  h+=`<span style="color:var(--purple);font-weight:700">P:</span>=${t('match.legendMarket')} (去水)`;
+  h+=`</div>`;
+
+  // Load Polymarket match odds for comparison
+  const marketOdds = state.polymarketMatchOdds || {};
 
   // Match list
   let ld='';
@@ -2455,8 +2464,13 @@ function renderMatches(){
     const venue=getVenue(m.ta,m.tb,m.date);
     const venueHtml=venue?`<span style="font-size:0.6rem;color:var(--text3);margin-left:auto;padding-left:0.5rem;white-space:nowrap">${venue}</span>`:'';
 
+    // Look up Polymarket de-vigged odds for this match
+    const mktKey=`${m.ta}|${m.tb}|${m.date}`;
+    const mktKey2=`${m.ta}|${m.tb}|`;
+    const mkt=marketOdds[mktKey]||marketOdds[mktKey2]||null;
+
     if(m.actual){
-      // Actual match: show result + prediction comparison
+      // Actual match: show result + prediction comparison + market comparison
       const stored=actualResults.find(r=>r.team1===m.ta&&r.team2===m.tb);
       let predLine='';
       if(stored&&stored.predGoals){
@@ -2468,6 +2482,7 @@ function renderMatches(){
           <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?t('match.predCorrect'):t('match.predWrong')}</span>
           <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
           <span style="margin-left:4px;color:var(--text3)">${predProb}</span>
+          ${mkt?`<span style="margin-left:4px;color:var(--purple)">Mkt: W:${(mkt.win*100).toFixed(0)}% D:${(mkt.draw*100).toFixed(0)}% L:${(mkt.loss*100).toFixed(0)}%</span>`:''}
         </div>`;
       }
       h+=`<div style="border-left:3px solid var(--green);background:var(--card);border-radius:var(--radius-sm);padding:0.5rem 1rem;margin-bottom:0.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
@@ -2481,10 +2496,14 @@ function renderMatches(){
         ${predLine}
       </div>`;
     } else {
-      // Future match: show predicted probabilities + venue
-      let pd='';
-      if(m.probs){pd=`<span style="font-size:0.6rem;color:var(--text3);margin-left:4px">${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
-      h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${pd}</span>${venueHtml}</div>`;
+      // Future match: show model + Polymarket de-vigged odds
+      let modelLine='';
+      if(m.probs){modelLine=`<span style="font-size:0.6rem;color:var(--blue);font-weight:600">M:${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
+      let mktLine='';
+      if(mkt){
+        mktLine=`<span style="font-size:0.6rem;color:var(--purple);margin-left:4px">P:${(mkt.win*100).toFixed(0)}/${(mkt.draw*100).toFixed(0)}/${(mkt.loss*100).toFixed(0)}</span>`;
+      }
+      h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${modelLine}${mktLine}</span>${venueHtml}</div>`;
     }
   });
   [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
