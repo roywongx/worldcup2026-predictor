@@ -1161,24 +1161,20 @@ function getForm(team, formMap) {
 }
 
 /** Convert Elo ratings to Poisson lambda (expected goals).
- *  Hybrid model: tanh saturation + attack/defense dampening.
- *  λ = base × (1 + tanh(β×Δelo)) × dampen(atk/def) + host
- *  Key property: tanh is bounded [-1,1], so total λ stays near 2.70
- *  while creating realistic spread between strong and weak teams.
- *  Attack/defense uses linear dampening: 1 + (ratio-1) × 0.15
+ *  Log-linear model with √ dampened attack/defense.
+ *  λ = base × √(atk/def) × exp(β × Δelo) + host
+ *  base=1.10, β=0.002: calibrated so avg total λ ≈ 2.70
+ *  Creates realistic spread: equal teams → 1-1, strong vs weak → 3-0, 4-0
  *  Reference: Dixon-Coles (1997), TDS 2026, cup26matches.com */
 function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) {
   const BETA = 0.002;
-  const base = GOALS_BASE / 2; // 1.35 per team (2.7 total)
-  const tanhDiff = Math.tanh(BETA * (eloH - eloA));
-  // Attack/defense: linear dampening (weak effect, prevents extreme values)
-  // atk=1.20/def=0.78 → ratio=1.54 → dampened = 1 + 0.54*0.15 = 1.081
-  const atkRatioH = (atkH || 1.0) / (defA || 1.0);
-  const atkRatioA = (atkA || 1.0) / (defH || 1.0);
-  const dampH = 1 + (atkRatioH - 1) * 0.15;
-  const dampA = 1 + (atkRatioA - 1) * 0.15;
-  const lh = Math.max(0.15, base * (1 + tanhDiff) * dampH + hostBonusH);
-  const la = Math.max(0.15, base * (1 - tanhDiff) * dampA + hostBonusA);
+  const base = 1.10; // per team (avg total ≈ 2.70 across all matchups)
+  const logDiff = BETA * (eloH - eloA);
+  // Attack/defense: √ dampening prevents extreme amplification
+  const atkModH = Math.sqrt((atkH || 1.0) / (defA || 1.0));
+  const atkModA = Math.sqrt((atkA || 1.0) / (defH || 1.0));
+  const lh = Math.max(0.15, base * atkModH * Math.exp(logDiff) + hostBonusH);
+  const la = Math.max(0.15, base * atkModA * Math.exp(-logDiff) + hostBonusA);
   return [lh, la];
 }
 
