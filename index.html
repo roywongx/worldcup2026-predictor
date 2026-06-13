@@ -1944,10 +1944,11 @@ async function fetchResults(){
   if(se)se.textContent='Fetching results...';
   try{
     let data=null;
-    try{const r=await fetch(`https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED`,{headers:{'X-Auth-Token':apiKey}});if(r.ok)data=await r.json();else logFetch('results',false,`HTTP ${r.status}`);}catch(e){logFetch('results',false,e.message);}
-    if(!data){try{const r=await fetch(`https://corsproxy.io/?${encodeURIComponent('https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED')}`,{headers:{'X-Auth-Token':apiKey}});if(r.ok){data=await r.json();logFetch('results',true,'CORS proxy');}}catch(e){}}
+    // Use local proxy to bypass CORS
+    try{const r=await fetch(`/api/results?key=${encodeURIComponent(apiKey)}`);if(r.ok){const j=await r.json();if(j.error){logFetch('results',false,j.error);}else{data=j;logFetch('results',true,'via proxy');}}else{logFetch('results',false,`HTTP ${r.status}`);}}catch(e){logFetch('results',false,e.message);}
+    // Fallback: worldcupjson.net (supports CORS)
     if(!data){try{const r=await fetch('https://worldcupjson.net/matches?status=completed');if(r.ok){data=await r.json();logFetch('results',true,'worldcupjson.net');}}catch(e){}}
-    if(!data){showToast('All APIs blocked');return false;}
+    if(!data){showToast('API error — check key & server.log');return false;}
     let matches=[];let source='football-data.org';
     if(Array.isArray(data)){matches=data;source='worldcupjson.net';}else if(data.matches){matches=data.matches;}
     const state=loadState();if(!state.actualResults)state.actualResults=[];
@@ -1974,9 +1975,11 @@ async function fetchOdds(){
   const apiKey=getApiKey('oddsapi');if(!apiKey){showToast('Set The-Odds-API key first');return false;}
   const se=document.getElementById('fetch-status');if(se)se.textContent='Fetching odds...';
   try{
-    const r=await fetch(`https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?apiKey=${apiKey}&regions=us&markets=outrights&oddsFormat=american`);
+    // Use local proxy to bypass CORS
+    const r=await fetch(`/api/odds?key=${encodeURIComponent(apiKey)}`);
     if(!r.ok){showToast(`Odds API error: ${r.status}`);return false;}
-    const data=await r.json();const oddsMap={};
+    const resp=await r.json();if(resp.error){showToast(`Odds error: ${resp.error}`);return false;}
+    const data=resp.data||resp;const oddsMap={};
     if(Array.isArray(data)&&data.length>0){for(const ev of data){for(const bk of ev.bookmakers||[]){for(const mk of bk.markets||[]){for(const oc of mk.outcomes||[]){const tn=mapTeamName(oc.name);if(tn&&TEAMS[tn])oddsMap[tn]=oc.price;}}}}}
     if(Object.keys(oddsMap).length>0){
       const state=loadState();for(const[team,odds]of Object.entries(oddsMap)){if(TEAMS[team]&&typeof odds==='number'){TEAMS[team][6]=odds;state.customOdds[team]=odds;}}
