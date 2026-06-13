@@ -12,7 +12,7 @@
   --card: #fff;
   --text: #1d1d1f;
   --text2: #6e6e73;
-  --text3: #aeaeb2;
+  --text3: #76767a;
   --blue: #007aff;
   --green: #34c759;
   --red: #ff3b30;
@@ -881,12 +881,9 @@ const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,62
 const RHO = -0.10;
 
 /** Elo-to-lambda parameters (400 Elo ≈ 1 goal) */
-const GOALS_BASE = 2.7;
-const GOALS_PER_400 = 1.0;
 
 /** Home advantage in expected goals */
 const HOME_HOST = 0.30;
-const HOME_CONTINENTAL = 0.10;
 
 /** Monte Carlo default */
 const MC_DEFAULT = 10000;
@@ -1096,6 +1093,16 @@ const WC2022_RESULTS = [
   {t1:'South Korea',t2:'Portugal',s1:2,s2:1},{t1:'Ghana',t2:'Uruguay',s1:0,s2:2},
 ];
 
+/** 2022-era Elo ratings for teams not in 2026 TEAMS (eloratings.net, Nov 2022) */
+const WC2022_TEAMS = {
+  'Wales': [1771, 1570, 160, 2, 0.50, 0, 15000, 0.92, 0.95],
+  'Costa Rica': [1584, 1500, 45, 6, 0.45, 0, 25000, 0.85, 0.90],
+  'Cameroon': [1554, 1485, 90, 8, 0.45, 0, 25000, 0.90, 0.85],
+  'Serbia': [1726, 1550, 200, 4, 0.50, 0, 15000, 0.95, 0.92],
+  'Denmark': [1832, 1670, 310, 6, 0.55, 0, 8000, 1.00, 1.05],
+  'Poland': [1722, 1548, 180, 9, 0.50, 0, 15000, 0.92, 0.95],
+};
+
 /** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
 function runBacktest() {
   const predictions = [];
@@ -1103,9 +1110,14 @@ function runBacktest() {
   let correct = 0;
 
   for (const m of WC2022_RESULTS) {
-    // Map 2022 teams to our TEAMS (only use teams that exist in our data)
-    if (!TEAMS[m.t1] || !TEAMS[m.t2]) continue;
+    // Temporarily add missing 2022 teams for backtesting
+    const tmpAdded = [];
+    for (const tm of [m.t1, m.t2]) {
+      if (!TEAMS[tm] && WC2022_TEAMS[tm]) { TEAMS[tm] = WC2022_TEAMS[tm]; tmpAdded.push(tm); }
+    }
+    if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
     const probs = matchProbs(m.t1, m.t2);
+    tmpAdded.forEach(t => delete TEAMS[t]);
     const predArr = [probs.win, probs.draw, probs.loss];
     const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
     predictions.push(predArr);
@@ -1143,7 +1155,7 @@ function poissonPMF(k, lam) {
   return Math.exp(-lam + k * Math.log(lam) - Math.log(FACT[k] || FACT[15]));
 }
 
-/** Dixon-Coles tau correction for low-score correlation (rho = -0.12) */
+/** Dixon-Coles tau correction for low-score correlation (rho = -0.10) */
 function dixonColesTau(h, a, lh, la, rho) {
   if (h === 0 && a === 0) return 1 - lh * la * rho;
   if (h === 0 && a === 1) return 1 + lh * rho;
@@ -1420,6 +1432,17 @@ function getThirdPlaceGroups(bestThirdTeams, rankings) {
   return groups.sort();
 }
 
+/** Apply a match result to group standings (mutates st in place) */
+function applyGroupResult(st, grp, team1, team2, score1, score2) {
+  const a = st[grp][team1], b = st[grp][team2];
+  a.p++; b.p++;
+  a.gf += score1; a.ga += score2; b.gf += score2; b.ga += score1;
+  a.gd = a.gf - a.ga; b.gd = b.gf - b.ga;
+  if (score1 > score2) { a.w++; a.pts += 3; b.l++; }
+  else if (score1 < score2) { b.w++; b.pts += 3; a.l++; }
+  else { a.d++; a.pts++; b.d++; b.pts++; }
+}
+
 // ---- Best third-place qualification ----
 
 /** Find the 8 best third-place teams across all groups */
@@ -1457,13 +1480,7 @@ function simulateOneTournament(actualMap, formMap) {
     } else {
       [sa, sb] = simMatch(home, away, formMap, date);
     }
-    const a = st[grp][home], b = st[grp][away];
-    a.p++; b.p++;
-    a.gf += sa; a.ga += sb; b.gf += sb; b.ga += sa;
-    a.gd = a.gf - a.ga; b.gd = b.gf - b.ga;
-    if (sa > sb) { a.w++; a.pts += 3; b.l++; }
-    else if (sa < sb) { b.w++; b.pts += 3; a.l++; }
-    else { a.d++; a.pts++; b.d++; b.pts++; }
+    applyGroupResult(st, grp, home, away, sa, sb);
   }
 
   // Rank each group — sort team names by standings
@@ -1935,13 +1952,7 @@ function getGroupStatus(actualResults) {
   for (const r of actualResults || []) {
     for (const g of GROUPS) {
       if (GROUP_TEAMS[g].includes(r.team1) && GROUP_TEAMS[g].includes(r.team2)) {
-        const a = status[g][r.team1], b = status[g][r.team2];
-        a.p++; b.p++;
-        a.gf += r.score1; a.ga += r.score2; b.gf += r.score2; b.ga += r.score1;
-        a.gd = a.gf - a.ga; b.gd = b.gf - b.ga;
-        if (r.score1 > r.score2) { a.w++; a.pts += 3; b.l++; }
-        else if (r.score1 < r.score2) { b.w++; b.pts += 3; a.l++; }
-        else { a.d++; a.pts++; b.d++; b.pts++; }
+        applyGroupResult(status, g, r.team1, r.team2, r.score1, r.score2);
         break;
       }
     }
@@ -2028,7 +2039,7 @@ const I18N = {
     'toast.invalid':'输入无效','toast.needKey':'请先设置 API Key','toast.testing':'测试中...',
     // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
-    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.05) + 东道主加成',
+    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.10) + 东道主加成',
     'footer.mc':'蒙特卡洛 10k · RPS/ECE 校准 · localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
   },
@@ -2081,7 +2092,7 @@ const I18N = {
     'toast.invalid':'Invalid input','toast.needKey':'Set API key first','toast.testing':'Testing...',
     // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
-    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.05) + host advantage',
+    'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.10) + host advantage',
     'footer.mc':'Monte Carlo 10k · RPS/ECE · localStorage',
     'footer.disclaimer':'For entertainment only — football is unpredictable',
   }
@@ -2106,14 +2117,10 @@ function fl(t){const c=FLAGS[t];return c?`<img src="https://flagcdn.com/w40/${c}
 function bf(t){const c=FLAGS[t];return c?`<img src="https://flagcdn.com/w20/${c}.png" width="16" height="11" style="border-radius:1.5px;vertical-align:middle;margin-right:3px">`:'';}
 function showToast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2200);}
 
-/** Get venue city for a match by finding its index in MATCHES array */
-function getVenue(ta, tb, date) {
-  for (let i = 0; i < MATCHES.length; i++) {
-    const m = MATCHES[i];
-    if (m[1] === ta && m[2] === tb && m[0] === date) return VENUES[i] || '';
-  }
-  return '';
-}
+/** Pre-built venue lookup: key="date|home|away" → venue */
+const VENUE_MAP = {};
+MATCHES.forEach((m, i) => { VENUE_MAP[`${m[0]}|${m[1]}|${m[2]}`] = VENUES[i] || ''; });
+function getVenue(ta, tb, date) { return VENUE_MAP[`${date}|${ta}|${tb}`] || ''; }
 
 // ── Data Persistence ─────────────────────────────────────────────────────
 const STORAGE_KEY='wc2026_data';
@@ -2352,8 +2359,29 @@ function runMonteCarloUI(){
   const state=loadState();const actualMap=buildActualResultsMap(state.actualResults||[]);
   initDynamicElo();(state.actualResults||[]).forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2,r.date));
   const formMap=calculateDynamicForm(state.actualResults||[]);
-  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT,formMap);renderProbabilities();
-    if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}},50);
+  const N=MC_DEFAULT,chunkSize=500;
+  const champ={},finalist={},semi={},quarter={},r16={};
+  let done=0;
+  function processChunk(){
+    const end=Math.min(done+chunkSize,N);
+    for(let i=done;i<end;i++){
+      const result=simulateOneTournament(actualMap,formMap);
+      champ[result.champion]=(champ[result.champion]||0)+1;
+      if(result.rounds.length>=4)for(const m of result.rounds[3]){finalist[m.a]=(finalist[m.a]||0)+1;finalist[m.b]=(finalist[m.b]||0)+1;}
+      if(result.rounds.length>=3)for(const m of result.rounds[2]){semi[m.a]=(semi[m.a]||0)+1;semi[m.b]=(semi[m.b]||0)+1;}
+      if(result.rounds.length>=2)for(const m of result.rounds[1]){quarter[m.a]=(quarter[m.a]||0)+1;quarter[m.b]=(quarter[m.b]||0)+1;}
+      if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
+    }
+    done=end;
+    if(btn)btn.textContent=`Simulating... ${(done/N*100).toFixed(0)}%`;
+    if(done<N){setTimeout(processChunk,0);}
+    else{
+      mcResults={champ,finalist,semi,quarter,r16,N};
+      renderProbabilities();
+      if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}
+    }
+  }
+  setTimeout(processChunk,50);
 }
 
 function renderProbabilities(){
@@ -2387,7 +2415,7 @@ function renderModel(){
   try{
   let h='<div class="model-overview">';
   h+=`<div class="model-card"><h4>${t('model.dc')}</h4>`;
-  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">${GOALS_BASE}</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">2.20 (1.10 × 2)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.rate')}</span><span class="weight">400 Elo = 1 goal</span></div>`;
   h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO}</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.host')}</span><span class="weight">+${HOME_HOST} goals</span></div>`;
@@ -2437,7 +2465,7 @@ function renderData(){
   let h='<div class="data-grid">';
   if(!hasO&&!hasR){h+=`<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))"><h4>🚀 ${t('data.setup')}</h4><p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem">${t('data.setup.desc')}</p><div style="display:flex;flex-direction:column;gap:0.8rem"><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">⚽</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">Football-Data.org</div><div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div></div><a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">💰</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">The-Odds-API</div><div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div></div><a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div></div></div>`;}
   h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData()">⟳ ${t('data.fetchAll')}</button></div></div>`;
-  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="text" id="key-football-data" value="${getApiKey('football-data')}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="text" id="key-oddsapi" value="${getApiKey('oddsapi')}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
+  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${getApiKey('football-data')}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${getApiKey('oddsapi')}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
   h+=`<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   if(stats&&stats.total>=3){
     const ac=stats.accuracy>=0.6?'metric-good':(stats.accuracy>=0.45?'metric-warn':'metric-bad');
@@ -2493,7 +2521,7 @@ function renderData(){
     h+=`<div class="calib-metric"><span class="metric-label">Brier</span><span class="metric-val">${bt.brier.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">RPS</span><span class="metric-val">${bt.rps.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">Accuracy</span><span class="metric-val">${(bt.accuracy*100).toFixed(1)}%</span></div>`;
-    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">Uses 2022-era Elo data. Model tested on 2022 WC data (teams in 2026 roster).</div>`;
+    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">Uses 2022-era Elo data for all 48 group stage matches.</div>`;
     h+='</div>';
   }
   // Form status
