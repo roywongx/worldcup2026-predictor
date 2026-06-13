@@ -1177,23 +1177,32 @@ function getForm(team, formMap) {
 }
 
 /** Convert Elo ratings to Poisson lambda (expected goals).
- *  Log-linear model with √ dampened attack/defense + knockout factor.
- *  λ = base × stageFactor × √(atk/def) × exp(β × Δelo) + host
- *  base=1.10, β=0.002: calibrated so avg total λ ≈ 2.70
- *  stageFactor: knockout matches have ~15% fewer goals (more defensive)
- *  Uses Elo logistic mapping (physically bounded) instead of exp(β×Δelo).
- *  Reference: Dixon-Coles (1997), Gemini optimization suggestions, cup26matches.com */
-function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, isKnockout) {
+ *  Blended Elo-Market model: combines statistical Elo with market-implied probability.
+ *  Market odds capture "soft information" (injuries, tactics, morale) that Elo cannot.
+ *  λ = base × stageFactor × atkMod × blendedMod × (1 + host)
+ *  Reference: Dixon-Coles (1997), Football Meets Data, cup26matches.com */
+function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, isKnockout, homeOdds, awayOdds) {
   const base = 1.15;
-  // Dynamic knockout factor: accounts for rest days and defensive intensity
   const stageFactor = isKnockout ? 0.88 : 1.0;
 
-  // Elo logistic mapping: W_H = 1/(1+10^(-Δ/400)), naturally bounded [0,1]
-  // Wide range [0.3, 1.7] creates realistic spread for strong vs weak matchups
+  // Elo logistic mapping
   const eloDiff = eloH - eloA;
-  const expectedWinH = 1 / (1 + Math.pow(10, -eloDiff / 400));
-  const eloModH = 0.3 + 1.4 * expectedWinH; // range [0.3, 1.7]
-  const eloModA = 0.3 + 1.4 * (1 - expectedWinH); // symmetric
+  const expectedWinEloH = 1 / (1 + Math.pow(10, -eloDiff / 400));
+
+  // Market-implied probability from American odds (if available)
+  // Index [6] in TEAMS = American odds (e.g., +450, -200)
+  const MARKET_WEIGHT = 0.30; // 30% market, 70% Elo
+  let blendedWinH = expectedWinEloH;
+  if (homeOdds && awayOdds && homeOdds > 0 && awayOdds > 0) {
+    const impliedH = oddsToProb(homeOdds);
+    const impliedA = oddsToProb(awayOdds);
+    const marketWinH = impliedH / (impliedH + impliedA); // de-vigged
+    blendedWinH = (1 - MARKET_WEIGHT) * expectedWinEloH + MARKET_WEIGHT * marketWinH;
+  }
+
+  // Convert blended probability to lambda modifier [0.3, 1.7]
+  const eloModH = 0.3 + 1.4 * blendedWinH;
+  const eloModA = 0.3 + 1.4 * (1 - blendedWinH);
 
   // Attack/defense: power 0.45 damping (more interpretable than sqrt)
   const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), 0.45);
@@ -1221,7 +1230,10 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate) {
   const defH = TEAMS[home] ? TEAMS[home][8] : 1.0;
   const atkA = TEAMS[away] ? TEAMS[away][7] : 1.0;
   const defA = TEAMS[away] ? TEAMS[away][8] : 1.0;
-  const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout);
+  // Pass market odds for Elo-Market blending (index [6] = American odds)
+  const homeOdds = TEAMS[home] ? TEAMS[home][6] : 0;
+  const awayOdds = TEAMS[away] ? TEAMS[away][6] : 0;
+  const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout, homeOdds, awayOdds);
 
   // Apply form adjustment: form 0.5 = neutral, >0.5 = boost, <0.5 = penalty
   // Max adjustment: ±15% of lambda
