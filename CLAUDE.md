@@ -54,3 +54,4 @@ This project follows the **Superpowers** development methodology:
 | `/brainstorming` | Before creating features |
 | `/test-driven-development` | Before implementing features |
 | `/taste-skill` | When optimizing UI design |
+| `/design-systems-reference` | Reference for UI components, patterns, colors, typography |
