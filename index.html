@@ -1147,27 +1147,27 @@ function simKO(home, away) {
 function buildKOBracket(rankings, bestThirds) {
   const bracket = [];
 
-  // Top half
-  bracket.push([rankings['A'][0], rankings['B'][1]]);
-  bracket.push([rankings['C'][0], rankings['D'][1]]);
-  bracket.push([rankings['E'][0], rankings['F'][1]]);
-  bracket.push([rankings['G'][0], rankings['H'][1]]);
-  bracket.push([rankings['I'][0], rankings['J'][1]]);
-  bracket.push([rankings['K'][0], rankings['L'][1]]);
+  // Top half — flat array of team names (runKORound pairs them by index)
+  bracket.push(rankings['A'][0], rankings['B'][1]);
+  bracket.push(rankings['C'][0], rankings['D'][1]);
+  bracket.push(rankings['E'][0], rankings['F'][1]);
+  bracket.push(rankings['G'][0], rankings['H'][1]);
+  bracket.push(rankings['I'][0], rankings['J'][1]);
+  bracket.push(rankings['K'][0], rankings['L'][1]);
 
-  if (bestThirds.length >= 2) bracket.push([bestThirds[0], bestThirds[1]]);
-  if (bestThirds.length >= 4) bracket.push([bestThirds[2], bestThirds[3]]);
+  if (bestThirds.length >= 2) bracket.push(bestThirds[0], bestThirds[1]);
+  if (bestThirds.length >= 4) bracket.push(bestThirds[2], bestThirds[3]);
 
   // Bottom half
-  bracket.push([rankings['B'][0], rankings['A'][1]]);
-  bracket.push([rankings['D'][0], rankings['C'][1]]);
-  bracket.push([rankings['F'][0], rankings['E'][1]]);
-  bracket.push([rankings['H'][0], rankings['G'][1]]);
-  bracket.push([rankings['J'][0], rankings['I'][1]]);
-  bracket.push([rankings['L'][0], rankings['K'][1]]);
+  bracket.push(rankings['B'][0], rankings['A'][1]);
+  bracket.push(rankings['D'][0], rankings['C'][1]);
+  bracket.push(rankings['F'][0], rankings['E'][1]);
+  bracket.push(rankings['H'][0], rankings['G'][1]);
+  bracket.push(rankings['J'][0], rankings['I'][1]);
+  bracket.push(rankings['L'][0], rankings['K'][1]);
 
-  if (bestThirds.length >= 6) bracket.push([bestThirds[4], bestThirds[5]]);
-  if (bestThirds.length >= 8) bracket.push([bestThirds[6], bestThirds[7]]);
+  if (bestThirds.length >= 6) bracket.push(bestThirds[4], bestThirds[5]);
+  if (bestThirds.length >= 8) bracket.push(bestThirds[6], bestThirds[7]);
 
   return bracket;
 }
@@ -1215,15 +1215,21 @@ function simulateOneTournament(actualMap) {
     else { a.d++; a.pts++; b.d++; b.pts++; }
   }
 
-  // Rank each group
+  // Rank each group — sort team names by standings
   const rankings = {};
   for (const g of GROUPS) {
-    rankings[g] = GROUP_TEAMS[g].map(t => st[g][t]).sort((a, b) =>
-      b.pts - a.pts || b.gd - a.gd || b.gf - a.gf
-    );
+    rankings[g] = GROUP_TEAMS[g].slice().sort((a, b) => {
+      const sa = st[g][a], sb = st[g][b];
+      return sb.pts - sa.pts || sb.gd - sa.gd || sb.gf - sa.gf;
+    });
   }
 
-  const bestThirds = findBestThirds(rankings);
+  // Find best thirds using stat objects
+  const statRankings = {};
+  for (const g of GROUPS) {
+    statRankings[g] = rankings[g].map(t => st[g][t]);
+  }
+  const bestThirds = findBestThirds(statRankings);
   const bracket = buildKOBracket(rankings, bestThirds);
 
   // Run knockout rounds
