@@ -1739,26 +1739,82 @@ function renderStandings(){
 function renderMatches(){
   const{matchResults,ko}=currentResults;
   const state=loadState();const actualResults=state.actualResults||[];
+  const played=actualResults.filter(r=>r.score1!==undefined);
+  const correct=played.filter(r=>r.correct).length;
+
   let h='<div class="matches-list">';
+
+  // Accuracy summary card
+  if(played.length>0){
+    const acc=(correct/played.length*100).toFixed(0);
+    const accColor=acc>=60?'var(--green)':acc>=40?'var(--orange)':'var(--red)';
+    // Compute RPS
+    let rpsSum=0;
+    played.forEach(r=>{
+      if(r.probs){
+        const outcome=r.score1>r.score2?0:(r.score1===r.score2?1:2);
+        const cumP=[r.probs.win,r.probs.win+r.probs.draw,1];
+        const cumO=[outcome===0?1:0,outcome<=1?1:0,1];
+        rpsSum+=((cumP[0]-cumO[0])**2+(cumP[1]-cumO[1])**2+(cumP[2]-cumO[2])**2)/2;
+      }
+    });
+    const rps=played.length>0?(rpsSum/played.length).toFixed(3):'-';
+    h+=`<div style="background:linear-gradient(135deg,rgba(0,122,255,0.06),rgba(52,199,89,0.06));border:1px solid rgba(0,122,255,0.15);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem">
+      <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.6rem">📊 模型准确度 / Model Accuracy</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.8rem">
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:${accColor}">${acc}%</div><div style="font-size:0.65rem;color:var(--text3)">胜平负准确率</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--blue)">${correct}/${played.length}</div><div style="font-size:0.65rem;color:var(--text3)">正确/总数</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--purple)">${rps}</div><div style="font-size:0.65rem;color:var(--text3)">RPS (↓更好)</div></div>
+      </div>
+      <div style="margin-top:0.6rem;font-size:0.7rem;color:var(--text2)">
+        ${played.map(r=>{
+          const icon=r.correct?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>';
+          return `${icon}${r.team1.substring(0,3)}${r.score1}-${r.score2}${r.team2.substring(0,3)}`;
+        }).join(' · ')}
+      </div>
+    </div>`;
+  }
+
+  // Match legend
   h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px"><span style="color:var(--green);font-weight:700">✓</span>=Actual · <span style="color:var(--orange);font-weight:700">Pred</span>=Model · W/D/L%</div>`;
+
+  // Match list
   let ld='';
   matchResults.forEach(m=>{
     if(m.date!==ld){ld=m.date;const d=new Date(m.date+'T00:00:00');h+=`<div class="match-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>`;}
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
-    const ab=m.actual?'<span style="font-size:0.6rem;color:var(--green);font-weight:700;margin-left:4px">✓</span>':'';
-    // Prediction comparison for actual matches
-    let predDisplay='';
+
     if(m.actual){
+      // Actual match: show result + prediction comparison
       const stored=actualResults.find(r=>r.team1===m.ta&&r.team2===m.tb);
+      let predLine='';
       if(stored&&stored.predGoals){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
-        const predColor=stored.correct?'var(--green)':'var(--red)';
-        const predIcon=stored.correct?'✓':'✗';
-        predDisplay=`<span style="font-size:0.6rem;color:${predColor};margin-left:4px">Pred:${predH.toFixed(1)}-${predA.toFixed(1)} ${predIcon}</span>`;
+        const predW=predH>predA?m.ta:(predA>predH?m.tb:'Draw');
+        const predOutcome=stored.predicted;
+        const isCorrect=stored.correct;
+        const predProb=stored.probs?`W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%`:'';
+        predLine=`<div style="font-size:0.6rem;color:var(--text3);margin-top:1px;padding-left:2.5rem">
+          <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓ 预测正确':'✗ 预测错误'}</span>
+          <span style="margin-left:4px">预测: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
+          <span style="margin-left:4px;color:var(--text3)">${predProb}</span>
+        </div>`;
       }
+      h+=`<div style="border-left:3px solid var(--green);background:var(--card);border-radius:var(--radius-sm);padding:0.5rem 1rem;margin-bottom:0.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+        <div style="display:flex;align-items:center">
+          <span class="m-group">${m.grp}</span>
+          <span class="m-team home ${wA}">${fl(m.ta)}</span>
+          <span class="m-score">${m.sa} - ${m.sb} <span style="font-size:0.6rem;color:var(--green);font-weight:700">✓</span></span>
+          <span class="m-team away ${wB}">${fl(m.tb)}</span>
+        </div>
+        ${predLine}
+      </div>`;
+    } else {
+      // Future match: show predicted probabilities
+      let pd='';
+      if(m.probs){pd=`<span style="font-size:0.6rem;color:var(--text3);margin-left:4px">${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
+      h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${pd}</span></div>`;
     }
-    let pd='';if(!m.actual&&m.probs){pd=`<span style="font-size:0.6rem;color:var(--text3);margin-left:4px">${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
-    h+=`<div class="match-card" ${m.actual?'style="border-left:3px solid var(--green)"':''}><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}${ab}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${predDisplay}${pd}</span></div>`;
   });
   [{k:'R32',l:'Round of 32 — Jun 28 - Jul 1'},{k:'R16',l:'Round of 16 — Jul 4-5'},{k:'QF',l:'Quarter-finals — Jul 8-9'},{k:'SF',l:'Semi-finals — Jul 14-15'}].forEach(r=>{
     h+=`<div class="match-date">${r.l}</div>`;
@@ -2011,9 +2067,10 @@ async function fetchResults(){
       else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
       const k=`${t1}|${t2}`;if(existing.has(k))continue;
-      const probs=matchProbs(t1,t2);const pred=probs.win>probs.loss?t1:(probs.loss>probs.win?t2:'draw');
+      const probs=matchProbs(t1,t2);const[lh,la]=getLambdas(TEAMS[t1][0],TEAMS[t2][0],getHomeBonus(t1),getHomeBonus(t2));
+      const pred=probs.win>probs.loss?t1:(probs.loss>probs.win?t2:'draw');
       const act=s1>s2?t1:(s2>s1?t2:'draw');
-      state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source});
+      state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
       nc++;existing.add(k);
     }
     if(nc>0){state.lastUpdate=new Date().toISOString();saveState(state);mcResults=null;runSimulation();showToast(`Fetched ${nc} new results`);if(se)se.textContent=`+${nc} · ${new Date().toLocaleTimeString()}`;}
@@ -2074,9 +2131,10 @@ function addResult(){
   const state=loadState();const t1=document.getElementById('res-team1').value,t2=document.getElementById('res-team2').value;
   const s1=parseInt(document.getElementById('res-score1').value),s2=parseInt(document.getElementById('res-score2').value);
   if(!t1||!t2||isNaN(s1)||isNaN(s2)||t1===t2){showToast('Invalid input');return;}
-  const probs=matchProbs(t1,t2);const pred=probs.win>probs.loss?t1:(probs.loss>probs.win?t2:'draw');
+  const probs=matchProbs(t1,t2);const[lh,la]=getLambdas(TEAMS[t1][0],TEAMS[t2][0],getHomeBonus(t1),getHomeBonus(t2));
+  const pred=probs.win>probs.loss?t1:(probs.loss>probs.win?t2:'draw');
   const act=s1>s2?t1:(s2>s1?t2:'draw');
-  state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'manual'});
+  state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'manual',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
   state.lastUpdate=new Date().toISOString();saveState(state);mcResults=null;runSimulation();
   showToast(`Added: ${t1} ${s1}-${s2} ${t2}`);renderData();
 }
@@ -2109,24 +2167,40 @@ function quickOddsUpdate(team,val){const odds=parseInt(val);if(TEAMS[team]&&odds
   const state=loadState();
   for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team][6]=odds;}
   if(!state.actualResults)state.actualResults=[];
-  // Seed initial results (version 2 = added June 11-12 results)
-  if(!state.dataVersion || state.dataVersion < 2){
+  // Seed initial results (version 3 = with predGoals for comparison)
+  if(!state.dataVersion || state.dataVersion < 3){
     const init=[
       {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},
       {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'},
       {team1:'Canada',team2:'Bosnia Herzegovina',score1:1,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
       {team1:'United States',team2:'Paraguay',score1:4,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
     ];
-    // Dedup: only add results not already present
     const existing=new Set(state.actualResults.map(r=>`${r.team1}|${r.team2}`));
     for(const r of init){
       const k=`${r.team1}|${r.team2}`;
-      if(existing.has(k))continue;
-      const probs=matchProbs(r.team1,r.team2);const pred=probs.win>probs.loss?r.team1:(probs.loss>probs.win?r.team2:'draw');
+      if(existing.has(k)){
+        // Backfill predGoals for existing entries
+        const idx=state.actualResults.findIndex(x=>x.team1===r.team1&&x.team2===r.team2);
+        if(idx>=0&&!state.actualResults[idx].predGoals){
+          const probs=matchProbs(r.team1,r.team2);
+          const[lh,la]=getLambdas(TEAMS[r.team1][0],TEAMS[r.team2][0],getHomeBonus(r.team1),getHomeBonus(r.team2));
+          const pred=probs.win>probs.loss?r.team1:(probs.loss>probs.win?r.team2:'draw');
+          const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
+          state.actualResults[idx].predGoals=[lh.toFixed(2),la.toFixed(2)];
+          state.actualResults[idx].predicted=pred;
+          state.actualResults[idx].actual=act;
+          state.actualResults[idx].correct=(pred===act);
+          state.actualResults[idx].probs={win:probs.win,draw:probs.draw,loss:probs.loss};
+        }
+        continue;
+      }
+      const probs=matchProbs(r.team1,r.team2);
+      const[lh,la]=getLambdas(TEAMS[r.team1][0],TEAMS[r.team2][0],getHomeBonus(r.team1),getHomeBonus(r.team2));
+      const pred=probs.win>probs.loss?r.team1:(probs.loss>probs.win?r.team2:'draw');
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-      state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act});
+      state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
     }
-    state.dataVersion=2;
+    state.dataVersion=3;
     state.lastUpdate=new Date().toISOString();saveState(state);
   }
   const sm=state.marketData;if(sm&&sm.matches)marketData=sm;
