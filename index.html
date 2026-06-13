@@ -29,7 +29,7 @@
   --radius-lg: 12px;
 }
 
-html { font-size: 14px; -webkit-font-smoothing: antialiased; }
+html { font-size: 15px; -webkit-font-smoothing: antialiased; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
@@ -202,7 +202,7 @@ body {
 
 .group-table th {
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: var(--text2);
   padding: 0.6rem 0.4rem;
   text-align: center;
@@ -231,7 +231,7 @@ body {
   width: 1.3rem;
   height: 1.3rem;
   border-radius: 50%;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
 }
 
@@ -259,11 +259,13 @@ body {
   align-items: center;
   background: var(--card);
   border-radius: var(--radius);
-  padding: 0.55rem 0.8rem;
-  margin-bottom: 0.3rem;
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.35rem;
   box-shadow: var(--shadow-sm);
   transition: background 0.15s ease;
   border: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 0.2rem;
 }
 
 .match-card:hover { background: #f6f8fa; }
@@ -275,7 +277,7 @@ body {
 }
 
 .m-group {
-  font-size: 0.6rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text3);
   text-transform: uppercase;
@@ -311,7 +313,7 @@ body {
 }
 
 .m-method {
-  font-size: 0.55rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--orange);
   text-transform: uppercase;
@@ -337,7 +339,7 @@ body {
 }
 
 .bracket-col-title {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text3);
   text-transform: uppercase;
@@ -376,7 +378,7 @@ body {
 .b-team .b-score { font-weight: 800; font-size: 0.9rem; min-width: 1.2rem; text-align: center; }
 
 .b-method {
-  font-size: 0.5rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--orange);
   text-align: center;
@@ -435,7 +437,7 @@ body {
 .champ-path-item:last-child { border-bottom: none; }
 
 .cp-round {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text2);
   text-transform: uppercase;
@@ -445,7 +447,7 @@ body {
 
 .cp-score { font-weight: 800; font-size: 0.9rem; }
 .cp-vs { color: var(--text3); font-size: 0.7rem; }
-.cp-method { font-size: 0.55rem; font-weight: 700; color: var(--orange); text-transform: uppercase; }
+.cp-method { font-size: 0.7rem; font-weight: 700; color: var(--orange); text-transform: uppercase; }
 
 .stats-row {
   display: grid;
@@ -495,7 +497,7 @@ body {
 
 .prob-table th {
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: var(--text3);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -615,7 +617,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
 }
 
 .bar-label { width: 5rem; color: var(--text3); text-align: right; flex-shrink: 0; }
@@ -2450,9 +2452,9 @@ function renderMatches(){
     h+=`<div style="background:linear-gradient(135deg,rgba(0,122,255,0.06),rgba(52,199,89,0.06));border:1px solid rgba(0,122,255,0.15);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem">
       <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.6rem">${t('acc.title')}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.8rem">
-        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:${accColor}">${acc}%</div><div style="font-size:0.65rem;color:var(--text3)">${t('acc.accuracy')}</div></div>
-        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--blue)">${correct}/${played.length}</div><div style="font-size:0.65rem;color:var(--text3)">${t('acc.correct')}</div></div>
-        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--purple)">${rps}</div><div style="font-size:0.65rem;color:var(--text3)">${t('acc.rps')}</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:${accColor}">${acc}%</div><div style="font-size:0.72rem;color:var(--text3)">${t('acc.accuracy')}</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--blue)">${correct}/${played.length}</div><div style="font-size:0.72rem;color:var(--text3)">${t('acc.correct')}</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--purple)">${rps}</div><div style="font-size:0.72rem;color:var(--text3)">${t('acc.rps')}</div></div>
       </div>
       <div style="margin-top:0.6rem;font-size:0.7rem;color:var(--text2)">
         ${played.map(r=>{
@@ -2480,7 +2482,7 @@ function renderMatches(){
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
 
     const venue=getVenue(m.ta,m.tb,m.date);
-    const venueHtml=venue?`<span style="font-size:0.6rem;color:var(--text3);margin-left:auto;padding-left:0.5rem;white-space:nowrap">${venue}</span>`:'';
+    const venueHtml=venue?`<span style="font-size:0.72rem;color:var(--text3);margin-left:auto;padding-left:0.5rem;white-space:nowrap">${venue}</span>`:'';
 
     // Look up Polymarket de-vigged odds for this match
     const mktKey=`${m.ta}|${m.tb}|${m.date}`;
@@ -2495,7 +2497,7 @@ function renderMatches(){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
         const predW=predH>predA?m.ta:(predA>predH?m.tb:'Draw');
         const isCorrect=stored.correct;
-        predLine=`<div style="font-size:0.6rem;color:var(--text3);margin-top:2px;padding-left:2.5rem">
+        predLine=`<div style="font-size:0.72rem;color:var(--text3);margin-top:2px;padding-left:2.5rem">
           <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓':'✗'}</span>
           <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
           ${stored.probs?`<span style="margin-left:4px">W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%</span>`:''}
@@ -2506,7 +2508,7 @@ function renderMatches(){
         <div style="display:flex;align-items:center">
           <span class="m-group">${m.grp}</span>
           <span class="m-team home ${wA}">${fl(m.ta)}</span>
-          <span class="m-score">${m.sa} - ${m.sb} <span style="font-size:0.6rem;color:var(--green);font-weight:700">✓</span></span>
+          <span class="m-score">${m.sa} - ${m.sb} <span style="font-size:0.72rem;color:var(--green);font-weight:700">✓</span></span>
           <span class="m-team away ${wB}">${fl(m.tb)}</span>
           ${venueHtml}
         </div>
@@ -2521,9 +2523,9 @@ function renderMatches(){
         const lPct = (m.probs.loss*100).toFixed(0);
         probLine += `<div style="display:flex;gap:0.3rem;align-items:center;margin-top:0.3rem;padding-left:2.5rem;flex-wrap:wrap">`;
         // Model prediction pills
-        probLine += `<span style="font-size:0.55rem;background:rgba(0,122,255,0.12);color:var(--blue);padding:0.15rem 0.4rem;border-radius:4px;font-weight:600">Model W${wPct}%</span>`;
-        probLine += `<span style="font-size:0.55rem;background:rgba(0,0,0,0.06);color:var(--text2);padding:0.15rem 0.4rem;border-radius:4px">D${dPct}%</span>`;
-        probLine += `<span style="font-size:0.55rem;background:rgba(255,59,48,0.1);color:var(--red);padding:0.15rem 0.4rem;border-radius:4px">L${lPct}%</span>`;
+        probLine += `<span style="font-size:0.7rem;background:rgba(0,122,255,0.12);color:var(--blue);padding:0.15rem 0.4rem;border-radius:4px;font-weight:600">Model W${wPct}%</span>`;
+        probLine += `<span style="font-size:0.7rem;background:rgba(0,0,0,0.06);color:var(--text2);padding:0.15rem 0.4rem;border-radius:4px">D${dPct}%</span>`;
+        probLine += `<span style="font-size:0.7rem;background:rgba(255,59,48,0.1);color:var(--red);padding:0.15rem 0.4rem;border-radius:4px">L${lPct}%</span>`;
         // Market comparison (if available)
         if(mkt) {
           const mwPct = (mkt.win*100).toFixed(0);
@@ -2532,11 +2534,11 @@ function renderMatches(){
           const div = Math.abs(m.probs.win - mkt.win) + Math.abs(m.probs.draw - mkt.draw);
           const divColor = div > 0.15 ? 'var(--red)' : div > 0.08 ? 'var(--orange)' : 'var(--green)';
           const divBg = div > 0.15 ? 'rgba(255,59,48,0.1)' : div > 0.08 ? 'rgba(255,149,0,0.1)' : 'rgba(52,199,89,0.1)';
-          probLine += `<span style="font-size:0.55rem;color:var(--text3);margin-left:0.3rem">│</span>`;
-          probLine += `<span style="font-size:0.55rem;background:rgba(175,82,222,0.12);color:var(--purple);padding:0.15rem 0.4rem;border-radius:4px;font-weight:600">Mkt W${mwPct}%</span>`;
-          probLine += `<span style="font-size:0.55rem;background:rgba(0,0,0,0.06);color:var(--text2);padding:0.15rem 0.4rem;border-radius:4px">D${mdPct}%</span>`;
-          probLine += `<span style="font-size:0.55rem;background:rgba(255,59,48,0.1);color:var(--red);padding:0.15rem 0.4rem;border-radius:4px">L${mlPct}%</span>`;
-          probLine += `<span style="font-size:0.55rem;background:${divBg};color:${divColor};padding:0.15rem 0.4rem;border-radius:4px;font-weight:700">Δ${(div*100).toFixed(0)}%</span>`;
+          probLine += `<span style="font-size:0.7rem;color:var(--text3);margin-left:0.3rem">│</span>`;
+          probLine += `<span style="font-size:0.7rem;background:rgba(175,82,222,0.12);color:var(--purple);padding:0.15rem 0.4rem;border-radius:4px;font-weight:600">Mkt W${mwPct}%</span>`;
+          probLine += `<span style="font-size:0.7rem;background:rgba(0,0,0,0.06);color:var(--text2);padding:0.15rem 0.4rem;border-radius:4px">D${mdPct}%</span>`;
+          probLine += `<span style="font-size:0.7rem;background:rgba(255,59,48,0.1);color:var(--red);padding:0.15rem 0.4rem;border-radius:4px">L${mlPct}%</span>`;
+          probLine += `<span style="font-size:0.7rem;background:${divBg};color:${divColor};padding:0.15rem 0.4rem;border-radius:4px;font-weight:700">Δ${(div*100).toFixed(0)}%</span>`;
         }
         probLine += `</div>`;
       }
@@ -2570,8 +2572,8 @@ function renderBracket(){
       s+=`<div class="b-match"><div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${m.a}</span><span class="b-score">${m.ga}</span></div><div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${m.b}</span><span class="b-score">${m.gb}</span></div>${m.method?`<div class="b-method">${m.method}</div>`:''}</div>`;});s+='</div>';return s;}
   h+=bc(t('ko.r32'),ko.R32);h+=bc(t('ko.r16'),ko.R16);h+=bc(t('ko.qf'),ko.QF);h+=bc(t('ko.sf'),ko.SF);
   h+=`<div class="bracket-col"><div class="bracket-col-title">${t('ko.finals')}</div>`;
-  h+=`<div class="b-match"><div style="font-size:0.55rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">3rd Place</div><div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${ko.Third.a}</span><span class="b-score">${ko.Third.ga}</span></div><div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${ko.Third.b}</span><span class="b-score">${ko.Third.gb}</span></div>${ko.Third.method?`<div class="b-method">${ko.Third.method}</div>`:''}</div>`;
-  h+=`<div class="b-match" style="background:linear-gradient(135deg,#fff9e6,#fff)"><div style="font-size:0.55rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">FINAL</div><div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${ko.Final.a}</span><span class="b-score">${ko.Final.ga}</span></div><div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${ko.Final.b}</span><span class="b-score">${ko.Final.gb}</span></div>${ko.Final.method?`<div class="b-method">${ko.Final.method}</div>`:''}</div>`;
+  h+=`<div class="b-match"><div style="font-size:0.7rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">3rd Place</div><div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${ko.Third.a}</span><span class="b-score">${ko.Third.ga}</span></div><div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${ko.Third.b}</span><span class="b-score">${ko.Third.gb}</span></div>${ko.Third.method?`<div class="b-method">${ko.Third.method}</div>`:''}</div>`;
+  h+=`<div class="b-match" style="background:linear-gradient(135deg,#fff9e6,#fff)"><div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">FINAL</div><div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${ko.Final.a}</span><span class="b-score">${ko.Final.ga}</span></div><div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${ko.Final.b}</span><span class="b-score">${ko.Final.gb}</span></div>${ko.Final.method?`<div class="b-method">${ko.Final.method}</div>`:''}</div>`;
   h+='</div></div></div>';
   document.getElementById('section-bracket').innerHTML=h;
 }
@@ -2685,7 +2687,7 @@ function displayWhatIfResults() {
   h += `<div style="font-size:0.75rem;font-weight:700;margin-bottom:0.5rem">${t('prob.conditionalResults')} (${result.sampleSize} ${t('prob.filteredSims')})</div>`;
 
   // Show locked matches
-  h += `<div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.5rem">`;
+  h += `<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">`;
   for (const [key, winner] of Object.entries(whatIfLocks)) {
     const [t1, t2] = key.split('|');
     h += `${t1} vs ${t2} → ${winner === 'draw' ? 'Draw' : winner} · `;
@@ -2701,9 +2703,9 @@ function displayWhatIfResults() {
     const diff = parseFloat(pct) - parseFloat(basePct);
     const dc = diff > 1 ? 'var(--green)' : diff < -1 ? 'var(--red)' : 'var(--text3)';
     h += `<div style="text-align:center;padding:0.3rem;background:var(--bg);border-radius:6px">`;
-    h += `<div style="font-size:0.6rem">${fl(t)}</div>`;
+    h += `<div style="font-size:0.72rem">${fl(t)}</div>`;
     h += `<div style="font-size:0.85rem;font-weight:700">${pct}%</div>`;
-    h += `<div style="font-size:0.55rem;color:${dc}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp</div>`;
+    h += `<div style="font-size:0.7rem;color:${dc}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}pp</div>`;
     h += `</div>`;
   }
   h += `</div>`;
@@ -2757,7 +2759,7 @@ function renderProbabilities(){
   const trend = getProbTrend();
   if(trend && trend.history.length >= 2) {
     h+=`<div style="margin-top:2rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">📈 ${t('prob.trend')}</h4>`;
-    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.8rem">${t('prob.trendDesc')} (${trend.history.length} ${t('prob.snapshots')})</div>`;
+    h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.8rem">${t('prob.trendDesc')} (${trend.history.length} ${t('prob.snapshots')})</div>`;
 
     // Show top 8 teams with trend arrows
     const topTeams = Object.keys(trend.latest).sort((a,b) => trend.latest[b] - trend.latest[a]).slice(0, 8);
@@ -2768,16 +2770,16 @@ function renderProbabilities(){
       const dc = delta > 0.005 ? 'var(--green)' : delta < -0.005 ? 'var(--red)' : 'var(--text3)';
       const arrow = delta > 0.005 ? '▲' : delta < -0.005 ? '▼' : '—';
       h+=`<div style="text-align:center;padding:0.5rem;background:var(--bg);border-radius:8px">`;
-      h+=`<div style="font-size:0.65rem">${fl(team)}</div>`;
+      h+=`<div style="font-size:0.72rem">${fl(team)}</div>`;
       h+=`<div style="font-size:1.1rem;font-weight:700">${(now*100).toFixed(1)}%</div>`;
-      h+=`<div style="font-size:0.6rem;color:${dc}">${arrow} ${delta>0?'+':''}${(delta*100).toFixed(1)}pp</div>`;
+      h+=`<div style="font-size:0.72rem;color:${dc}">${arrow} ${delta>0?'+':''}${(delta*100).toFixed(1)}pp</div>`;
       h+=`</div>`;
     }
     h+=`</div>`;
 
     // ASCII sparkline for top 3 teams
     if(trend.history.length >= 3) {
-      h+=`<div style="margin-top:0.8rem;font-size:0.65rem;color:var(--text3)">`;
+      h+=`<div style="margin-top:0.8rem;font-size:0.72rem;color:var(--text3)">`;
       for(const team of topTeams.slice(0,3)) {
         const vals = trend.history.map(s => (s.probs[team] || 0) * 100);
         const min = Math.min(...vals), max = Math.max(...vals);
@@ -2835,7 +2837,7 @@ function renderModel(){
     const def=Math.max(0,((de-1400)/800*0.40+(fifa-900)/1000*0.30+Math.min(mv/1000,1)*0.15+Math.min(TEAMS[t][3]/20,1)*0.15)*100);
     const ed=de-elo,ec=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',es=ed>0?`+${ed}`:ed<0?`${ed}`:'0';
     h+=`<div class="breakdown-item"><div class="breakdown-header">${fl(t)}<span class="composite-score">${(composite(t)*100).toFixed(0)}</span></div><div class="breakdown-bars">`;
-    h+=`<div class="bar-row"><span class="bar-label" style="color:var(--blue)">Elo ${de}</span><div class="bar-track"><div class="bar-fill elo" style="width:${ep}%"></div></div><span style="color:${ec};font-size:0.6rem;margin-left:4px">${es}</span></div>`;
+    h+=`<div class="bar-row"><span class="bar-label" style="color:var(--blue)">Elo ${de}</span><div class="bar-track"><div class="bar-fill elo" style="width:${ep}%"></div></div><span style="color:${ec};font-size:0.72rem;margin-left:4px">${es}</span></div>`;
     h+=`<div class="bar-row"><span class="bar-label">FIFA ${fifa}</span><div class="bar-track"><div class="bar-fill fifa" style="width:${fp}%"></div></div></div>`;
     h+=`<div class="bar-row"><span class="bar-label">Value €${mv}m</span><div class="bar-track"><div class="bar-fill mv" style="width:${mp}%"></div></div></div>`;
     h+=`<div class="bar-row"><span class="bar-label">Attack</span><div class="bar-track"><div class="bar-fill atk" style="width:${atk}%"></div></div></div>`;
@@ -2888,7 +2890,7 @@ function renderData(){
         const avgAcc=bin.sumOutcome/bin.count;
         const barW=Math.round(avgConf*100);
         const accW=Math.round(avgAcc*100);
-        h+=`<div style="display:flex;align-items:center;gap:0.3rem;font-size:0.6rem;margin-bottom:0.15rem">`;
+        h+=`<div style="display:flex;align-items:center;gap:0.3rem;font-size:0.72rem;margin-bottom:0.15rem">`;
         h+=`<span style="width:2.5rem;text-align:right;color:var(--text3)">${(bi*10)}-${(bi+1)*10}%</span>`;
         h+=`<div style="flex:1;height:8px;background:rgba(0,0,0,0.04);border-radius:4px;position:relative;overflow:hidden">`;
         h+=`<div style="height:100%;width:${barW}%;background:var(--blue);border-radius:4px;opacity:0.3"></div>`;
@@ -2897,7 +2899,7 @@ function renderData(){
         h+=`<span style="width:2rem;color:var(--text3)">${bin.count}n</span>`;
         h+=`</div>`;
       }
-      h+=`<div style="font-size:0.6rem;color:var(--text3);margin-top:0.3rem">Blue bar = predicted confidence · Green line = actual accuracy · Closer = better calibrated</div></div>`;
+      h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem">Blue bar = predicted confidence · Green line = actual accuracy · Closer = better calibrated</div></div>`;
     }
   }else{h+=`<div style="color:var(--text3);font-size:0.8rem;text-align:center;padding:1rem">Fetch or enter 3+ results to see calibration</div>`;}
   h+='</div>';
@@ -2910,7 +2912,7 @@ function renderData(){
     h+=`<div class="calib-metric"><span class="metric-label">Brier</span><span class="metric-val">${bt.brier.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">RPS</span><span class="metric-val">${bt.rps.toFixed(4)}</span></div>`;
     h+=`<div class="calib-metric"><span class="metric-label">Accuracy</span><span class="metric-val">${(bt.accuracy*100).toFixed(1)}%</span></div>`;
-    h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">Uses 2022-era Elo data for all 48 group stage matches.</div>`;
+    h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.4rem">Uses 2022-era Elo data for all 48 group stage matches.</div>`;
     h+='</div>';
   }
   // Form status
@@ -2923,7 +2925,7 @@ function renderData(){
   h+=`<div style="font-size:0.75rem;margin:0.5rem 0 0.3rem"><strong>${t('data.bottomForm')}</strong></div>`;
   ft.slice(-5).forEach(t=>{const fc=t.form>=0.65?'var(--green)':t.form>=0.45?'var(--orange)':'var(--red)';
     h+=`<div style="display:flex;justify-content:space-between;font-size:0.72rem;padding:0.15rem 0"><span>${fl(t.team)}</span><span style="color:${fc};font-weight:600">${(t.form*100).toFixed(0)}%</span></div>`;});
-  h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.5rem">${t('data.formDesc')}</div></div>`;
+  h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.5rem">${t('data.formDesc')}</div></div>`;
   // Manual odds
   h+=`<div class="data-card"><h4>💰 ${t('data.manualOdds')}</h4><textarea id="odds-json" placeholder='{"Spain":450,"France":500}'></textarea><div class="data-actions"><button class="data-btn data-btn-primary" onclick="applyCustomOdds()">${t('data.apply')}</button><button class="data-btn data-btn-secondary" onclick="exportOddsJSON()">${t('data.export')}</button><button class="data-btn data-btn-danger" onclick="resetOdds()">${t('data.reset')}</button></div></div>`;
   // Manual result
@@ -2967,17 +2969,17 @@ function renderRadar(){
     h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem">`;
     if(brierScores.model !== null) {
       const modelColor = brierScores.model < 0.20 ? 'var(--green)' : brierScores.model < 0.25 ? 'var(--blue)' : 'var(--orange)';
-      h+=`<div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:${modelColor}">${brierScores.model.toFixed(3)}</div><div style="font-size:0.65rem;color:var(--text3)">${t('radar.model')} (${brierScores.count})</div></div>`;
+      h+=`<div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:${modelColor}">${brierScores.model.toFixed(3)}</div><div style="font-size:0.72rem;color:var(--text3)">${t('radar.model')} (${brierScores.count})</div></div>`;
     }
     if(brierScores.market !== null) {
       const mktColor = brierScores.market < 0.20 ? 'var(--green)' : brierScores.market < 0.25 ? 'var(--blue)' : 'var(--orange)';
-      h+=`<div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:${mktColor}">${brierScores.market.toFixed(3)}</div><div style="font-size:0.65rem;color:var(--text3)">${t('radar.market')} (${brierScores.marketCount})</div></div>`;
+      h+=`<div style="text-align:center"><div style="font-size:1.4rem;font-weight:700;color:${mktColor}">${brierScores.market.toFixed(3)}</div><div style="font-size:0.72rem;color:var(--text3)">${t('radar.market')} (${brierScores.marketCount})</div></div>`;
     }
     h+=`</div>`;
     if(brierScores.model !== null && brierScores.market !== null) {
       const diff = brierScores.model - brierScores.market;
       const better = diff < 0 ? t('radar.model') : t('radar.market');
-      h+=`<div style="font-size:0.65rem;color:var(--text3);margin-top:0.4rem">${better} ${t('radar.brierBetter')} (${Math.abs(diff*100).toFixed(1)}%)</div>`;
+      h+=`<div style="font-size:0.72rem;color:var(--text3);margin-top:0.4rem">${better} ${t('radar.brierBetter')} (${Math.abs(diff*100).toFixed(1)}%)</div>`;
     }
     h+=`</div>`;
   }
@@ -3007,9 +3009,9 @@ function renderRadar(){
       const delta = now - then;
       const dc = delta > 0.01 ? 'var(--green)' : delta < -0.01 ? 'var(--red)' : 'var(--text3)';
       h+=`<div style="text-align:center;padding:0.4rem;background:var(--bg);border-radius:8px">`;
-      h+=`<div style="font-size:0.65rem">${fl(team)}</div>`;
+      h+=`<div style="font-size:0.72rem">${fl(team)}</div>`;
       h+=`<div style="font-size:0.85rem;font-weight:700">${(now*100).toFixed(1)}%</div>`;
-      h+=`<div style="font-size:0.6rem;color:${dc}">${delta>0?'+':''}${(delta*100).toFixed(1)}%</div>`;
+      h+=`<div style="font-size:0.72rem;color:${dc}">${delta>0?'+':''}${(delta*100).toFixed(1)}%</div>`;
       h+=`</div>`;
     }
     h+=`</div></div>`;
