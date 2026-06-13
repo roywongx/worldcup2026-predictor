@@ -1738,6 +1738,7 @@ function renderStandings(){
 
 function renderMatches(){
   const{matchResults,ko}=currentResults;
+  const state=loadState();const actualResults=state.actualResults||[];
   let h='<div class="matches-list">';
   h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px"><span style="color:var(--green);font-weight:700">✓</span>=Actual · <span style="color:var(--orange);font-weight:700">Pred</span>=Model · W/D/L%</div>`;
   let ld='';
@@ -1745,8 +1746,19 @@ function renderMatches(){
     if(m.date!==ld){ld=m.date;const d=new Date(m.date+'T00:00:00');h+=`<div class="match-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>`;}
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
     const ab=m.actual?'<span style="font-size:0.6rem;color:var(--green);font-weight:700;margin-left:4px">✓</span>':'';
+    // Prediction comparison for actual matches
+    let predDisplay='';
+    if(m.actual){
+      const stored=actualResults.find(r=>r.team1===m.ta&&r.team2===m.tb);
+      if(stored&&stored.predGoals){
+        const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
+        const predColor=stored.correct?'var(--green)':'var(--red)';
+        const predIcon=stored.correct?'✓':'✗';
+        predDisplay=`<span style="font-size:0.6rem;color:${predColor};margin-left:4px">Pred:${predH.toFixed(1)}-${predA.toFixed(1)} ${predIcon}</span>`;
+      }
+    }
     let pd='';if(!m.actual&&m.probs){pd=`<span style="font-size:0.6rem;color:var(--text3);margin-left:4px">${(m.probs.win*100).toFixed(0)}/${(m.probs.draw*100).toFixed(0)}/${(m.probs.loss*100).toFixed(0)}</span>`;}
-    h+=`<div class="match-card" ${m.actual?'style="border-left:3px solid var(--green)"':''}><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}${ab}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${pd}</span></div>`;
+    h+=`<div class="match-card" ${m.actual?'style="border-left:3px solid var(--green)"':''}><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}${ab}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${predDisplay}${pd}</span></div>`;
   });
   [{k:'R32',l:'Round of 32 — Jun 28 - Jul 1'},{k:'R16',l:'Round of 16 — Jul 4-5'},{k:'QF',l:'Quarter-finals — Jul 8-9'},{k:'SF',l:'Semi-finals — Jul 14-15'}].forEach(r=>{
     h+=`<div class="match-date">${r.l}</div>`;
@@ -1976,19 +1988,18 @@ async function fetchResults(){
   if(se)se.textContent='Fetching results...';
   try{
     let data=null;
-    // Use local proxy to bypass CORS
+    // Try local proxy first
     try{
       const r=await fetch(`/api/results?key=${encodeURIComponent(apiKey)}`);
       const j=await r.json();
-      if(j.error){
-        logFetch('results',false,j.error);
-        showToast('API: '+j.error.substring(0,80));
-        if(se)se.textContent='Error: '+j.error.substring(0,60);
-        return false;
-      }
-      if(j.matches){data=j;logFetch('results',true,'via proxy');}
-    }catch(e){logFetch('results',false,e.message);}
-    if(!data){showToast('API error — check key is valid at football-data.org');return false;}
+      if(j.error){logFetch('results',false,j.error);}
+      else if(j.matches){data=j;logFetch('results',true,'via proxy');}
+    }catch(e){logFetch('results',false,'proxy: '+e.message);}
+    // Fallback: direct fetch (works if served from localhost)
+    if(!data){
+      try{const r=await fetch(`https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED`,{headers:{'X-Auth-Token':apiKey}});if(r.ok){data=await r.json();logFetch('results',true,'direct');}}catch(e){logFetch('results',false,'direct: '+e.message);}
+    }
+    if(!data){showToast('Could not fetch — check API key and server');if(se)se.textContent='Fetch failed';return false;}
     let matches=[];let source='football-data.org';
     if(Array.isArray(data)){matches=data;source='worldcupjson.net';}else if(data.matches){matches=data.matches;}
     const state=loadState();if(!state.actualResults)state.actualResults=[];
