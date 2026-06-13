@@ -2271,7 +2271,7 @@ function mapTeamName(apiName) {
     'Iran': 'Iran', 'Scotland': 'Scotland', 'Canada': 'Canada', 'Ghana': 'Ghana',
     'Tunisia': 'Tunisia', 'Paraguay': 'Paraguay', 'Saudi Arabia': 'Saudi Arabia',
     'Czech Republic': 'Czech Republic', 'Czechia': 'Czech Republic',
-    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina', 'Bosnia-Herzegovina': 'Bosnia Herzegovina',
+    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina', 'Bosnia-Herzegovina': 'Bosnia Herzegovina', 'Bosnia Herzegovina': 'Bosnia Herzegovina',
     'Ivory Coast': 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast', "Côte d'Ivoire": 'Ivory Coast',
     'Qatar': 'Qatar', 'Panama': 'Panama', 'Algeria': 'Algeria', 'Jordan': 'Jordan',
     'Iraq': 'Iraq', 'Uzbekistan': 'Uzbekistan', 'DR Congo': 'DR Congo', 'Congo DR': 'DR Congo',
@@ -2627,7 +2627,18 @@ function renderMatches(){
   h+=`</div>`;
 
   // Load Polymarket match odds for comparison
-  const marketOdds = state.polymarketMatchOdds || {};
+  // Build a lookup that works regardless of date format differences
+  const rawOdds = state.polymarketMatchOdds || {};
+  const marketOdds = {};
+  for (const [key, val] of Object.entries(rawOdds)) {
+    marketOdds[key] = val;
+    // Also store without date for timezone-agnostic lookup
+    const parts = key.split('|');
+    if (parts.length >= 2) {
+      const teamKey = `${parts[0]}|${parts[1]}|`;
+      if (!marketOdds[teamKey]) marketOdds[teamKey] = val;
+    }
+  }
 
   // Match list
   let ld='';
@@ -3402,11 +3413,10 @@ async function fetchPolymarketMatchOdds() {
         // De-vig: normalize so win + draw + loss = 1
         if (pDraw <= 0) pDraw = Math.max(0.05, 1 - pWin1 - pWin2);
         const total = pWin1 + pDraw + pWin2;
-        oddsMap[`${team1}|${team2}|${date}`] = {
-          win: pWin1 / total,
-          draw: pDraw / total,
-          loss: pWin2 / total
-        };
+        const odds = { win: pWin1 / total, draw: pDraw / total, loss: pWin2 / total };
+        // Store with multiple keys for flexible lookup (handles timezone date mismatches)
+        oddsMap[`${team1}|${team2}|${date}`] = odds;
+        oddsMap[`${team1}|${team2}|`] = odds;  // date-agnostic fallback
       }
       if (events.length < 100) break;
     }
