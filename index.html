@@ -1563,52 +1563,109 @@ function mapTeamName(apiName) {
 }
 // ── i18n System ──────────────────────────────────────────────────────────
 let currentLang = localStorage.getItem('wc2026_lang') || 'zh';
+// i18n: technical terms (API, RPS, Dixon-Coles, etc.) stay English in both languages
 const I18N = {
   zh: {
+    // Hero
     'hero.badge':'FIFA 世界杯 26','hero.title':'世界杯 <span>2026</span>','hero.sub':'Dixon-Coles 预测引擎',
+    // Tabs
     'tab.standings':'积分榜','tab.matches':'全部比赛','tab.bracket':'对阵图',
     'tab.probabilities':'概率分析','tab.model':'模型','tab.data':'数据','tab.radar':'雷达',
+    // Standings table headers
+    'sth.team':'球队','sth.group':'小组',
+    // Match display
+    'match.legend':'<span style="color:var(--green);font-weight:700">✓</span>=实际 · <span style="color:var(--orange);font-weight:700">Pred</span>=预测 · W/D/L%',
+    'match.predCorrect':'✓ 预测正确','match.predWrong':'✗ 预测错误','match.pred':'预测',
+    // Accuracy card
+    'acc.title':'📊 模型准确度','acc.accuracy':'胜平负准确率','acc.correct':'正确/总数','acc.rps':'RPS (↓更好)',
+    // Bracket / Knockout
+    'ko.r32':'三十二强','ko.r16':'十六强','ko.qf':'八强','ko.sf':'四强',
+    'ko.r32date':'三十二强 — 6月28日-7月1日','ko.r16date':'十六强 — 7月4-5日',
+    'ko.qfdate':'四分之一决赛 — 7月8-9日','ko.sfdate':'半决赛 — 7月14-15日',
+    'ko.third':'三四名决赛 — 7月18日','ko.final':'决赛 — 7月19日 · MetLife 体育场',
+    'ko.finals':'决赛阶段','ko.champion':'2026 世界杯冠军',
+    // Probabilities
+    'prob.click':'点击运行 10,000 次锦标赛模拟','prob.btn':'🎲 蒙特卡洛 (10,000x)',
+    'prob.desc':'生成冠军、决赛、四强、八强、十六强的概率分布',
+    'prob.rerun':'🎲 重新模拟','prob.sims':'模拟次数','prob.champs':'不同冠军','prob.fav':'头号热门','prob.winrate':'夺冠率',
+    // Model
+    'model.dc':'Dixon-Coles Poisson 模型','model.elo':'Elo 系统',
+    'model.base':'基础 λ (总进球)','model.rate':'Elo→进球率','model.host':'东道主加成','model.floor':'最低 λ','model.grid':'比分网格',
+    'model.k':'K 因子','model.gi':'进球指数','model.fd':'状态衰减','model.et':'加时进球','model.pen':'点球','model.mc':'蒙特卡洛',
+    'model.ds':'数据来源','model.eloSrc':'Elo 评分','model.fifaSrc':'FIFA 排名','model.mvSrc':'球队市值','model.oddsSrc':'博彩赔率','model.wcSrc':'世界杯历史','model.ref':'学术依据',
+    'model.breakdown':'球队实力分析 (Top 20)',
+    // Data page
     'data.setup':'快速设置','data.setup.desc':'获取免费 API Key 启用实时数据：',
-    'data.getKey':'获取 Key →','data.apiKeys':'API Key',
-    'data.results':'赛果:','data.odds':'赔率:','data.save':'保存',
+    'data.getKey':'获取 Key →',
     'data.fetchResults':'获取赛果','data.fetchOdds':'获取赔率','data.fetchAll':'获取全部',
-    'data.calibration':'模型校准','data.accuracy':'准确率','data.rps':'RPS',
-    'data.brier':'Brier','data.logLoss':'对数损失','data.ece':'ECE',
+    'data.calibration':'模型校准','data.accuracy':'准确率','data.rps':'RPS','data.brier':'Brier','data.logLoss':'对数损失','data.ece':'ECE',
     'data.resultsUsed':'结果数','data.correctTotal':'正确/总数',
     'data.formStatus':'动态状态','data.topForm':'状态最好:','data.bottomForm':'状态最差:',
     'data.formDesc':'基于最近比赛结果（指数衰减）',
-    'data.manualOdds':'手动赔率','data.apply':'应用','data.export':'导出','data.reset':'重置',
+    'data.manualOdds':'手动赔率 (美式)','data.apply':'应用','data.export':'导出','data.reset':'重置',
     'data.manualResult':'手动录入','data.add':'添加','data.clearAll':'清空',
     'data.batchImport':'批量导入','data.import':'导入',
+    // Radar
     'radar.title':'冷门雷达 — 模型 vs 市场','radar.desc':'对比 Dixon-Coles 模型与 Polymarket 真金白银价格。',
-    'radar.fetch':'获取 Polymarket 数据','radar.model':'模型','radar.market':'市场',
-    'radar.divergence':'分歧','radar.conflict':'冲突','radar.agree':'一致',
-    'radar.champion':'冠军概率：模型 vs 市场','radar.diff':'差值',
+    'radar.fetch':'获取 Polymarket 数据','radar.champion':'冠军概率：模型 vs 市场',
+    // Toast messages
+    'toast.fetchErr':'获取失败','toast.fetchOk':'数据已刷新','toast.added':'已添加','toast.cleared':'已清空',
+    'toast.imported':'已导入','toast.exported':'已导出','toast.updated':'已更新','toast.reset':'已重置',
+    'toast.invalid':'输入无效','toast.needKey':'请先设置 API Key','toast.testing':'测试中...',
+    // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
     'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.12) + 东道主加成',
     'footer.mc':'蒙特卡洛 10k · RPS/ECE 校准 · localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
   },
   en: {
+    // Hero
     'hero.badge':'FIFA World Cup 26','hero.title':'World Cup <span>2026</span>','hero.sub':'Dixon-Coles Prediction Engine',
+    // Tabs
     'tab.standings':'Standings','tab.matches':'All Matches','tab.bracket':'Bracket',
     'tab.probabilities':'Probabilities','tab.model':'Model','tab.data':'Data','tab.radar':'Radar',
+    // Standings
+    'sth.team':'Team','sth.group':'Group',
+    // Match display
+    'match.legend':'<span style="color:var(--green);font-weight:700">✓</span>=Actual · <span style="color:var(--orange);font-weight:700">Pred</span>=Model · W/D/L%',
+    'match.predCorrect':'✓ Correct','match.predWrong':'✗ Wrong','match.pred':'Pred',
+    // Accuracy card
+    'acc.title':'📊 Model Accuracy','acc.accuracy':'Win/Draw/Loss Accuracy','acc.correct':'Correct/Total','acc.rps':'RPS (↓ better)',
+    // Bracket / Knockout
+    'ko.r32':'Round of 32','ko.r16':'Round of 16','ko.qf':'Quarter-final','ko.sf':'Semi-final',
+    'ko.r32date':'Round of 32 — Jun 28 - Jul 1','ko.r16date':'Round of 16 — Jul 4-5',
+    'ko.qfdate':'Quarter-finals — Jul 8-9','ko.sfdate':'Semi-finals — Jul 14-15',
+    'ko.third':'Third Place — Jul 18','ko.final':'FINAL — Jul 19 · MetLife Stadium',
+    'ko.finals':'Finals','ko.champion':'2026 World Cup Champion',
+    // Probabilities
+    'prob.click':'Click to run 10,000 tournament simulations','prob.btn':'🎲 Monte Carlo (10,000x)',
+    'prob.desc':'Generates probability distributions for champion, finalist, semi, quarter, and R16',
+    'prob.rerun':'🎲 Re-run','prob.sims':'Simulations','prob.champs':'Unique Champions','prob.fav':'Top Favorite','prob.winrate':'Win Rate',
+    // Model
+    'model.dc':'Dixon-Coles Poisson Model','model.elo':'Elo System',
+    'model.base':'Base λ (total goals)','model.rate':'Elo→Goal rate','model.host':'Host advantage','model.floor':'Floor λ','model.grid':'Score grid',
+    'model.k':'K factor','model.gi':'Goal index','model.fd':'Form decay','model.et':'Extra time goals','model.pen':'Penalties','model.mc':'Monte Carlo',
+    'model.ds':'Data Sources','model.eloSrc':'Elo Ratings','model.fifaSrc':'FIFA Rankings','model.mvSrc':'Market Values','model.oddsSrc':'Bookmaker Odds','model.wcSrc':'WC History','model.ref':'Academic Basis',
+    'model.breakdown':'Team Strength Breakdown (Top 20)',
+    // Data
     'data.setup':'Quick Setup','data.setup.desc':'Get free API keys for live data:',
-    'data.getKey':'Get Key →','data.apiKeys':'API Keys',
-    'data.results':'Results:','data.odds':'Odds:','data.save':'Save',
+    'data.getKey':'Get Key →',
     'data.fetchResults':'Fetch Results','data.fetchOdds':'Fetch Odds','data.fetchAll':'Fetch All',
-    'data.calibration':'Model Calibration','data.accuracy':'Accuracy','data.rps':'RPS',
-    'data.brier':'Brier','data.logLoss':'Log Loss','data.ece':'ECE',
-    'data.resultsUsed':'Results','data.correctTotal':'Correct/Total',
+    'data.calibration':'Model Calibration','data.accuracy':'Accuracy','data.rps':'RPS','data.brier':'Brier','data.logLoss':'Log Loss','data.ece':'ECE',
+    'data.resultsUsed':'Results Used','data.correctTotal':'Correct/Total',
     'data.formStatus':'Dynamic Form','data.topForm':'Top Form:','data.bottomForm':'Bottom:',
     'data.formDesc':'Based on recent results (exponential decay)',
-    'data.manualOdds':'Manual Odds','data.apply':'Apply','data.export':'Export','data.reset':'Reset',
+    'data.manualOdds':'Manual Odds (American)','data.apply':'Apply','data.export':'Export','data.reset':'Reset',
     'data.manualResult':'Manual Entry','data.add':'+ Add','data.clearAll':'Clear All',
     'data.batchImport':'Batch Import','data.import':'Import',
+    // Radar
     'radar.title':'Cold Radar — Model vs Market','radar.desc':'Comparing Dixon-Coles model with Polymarket real-money prices.',
-    'radar.fetch':'Fetch Polymarket Data','radar.model':'Model','radar.market':'Market',
-    'radar.divergence':'Divergence','radar.conflict':'CONFLICT','radar.agree':'AGREE',
-    'radar.champion':'Champion: Model vs Market','radar.diff':'Diff',
+    'radar.fetch':'Fetch Polymarket Data','radar.champion':'Champion: Model vs Market',
+    // Toast messages
+    'toast.fetchErr':'Fetch failed','toast.fetchOk':'Data refreshed','toast.added':'Added','toast.cleared':'Cleared',
+    'toast.imported':'Imported','toast.exported':'Exported','toast.updated':'Updated','toast.reset':'Reset',
+    'toast.invalid':'Invalid input','toast.needKey':'Set API key first','toast.testing':'Testing...',
+    // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
     'footer.model':'Elo→Poisson + Dixon-Coles (ρ=-0.12) + host advantage',
     'footer.mc':'Monte Carlo 10k · RPS/ECE · localStorage',
@@ -1625,7 +1682,9 @@ function applyLang(){
   const lb=document.getElementById('lang-toggle');if(lb)lb.textContent=currentLang==='zh'?'🌐 EN/中文':'🌐 中文/EN';
   const active=document.querySelector('.section.active');
   if(active){const id=active.id.replace('section-','');
-    if(id==='data')renderData();if(id==='radar')renderRadar();}
+    if(currentResults){renderStandings();renderMatches();renderBracket();}
+    if(id==='data')renderData();if(id==='radar')renderRadar();
+    if(id==='model')renderModel();if(id==='probabilities')renderProbabilities();}
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────
@@ -1720,8 +1779,8 @@ function renderStandings(){
   const{standings,rankings,bestThirds,formMap}=currentResults;
   let h='<div class="groups-grid">';
   GROUPS.forEach(g=>{
-    h+=`<div class="group-card"><div class="group-head"><h3>Group ${g}</h3></div>`;
-    h+=`<table class="group-table"><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>ExpPts</th><th>Form</th><th>Elo</th><th>Δ</th></tr>`;
+    h+=`<div class="group-card"><div class="group-head"><h3>${t('sth.group')} ${g}</h3></div>`;
+    h+=`<table class="group-table"><tr><th>#</th><th>${t('sth.team')}</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>ExpPts</th><th>Form</th><th>Elo</th><th>Δ</th></tr>`;
     rankings[g].forEach((t,i)=>{
       const s=standings[g][t];const form=formMap?(formMap[t]||TEAMS[t][4]):TEAMS[t][4];
       const fc=form>=0.65?'var(--green)':form>=0.45?'var(--orange)':'var(--red)';
@@ -1760,11 +1819,11 @@ function renderMatches(){
     });
     const rps=played.length>0?(rpsSum/played.length).toFixed(3):'-';
     h+=`<div style="background:linear-gradient(135deg,rgba(0,122,255,0.06),rgba(52,199,89,0.06));border:1px solid rgba(0,122,255,0.15);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem">
-      <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.6rem">📊 模型准确度 / Model Accuracy</div>
+      <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.6rem">${t('acc.title')}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.8rem">
-        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:${accColor}">${acc}%</div><div style="font-size:0.65rem;color:var(--text3)">胜平负准确率</div></div>
-        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--blue)">${correct}/${played.length}</div><div style="font-size:0.65rem;color:var(--text3)">正确/总数</div></div>
-        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--purple)">${rps}</div><div style="font-size:0.65rem;color:var(--text3)">RPS (↓更好)</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:${accColor}">${acc}%</div><div style="font-size:0.65rem;color:var(--text3)">${t('acc.accuracy')}</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--blue)">${correct}/${played.length}</div><div style="font-size:0.65rem;color:var(--text3)">${t('acc.correct')}</div></div>
+        <div style="text-align:center"><div style="font-size:1.6rem;font-weight:700;color:var(--purple)">${rps}</div><div style="font-size:0.65rem;color:var(--text3)">${t('acc.rps')}</div></div>
       </div>
       <div style="margin-top:0.6rem;font-size:0.7rem;color:var(--text2)">
         ${played.map(r=>{
@@ -1776,7 +1835,7 @@ function renderMatches(){
   }
 
   // Match legend
-  h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px"><span style="color:var(--green);font-weight:700">✓</span>=Actual · <span style="color:var(--orange);font-weight:700">Pred</span>=Model · W/D/L%</div>`;
+  h+=`<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:rgba(52,199,89,0.06);border-radius:6px">${t('match.legend')}</div>`;
 
   // Match list
   let ld='';
@@ -1795,8 +1854,8 @@ function renderMatches(){
         const isCorrect=stored.correct;
         const predProb=stored.probs?`W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%`:'';
         predLine=`<div style="font-size:0.6rem;color:var(--text3);margin-top:1px;padding-left:2.5rem">
-          <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓ 预测正确':'✗ 预测错误'}</span>
-          <span style="margin-left:4px">预测: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
+          <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?t('match.predCorrect'):t('match.predWrong')}</span>
+          <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
           <span style="margin-left:4px;color:var(--text3)">${predProb}</span>
         </div>`;
       }
@@ -1816,14 +1875,14 @@ function renderMatches(){
       h+=`<div class="match-card"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span><span class="m-method">${pd}</span></div>`;
     }
   });
-  [{k:'R32',l:'Round of 32 — Jun 28 - Jul 1'},{k:'R16',l:'Round of 16 — Jul 4-5'},{k:'QF',l:'Quarter-finals — Jul 8-9'},{k:'SF',l:'Semi-finals — Jul 14-15'}].forEach(r=>{
+  [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
     h+=`<div class="match-date">${r.l}</div>`;
     ko[r.k].forEach(m=>{const wA=m.ga>m.gb?'winner':'loser',wB=m.gb>m.ga?'winner':'loser';
       h+=`<div class="match-card"><span class="m-group">KO</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${m.ga} - ${m.gb}</span><span class="m-team away ${wB}">${fl(m.b)}</span><span class="m-method">${m.method}</span></div>`;
     });
   });
-  const tp=ko.Third;h+=`<div class="match-date">Third Place — Jul 18</div><div class="match-card"><span class="m-group">3rd</span><span class="m-team home ${tp.ga>tp.gb?'winner':'loser'}">${fl(tp.a)}</span><span class="m-score">${tp.ga} - ${tp.gb}</span><span class="m-team away ${tp.gb>tp.ga?'winner':'loser'}">${fl(tp.b)}</span><span class="m-method">${tp.method}</span></div>`;
-  const f=ko.Final;h+=`<div class="match-date">FINAL — Jul 19 · MetLife Stadium</div><div class="match-card final-match"><span class="m-group" style="color:var(--gold)">FIN</span><span class="m-team home ${f.ga>f.gb?'winner':'loser'}">${fl(f.a)}</span><span class="m-score">${f.ga} - ${f.gb}</span><span class="m-team away ${f.gb>f.ga?'winner':'loser'}">${fl(f.b)}</span><span class="m-method">${f.method}</span></div>`;
+  const tp=ko.Third;h+=`<div class="match-date">${t('ko.third')}</div><div class="match-card"><span class="m-group">3rd</span><span class="m-team home ${tp.ga>tp.gb?'winner':'loser'}">${fl(tp.a)}</span><span class="m-score">${tp.ga} - ${tp.gb}</span><span class="m-team away ${tp.gb>tp.ga?'winner':'loser'}">${fl(tp.b)}</span><span class="m-method">${tp.method}</span></div>`;
+  const f=ko.Final;h+=`<div class="match-date">${t('ko.final')}</div><div class="match-card final-match"><span class="m-group" style="color:var(--gold)">FIN</span><span class="m-team home ${f.ga>f.gb?'winner':'loser'}">${fl(f.a)}</span><span class="m-score">${f.ga} - ${f.gb}</span><span class="m-team away ${f.gb>f.ga?'winner':'loser'}">${fl(f.b)}</span><span class="m-method">${f.method}</span></div>`;
   h+='</div>';document.getElementById('section-matches').innerHTML=h;
 }
 
@@ -1836,13 +1895,13 @@ function renderBracket(){
   });
   const ff=ko.Final,fmg=ff.a===ch?ff.ga:ff.gb,fog=ff.a===ch?ff.gb:ff.ga,fop=ff.a===ch?ff.b:ff.a;
   ph+=`<div class="champ-path-item"><span class="cp-round" style="color:var(--gold)">FINAL</span><span class="cp-score">${fmg}</span><span class="cp-vs">vs</span>${fl(fop)}<span class="cp-score">${fog}</span><span class="cp-method">${ff.method}</span></div>`;
-  let h=`<div class="champion-hero"><div class="trophy-icon">🏆</div><h2>${fl(ch)}</h2><div class="champ-sub">2026 World Cup Champion</div><div class="champ-path">${ph}</div></div>`;
+  let h=`<div class="champion-hero"><div class="trophy-icon">🏆</div><h2>${fl(ch)}</h2><div class="champ-sub">${t('ko.champion')}</div><div class="champ-path">${ph}</div></div>`;
   h+='<div class="bracket-wrap"><div class="bracket">';
   function bc(title,matches){let s=`<div class="bracket-col"><div class="bracket-col-title">${title}</div>`;
     matches.forEach(m=>{const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
       s+=`<div class="b-match"><div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${m.a}</span><span class="b-score">${m.ga}</span></div><div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${m.b}</span><span class="b-score">${m.gb}</span></div>${m.method?`<div class="b-method">${m.method}</div>`:''}</div>`;});s+='</div>';return s;}
-  h+=bc('Round of 32',ko.R32);h+=bc('Round of 16',ko.R16);h+=bc('Quarter-finals',ko.QF);h+=bc('Semi-finals',ko.SF);
-  h+=`<div class="bracket-col"><div class="bracket-col-title">Finals</div>`;
+  h+=bc(t('ko.r32'),ko.R32);h+=bc(t('ko.r16'),ko.R16);h+=bc(t('ko.qf'),ko.QF);h+=bc(t('ko.sf'),ko.SF);
+  h+=`<div class="bracket-col"><div class="bracket-col-title">${t('ko.finals')}</div>`;
   h+=`<div class="b-match"><div style="font-size:0.55rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">3rd Place</div><div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${ko.Third.a}</span><span class="b-score">${ko.Third.ga}</span></div><div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${ko.Third.b}</span><span class="b-score">${ko.Third.gb}</span></div>${ko.Third.method?`<div class="b-method">${ko.Third.method}</div>`:''}</div>`;
   h+=`<div class="b-match" style="background:linear-gradient(135deg,#fff9e6,#fff)"><div style="font-size:0.55rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">FINAL</div><div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${ko.Final.a}</span><span class="b-score">${ko.Final.ga}</span></div><div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${ko.Final.b}</span><span class="b-score">${ko.Final.gb}</span></div>${ko.Final.method?`<div class="b-method">${ko.Final.method}</div>`:''}</div>`;
   h+='</div></div></div>';
@@ -1861,16 +1920,16 @@ function runMonteCarloUI(){
 
 function renderProbabilities(){
   try{
-  if(!mcResults){document.getElementById('section-probabilities').innerHTML=`<div style="text-align:center;padding:3rem"><div style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">Click to run 10,000 tournament simulations</div><button class="btn-pill btn-primary" onclick="runMonteCarloUI()" style="font-size:1rem;padding:0.8rem 2rem">🎲 Monte Carlo (10,000x)</button></div>`;return;}
+  if(!mcResults){document.getElementById('section-probabilities').innerHTML=`<div style="text-align:center;padding:3rem"><div style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">${t('prob.click')}</div><button class="btn-pill btn-primary" onclick="runMonteCarloUI()" style="font-size:1rem;padding:0.8rem 2rem">${t('prob.btn')}</button><div style="font-size:0.72rem;color:var(--text3);margin-top:1rem">${t('prob.desc')}</div></div>`;return;}
   const{champ,finalist,semi,quarter,r16,N}=mcResults;
   const teams=Object.keys(TEAMS).sort((a,b)=>(champ[b]||0)-(champ[a]||0));
   let h=`<div class="stats-row">`;
-  h+=`<div class="stat-pill"><div class="stat-num">${N.toLocaleString()}</div><div class="stat-lbl">Simulations</div></div>`;
-  h+=`<div class="stat-pill"><div class="stat-num">${Object.keys(champ).length}</div><div class="stat-lbl">Unique Champions</div></div>`;
-  h+=`<div class="stat-pill"><div class="stat-num">${fl(teams[0])}</div><div class="stat-lbl">Top Favorite</div></div>`;
-  h+=`<div class="stat-pill"><div class="stat-num">${((champ[teams[0]]||0)/N*100).toFixed(1)}%</div><div class="stat-lbl">Win Rate</div></div>`;
+  h+=`<div class="stat-pill"><div class="stat-num">${N.toLocaleString()}</div><div class="stat-lbl">${t('prob.sims')}</div></div>`;
+  h+=`<div class="stat-pill"><div class="stat-num">${Object.keys(champ).length}</div><div class="stat-lbl">${t('prob.champs')}</div></div>`;
+  h+=`<div class="stat-pill"><div class="stat-num">${fl(teams[0])}</div><div class="stat-lbl">${t('prob.fav')}</div></div>`;
+  h+=`<div class="stat-pill"><div class="stat-num">${((champ[teams[0]]||0)/N*100).toFixed(1)}%</div><div class="stat-lbl">${t('prob.winrate')}</div></div>`;
   h+=`</div>`;
-  h+='<div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>Quarter</th><th>R16</th></tr>';
+  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>Quarter</th><th>R16</th></tr>`;
   teams.forEach(t=>{
     const cp=(champ[t]||0)/N*100,fp=(finalist[t]||0)/N*100,sp=(semi[t]||0)/N*100,qp=(quarter[t]||0)/N*100,rp=(r16[t]||0)/N*100;
     if(cp<0.05&&fp<0.3)return;
@@ -1880,7 +1939,7 @@ function renderProbabilities(){
     h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
   });
   h+='</table></div>';
-  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">🎲 Re-run</button></div>`;
+  h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
   document.getElementById('section-probabilities').innerHTML=h;
   }catch(e){document.getElementById('section-probabilities').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+e.message+'</p></div>';}
 }
@@ -1889,31 +1948,31 @@ function renderProbabilities(){
 function renderModel(){
   try{
   let h='<div class="model-overview">';
-  h+=`<div class="model-card"><h4>Dixon-Coles Poisson Model</h4>`;
-  h+=`<div class="factor"><span class="label">Base λ (total goals)</span><span class="weight">${GOALS_BASE}</span></div>`;
-  h+=`<div class="factor"><span class="label">Elo→Goal rate</span><span class="weight">400 Elo = 1 goal</span></div>`;
-  h+=`<div class="factor"><span class="label">DC correction ρ</span><span class="weight">${RHO}</span></div>`;
-  h+=`<div class="factor"><span class="label">Host advantage</span><span class="weight">+${HOME_HOST} goals</span></div>`;
-  h+=`<div class="factor"><span class="label">Floor λ</span><span class="weight">0.05</span></div>`;
-  h+=`<div class="factor"><span class="label">Score grid</span><span class="weight">10×10</span></div>`;
+  h+=`<div class="model-card"><h4>${t('model.dc')}</h4>`;
+  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">${GOALS_BASE}</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.rate')}</span><span class="weight">400 Elo = 1 goal</span></div>`;
+  h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO}</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.host')}</span><span class="weight">+${HOME_HOST} goals</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.floor')}</span><span class="weight">0.05</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.grid')}</span><span class="weight">10×10</span></div>`;
   h+=`</div>`;
-  h+=`<div class="model-card"><h4>Elo System</h4>`;
-  h+=`<div class="factor"><span class="label">K factor</span><span class="weight">60 (World Cup)</span></div>`;
-  h+=`<div class="factor"><span class="label">Goal index</span><span class="weight">G=(11+N)/8 for N≥3</span></div>`;
-  h+=`<div class="factor"><span class="label">Form decay</span><span class="weight">exp(-0.05 × days)</span></div>`;
-  h+=`<div class="factor"><span class="label">ET goals</span><span class="weight">55% base λ (30 min)</span></div>`;
-  h+=`<div class="factor"><span class="label">Penalties</span><span class="weight">50/50 + Elo edge</span></div>`;
-  h+=`<div class="factor"><span class="label">Monte Carlo</span><span class="weight">${MC_DEFAULT.toLocaleString()} runs</span></div>`;
+  h+=`<div class="model-card"><h4>${t('model.elo')}</h4>`;
+  h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.05 × days)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">55% base λ</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 + Elo edge</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.mc')}</span><span class="weight">${MC_DEFAULT.toLocaleString()}</span></div>`;
   h+=`</div>`;
-  h+=`<div class="model-card"><h4>Data Sources</h4>`;
-  h+=`<div class="factor"><span class="label">Elo Ratings</span><span class="weight">eloratings.net</span></div>`;
-  h+=`<div class="factor"><span class="label">FIFA Rankings</span><span class="weight">FIFA.com Jun 2026</span></div>`;
-  h+=`<div class="factor"><span class="label">Market Values</span><span class="weight">Transfermarkt</span></div>`;
-  h+=`<div class="factor"><span class="label">Bookmaker Odds</span><span class="weight">DraftKings Jun 10</span></div>`;
-  h+=`<div class="factor"><span class="label">Academic basis</span><span class="weight">Dixon & Coles (1997)</span></div>`;
+  h+=`<div class="model-card"><h4>${t('model.ds')}</h4>`;
+  h+=`<div class="factor"><span class="label">${t('model.eloSrc')}</span><span class="weight">eloratings.net</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.fifaSrc')}</span><span class="weight">FIFA.com</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.mvSrc')}</span><span class="weight">Transfermarkt</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.oddsSrc')}</span><span class="weight">DraftKings</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.ref')}</span><span class="weight">Dixon & Coles (1997)</span></div>`;
   h+=`</div></div>`;
   const allTeams=Object.keys(TEAMS).sort((a,b)=>composite(b)-composite(a));
-  h+=`<div class="team-breakdown"><h3>Team Strength Breakdown (Top 20)</h3><div class="breakdown-grid">`;
+  h+=`<div class="team-breakdown"><h3>${t('model.breakdown')}</h3><div class="breakdown-grid">`;
   allTeams.slice(0,20).forEach(t=>{
     if(!TEAMS[t])return;const[elo,fifa,mv,,form]=TEAMS[t];const de=dynamicElo[t]||elo;
     const ep=Math.max(0,(de-1400)/800*100),fp=Math.max(0,(fifa-900)/1000*100),mp=Math.min(mv/1000,1)*100;
