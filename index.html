@@ -1075,8 +1075,10 @@ function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) 
 
 /** Get form-adjusted lambdas for a match.
  *  @param {Object} [formMap] - Optional form map to avoid global state dependency.
- *  @param {Object} [fatigueMap] - Optional fatigue map for schedule density. */
-function getFormAdjustedLambdas(home, away, formMap, fatigueMap) {
+ *  Fatigue map removed from lambda: when both teams have equal rest, it only
+ *  reduces total goals without changing win probability. Extra time factor (0.40)
+ *  already accounts for fatigue. */
+function getFormAdjustedLambdas(home, away, formMap) {
   const hBonus = getHomeBonus(home);
   const aBonus = getHomeBonus(away);
   const eloH = getEffectiveElo(home);
@@ -1095,11 +1097,7 @@ function getFormAdjustedLambdas(home, away, formMap, fatigueMap) {
   const adjH = 1 + (formH - 0.5) * 0.30; // range: 0.85 to 1.15
   const adjA = 1 + (formA - 0.5) * 0.30;
 
-  // Apply fatigue adjustment (if available)
-  const fatH = fatigueMap && fatigueMap[home] !== undefined ? fatigueMap[home] : 1.0;
-  const fatA = fatigueMap && fatigueMap[away] !== undefined ? fatigueMap[away] : 1.0;
-
-  return [Math.max(0.05, lh * adjH * fatH), Math.max(0.05, la * adjA * fatA)];
+  return [Math.max(0.05, lh * adjH), Math.max(0.05, la * adjA)];
 }
 
 /** Get home advantage bonus for a team */
@@ -1116,39 +1114,11 @@ function getEffectiveElo(team) {
   return (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : TEAMS[team][0];
 }
 
-/** Ensemble model: blend Dixon-Coles with betting market probabilities.
- *  Weights: Dixon-Coles 70%, Market 30% (market is efficient but has bias) */
-function matchProbsEnsemble(home, away) {
-  const dcProbs = matchProbsRaw(home, away);
-
-  // Get market implied probabilities from odds
-  const homeOdds = TEAMS[home] ? TEAMS[home][6] : 10000;
-  const awayOdds = TEAMS[away] ? TEAMS[away][6] : 10000;
-  const homeImpProb = oddsToProb(homeOdds);
-  const awayImpProb = oddsToProb(awayOdds);
-
-  // Market doesn't directly give match probabilities, so we use it as a strength modifier
-  // Higher market prob = stronger team = slight boost to win probability
-  const marketRatio = homeImpProb / (homeImpProb + awayImpProb);
-  const marketHomeWin = marketRatio * 0.8 + 0.1; // Scale to 10-90% range
-  const marketAwayWin = (1 - marketRatio) * 0.8 + 0.1;
-  const marketDraw = 1 - marketHomeWin - marketAwayWin;
-
-  // Blend: 70% Dixon-Coles, 30% market-derived
-  const blended = {
-    win: 0.70 * dcProbs.win + 0.30 * marketHomeWin,
-    draw: 0.70 * dcProbs.draw + 0.30 * Math.max(0.15, marketDraw),
-    loss: 0.70 * dcProbs.loss + 0.30 * marketAwayWin
-  };
-
-  // Normalize
-  const total = blended.win + blended.draw + blended.loss;
-  return { win: blended.win/total, draw: blended.draw/total, loss: blended.loss/total };
-}
-
-/** Raw Dixon-Coles match probabilities (no ensemble) */
-function matchProbsRaw(home, away, formMap, fatigueMap) {
-  const [lh, la] = getFormAdjustedLambdas(home, away, formMap, fatigueMap);
+/** Compute win/draw/loss probabilities using Dixon-Coles model.
+ *  Single consistent path — no ensemble blending with market odds.
+ *  Tournament winner odds ≠ match odds; blending them produces invalid probabilities. */
+function matchProbs(home, away, formMap) {
+  const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
 
   let pW = 0, pD = 0, pL = 0;
   for (let i = 0; i <= 10; i++) {
@@ -1161,16 +1131,6 @@ function matchProbsRaw(home, away, formMap, fatigueMap) {
   }
   const total = pW + pD + pL;
   return { win: pW/total, draw: pD/total, loss: pL/total };
-}
-
-/** Compute win/draw/loss probabilities for a match (with ensemble blending) */
-function matchProbs(home, away, formMap, fatigueMap) {
-  // Use ensemble model for better calibration when no explicit formMap
-  if (!formMap && !fatigueMap) {
-    return matchProbsEnsemble(home, away);
-  }
-  // For Monte Carlo with explicit formMap, use raw Dixon-Coles
-  return matchProbsRaw(home, away, formMap, fatigueMap);
 }
 
 // ---- American odds to probability ----
@@ -1196,10 +1156,10 @@ function composite(team) {
   const rawProb = oddsToProb(odds);
   const oddsN = Math.min(rawProb / 0.22, 1);
   const formN = getForm(team);
-  // Attack/defense bonuses
+  // Attack/defense: normalize from [0.78, 1.20] range to [0, 1]
   const atk = TEAMS[team][7] || 1.0;
   const def = TEAMS[team][8] || 1.0;
-  const atkDefN = ((atk - 0.8) + (def - 0.8)) / 0.8; // normalize 0-1
+  const atkDefN = Math.max(0, Math.min(1, ((atk + def) / 2 - 0.78) / 0.42));
   // Weights sum to ~1.0 (host is part of the base, not additive)
   const base = 0.25*eloN + 0.12*fifaN + 0.10*mvN + 0.10*formN + 0.05*xpN + 0.25*oddsN + 0.08*atkDefN + 0.05*host;
   return Math.max(0, Math.min(1, base));
@@ -1220,24 +1180,24 @@ function poissonSample(lam) {
 // ---- Simulation match (Monte Carlo) ----
 
 /** Simulate a single match score using Poisson sampling */
-function simMatch(home, away, formMap, fatigueMap) {
-  const [lh, la] = getFormAdjustedLambdas(home, away, formMap, fatigueMap);
+function simMatch(home, away, formMap) {
+  const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
   return [poissonSample(lh), poissonSample(la)];
 }
 
 // ---- Knockout simulation with ET/PSO ----
 
 /** Simulate a knockout match with extra time and penalties if needed */
-function simKO(home, away, formMap, fatigueMap) {
-  let [ga, gb] = simMatch(home, away, formMap, fatigueMap);
+function simKO(home, away, formMap) {
+  let [ga, gb] = simMatch(home, away, formMap);
   let method;
   if (ga !== gb) {
     method = "90'";
   } else {
-    const [lh, la] = getFormAdjustedLambdas(home, away, formMap, fatigueMap);
-    // Extra time: 30 min / 90 min = 0.33 proportional scaling
-    const etH = poissonSample(lh * 0.33);
-    const etA = poissonSample(la * 0.33);
+    const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
+    // Extra time: 30 min base + fatigue effect → historically ~40% of regular time goals
+    const etH = poissonSample(lh * 0.40);
+    const etA = poissonSample(la * 0.40);
     ga += etH; gb += etA;
     if (ga !== gb) {
       method = 'AET';
@@ -1245,9 +1205,9 @@ function simKO(home, away, formMap, fatigueMap) {
       const eloH = getEffectiveElo(home);
       const eloA = getEffectiveElo(away);
       const eloDiff = eloH - eloA;
-      // PSO: historically ~50/50 with Elo edge
-      // 400 Elo diff → ~60/40, capped at ±25%
-      const pHome = 0.5 + Math.max(-0.25, Math.min(0.25, eloDiff / 800));
+      // PSO: historically ~50/50 with slight Elo edge
+      // 200 Elo diff → ~56/44, capped at ±20%
+      const pHome = 0.5 + Math.max(-0.20, Math.min(0.20, eloDiff / 1500));
       if (Math.random() < pHome) ga++; else gb++;
       method = 'PSO';
     }
@@ -1367,8 +1327,8 @@ function findBestThirds(groupStandings) {
 /** Simulate one full tournament (group stage + knockouts).
  *  @param {Object} actualMap - Map of actual results
  *  @param {Object} [formMap] - Pre-computed form map (avoids global state dependency)
- *  @param {Object} [fatigueMap] - Pre-computed fatigue map for schedule density */
-function simulateOneTournament(actualMap, formMap, fatigueMap) {
+ */
+function simulateOneTournament(actualMap, formMap) {
   const st = {};
   for (const g of GROUPS) {
     st[g] = {};
@@ -1384,7 +1344,7 @@ function simulateOneTournament(actualMap, formMap, fatigueMap) {
     if (actual) {
       sa = actual.score1; sb = actual.score2;
     } else {
-      [sa, sb] = simMatch(home, away, formMap, fatigueMap);
+      [sa, sb] = simMatch(home, away, formMap);
     }
     const a = st[grp][home], b = st[grp][away];
     a.p++; b.p++;
@@ -1431,7 +1391,7 @@ function simulateOneTournament(actualMap, formMap, fatigueMap) {
         method = "90'";
         if (ga === gb) { method = 'PSO'; ga++; }
       } else {
-        [ga, gb, method] = simKO(home, away, formMap, fatigueMap);
+        [ga, gb, method] = simKO(home, away, formMap);
       }
 
       const winner = ga > gb ? home : away;
@@ -1448,11 +1408,11 @@ function simulateOneTournament(actualMap, formMap, fatigueMap) {
 // ---- Monte Carlo simulation ----
 
 /** Run N tournament simulations and aggregate results */
-function runMonteCarlo(actualMap, N, formMap, fatigueMap) {
+function runMonteCarlo(actualMap, N, formMap) {
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
 
   for (let i = 0; i < N; i++) {
-    const result = simulateOneTournament(actualMap, formMap, fatigueMap);
+    const result = simulateOneTournament(actualMap, formMap);
     champ[result.champion] = (champ[result.champion] || 0) + 1;
 
     if (result.rounds.length >= 4) {
@@ -1697,45 +1657,6 @@ function calculateDynamicForm(actualResults) {
   return formMap;
 }
 
-/** Calculate fatigue map based on schedule density.
- *  Teams with fewer rest days between matches get a fatigue penalty. */
-function calculateFatigueMap(actualResults, currentDate) {
-  if (!actualResults || actualResults.length === 0) return {};
-
-  const fatigueMap = {};
-  const lastMatchDate = {};
-
-  // Find last match date for each team
-  for (const r of actualResults) {
-    const date = new Date(r.date);
-    if (!lastMatchDate[r.team1] || date > lastMatchDate[r.team1]) {
-      lastMatchDate[r.team1] = date;
-    }
-    if (!lastMatchDate[r.team2] || date > lastMatchDate[r.team2]) {
-      lastMatchDate[r.team2] = date;
-    }
-  }
-
-  // Calculate fatigue based on rest days since last match
-  const now = currentDate ? new Date(currentDate) : new Date();
-  for (const team of Object.keys(TEAMS)) {
-    if (lastMatchDate[team]) {
-      const restDays = (now - lastMatchDate[team]) / (1000 * 60 * 60 * 24);
-      // Fatigue penalty: <3 days rest = 0.92, 3-4 days = 0.96, 5+ days = 1.0
-      if (restDays < 3) {
-        fatigueMap[team] = 0.92;
-      } else if (restDays < 5) {
-        fatigueMap[team] = 0.96;
-      } else {
-        fatigueMap[team] = 1.0;
-      }
-    } else {
-      fatigueMap[team] = 1.0; // No matches played = no fatigue
-    }
-  }
-
-  return fatigueMap;
-}
 
 // ---- Actual results map (cached) ----
 
@@ -1985,7 +1906,6 @@ function runSimulation(){
   const state=loadState();const results=state.actualResults||[];
   results.forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2));
   const formMap=calculateDynamicForm(results);
-  const fatigueMap=calculateFatigueMap(results, null);
   const actualMap=buildActualResultsMap(results);
   const standings={},matchResults=[];
   GROUPS.forEach(g=>{standings[g]={};GROUP_TEAMS[g].forEach(t=>{standings[g][t]={P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,ExpPts:0};});});
@@ -2001,7 +1921,7 @@ function runSimulation(){
     }else{
       const probs=matchProbs(ta,tb);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
-      const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap,fatigueMap);
+      const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap);
       let bp=0,lh2=1,la2=0;for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,RHO);if(p>bp){bp=p;lh2=x;la2=y;}}
       if(probs.win>probs.draw&&probs.win>probs.loss){a.W++;a.Pts+=3;b.L++;}
       else if(probs.loss>probs.draw&&probs.loss>probs.win){b.W++;b.Pts+=3;a.L++;}
@@ -2023,18 +1943,18 @@ function runSimulation(){
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
       if(actual){const ga=actual.score1,gb=actual.score2;winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method:ga!==gb?"90'":'PSO'});}
-      else{const[ga,gb,method]=simKO(home,away,formMap,fatigueMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
+      else{const[ga,gb,method]=simKO(home,away,formMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
     }return[winners,res];}
   let[w1,r32r]=runKORound(koBracket);let[w2,r16r]=runKORound(w1);let[w3,qfr]=runKORound(w2);let[w4,sfr]=runKORound(w3);
   // Fix: use SF results (sfr) to identify semi-final losers, not QF results
   const sfLosers=sfr.map(m=>m.ga>m.gb?m.b:m.a);
-  const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],formMap,fatigueMap);
-  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap,fatigueMap);
+  const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],formMap);
+  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap);
   ko.R32=r32r;ko.R16=r16r;ko.QF=qfr;ko.SF=sfr;
   ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
   ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
   ko.Champion=fa>fb?w4[0]:w4[1];
-  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,fatigueMap};
+  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap};
   renderAll();
   }catch(e){console.error('runSimulation:',e);}
 }
@@ -2182,8 +2102,7 @@ function runMonteCarloUI(){
   const state=loadState();const actualMap=buildActualResultsMap(state.actualResults||[]);
   initDynamicElo();(state.actualResults||[]).forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2));
   const formMap=calculateDynamicForm(state.actualResults||[]);
-  const fatigueMap=calculateFatigueMap(state.actualResults||[], null);
-  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT,formMap,fatigueMap);renderProbabilities();
+  setTimeout(()=>{mcResults=runMonteCarlo(actualMap,MC_DEFAULT,formMap);renderProbabilities();
     if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}},50);
 }
 
@@ -2229,8 +2148,8 @@ function renderModel(){
   h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">33% base λ (30/90min)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 25% Elo</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">40% base λ (fatigue)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 20% Elo</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.mc')}</span><span class="weight">${MC_DEFAULT.toLocaleString()}</span></div>`;
   h+=`</div>`;
   h+=`<div class="model-card"><h4>${t('model.ds')}</h4>`;
