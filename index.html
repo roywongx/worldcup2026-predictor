@@ -2098,11 +2098,24 @@ function quickOddsUpdate(team,val){const odds=parseInt(val);if(TEAMS[team]&&odds
   const state=loadState();
   for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team][6]=odds;}
   if(!state.actualResults)state.actualResults=[];
-  if(state.actualResults.length===0){
-    const init=[{team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},{team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'}];
-    for(const r of init){const probs=matchProbs(r.team1,r.team2);const pred=probs.win>probs.loss?r.team1:(probs.loss>probs.win?r.team2:'draw');
+  // Seed initial results (version 2 = added June 11-12 results)
+  if(!state.dataVersion || state.dataVersion < 2){
+    const init=[
+      {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},
+      {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'},
+      {team1:'Canada',team2:'Bosnia Herzegovina',score1:1,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
+      {team1:'United States',team2:'Paraguay',score1:4,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
+    ];
+    // Dedup: only add results not already present
+    const existing=new Set(state.actualResults.map(r=>`${r.team1}|${r.team2}`));
+    for(const r of init){
+      const k=`${r.team1}|${r.team2}`;
+      if(existing.has(k))continue;
+      const probs=matchProbs(r.team1,r.team2);const pred=probs.win>probs.loss?r.team1:(probs.loss>probs.win?r.team2:'draw');
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-      state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act});}
+      state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act});
+    }
+    state.dataVersion=2;
     state.lastUpdate=new Date().toISOString();saveState(state);
   }
   const sm=state.marketData;if(sm&&sm.matches)marketData=sm;
