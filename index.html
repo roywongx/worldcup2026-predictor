@@ -1161,20 +1161,20 @@ function getForm(team, formMap) {
 }
 
 /** Convert Elo ratings to Poisson lambda (expected goals).
- *  Uses log-linear model with attack/defense separation:
- *  λ_home = attack_home / defense_away × BASE/2 × exp(β × Δelo) + host
- *  β = 0.002 calibrated so equal teams → λ ≈ 1.35 each */
+ *  Log-linear model: λ = BASE/2 × exp(β × Δelo) × √(atk/def) + host
+ *  β = 0.001 calibrated so avg total λ ≈ 2.7 across all matchups.
+ *  Attack/defense uses √ dampening to prevent extreme amplification.
+ *  Reference: TDS 2026, cup26matches.com, LeadAfrik methodology */
 function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) {
-  const BETA = 0.002;
+  const BETA = 0.001;
   const base = GOALS_BASE / 2; // 1.35 per team (2.7 total)
   const logDiff = BETA * (eloH - eloA);
-  // Attack/defense modifiers: atk/def are ~1.0 centered
-  const atkModH = atkH || 1.0;
-  const defModA = defA || 1.0;
-  const atkModA = atkA || 1.0;
-  const defModH = defH || 1.0;
-  const lh = Math.max(0.15, base * (atkModH / defModA) * Math.exp(logDiff) + hostBonusH);
-  const la = Math.max(0.15, base * (atkModA / defModH) * Math.exp(-logDiff) + hostBonusA);
+  // Attack/defense: √ dampening prevents extreme values
+  // e.g. atk=1.20/def=0.78 → ratio=1.54 → √1.54=1.24 (not 1.54)
+  const atkModH = Math.sqrt((atkH || 1.0) / (defA || 1.0));
+  const atkModA = Math.sqrt((atkA || 1.0) / (defH || 1.0));
+  const lh = Math.max(0.15, base * atkModH * Math.exp(logDiff) + hostBonusH);
+  const la = Math.max(0.15, base * atkModA * Math.exp(-logDiff) + hostBonusA);
   return [lh, la];
 }
 
