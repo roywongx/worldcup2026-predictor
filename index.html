@@ -2509,7 +2509,15 @@ function runSimulation(){
       const probs=matchProbs(ta,tb,formMap);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap,date,mktProbs);
-      let bp=0,lh2=1,la2=0;for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,RHO);if(p>bp){bp=p;lh2=x;la2=y;}}
+      // Find most probable score consistent with predicted outcome
+      const predOutcome = probs.win>=probs.draw&&probs.win>=probs.loss?'W':(probs.loss>=probs.draw?'L':'D');
+      let bp=0,lh2=1,la2=0;
+      for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
+        const outcome=x>y?'W':(x<y?'L':'D');
+        if(outcome!==predOutcome) continue;
+        const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,RHO);
+        if(p>bp){bp=p;lh2=x;la2=y;}
+      }
       if(probs.win>probs.draw&&probs.win>probs.loss){a.W++;a.Pts+=3;b.L++;}
       else if(probs.loss>probs.draw&&probs.loss>probs.win){b.W++;b.Pts+=3;a.L++;}
       else{a.D++;a.Pts++;b.D++;b.Pts++;}
