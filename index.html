@@ -1019,15 +1019,24 @@ function getRho(matchDate) {
 }
 
 /** 根据比赛日期计算 Polymarket blend 权重 (时间衰减: 赛前7天20% → 临场50%) */
-function getMarketBlend(matchDate) {
+function getMarketBlend(matchDate, volume) {
   if (!matchDate) return 0.20;
   const now = new Date();
   const match = new Date(matchDate);
   const hoursUntil = (match - now) / (1000 * 60 * 60);
-  if (hoursUntil <= 1) return 0.50;
-  if (hoursUntil <= 24) return 0.20 + 0.30 * (1 - (hoursUntil - 1) / 23);
-  if (hoursUntil <= 168) return 0.20 + 0.15 * (1 - (hoursUntil - 24) / 144);
-  return 0.20;
+  let blend;
+  if (hoursUntil <= 1) blend = 0.50;
+  else if (hoursUntil <= 24) blend = 0.20 + 0.30 * (1 - (hoursUntil - 1) / 23);
+  else if (hoursUntil <= 168) blend = 0.20 + 0.15 * (1 - (hoursUntil - 24) / 144);
+  else blend = 0.20;
+
+  // Volume sentiment: high trading volume → market more confident → increase blend
+  // Volume < $50k = low confidence, > $500k = high confidence
+  if (volume && volume > 0) {
+    const volumeFactor = Math.min(1.5, Math.max(0.5, Math.log10(volume / 50000) * 0.3 + 1));
+    blend *= volumeFactor;
+  }
+  return Math.min(0.60, Math.max(0.10, blend));
 }
 
 /** Elo-to-lambda parameters (400 Elo ≈ 1 goal) */
@@ -1440,7 +1449,7 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
   // Polymarket blend (time-decay: 20% base → 50% pre-match)
   // Uses full win/draw/loss from Polymarket
   if (marketProbs && marketProbs.win > 0 && marketProbs.loss > 0) {
-    const MARKET_BLEND = getMarketBlend(matchDate);
+    const MARKET_BLEND = getMarketBlend(matchDate, marketProbs.volume);
 
     // Step 1: Adjust win/loss ratio
     const mktWL = marketProbs.win / marketProbs.loss;
@@ -1501,8 +1510,8 @@ function getEffectiveElo(team) {
 /** Compute win/draw/loss probabilities using Dixon-Coles model.
  *  Single consistent path — no ensemble blending with market odds.
  *  Tournament winner odds ≠ match odds; blending them produces invalid probabilities. */
-function matchProbs(home, away, formMap, matchDate) {
-  const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
+function matchProbs(home, away, formMap, matchDate, marketProbs) {
+  const [lh, la] = getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
   let pW = 0, pD = 0, pL = 0;
   for (let i = 0; i <= 10; i++) {
@@ -1515,8 +1524,13 @@ function matchProbs(home, away, formMap, matchDate) {
   }
   const total = pW + pD + pL;
   const raw = { win: pW/total, draw: pD/total, loss: pL/total };
-  // Apply temperature scaling to reduce overconfidence (T=1.15)
-  // This smooths extreme probabilities, reducing Log Loss from confident wrong predictions
+
+  // Priority 1: Isotonic regression calibration (data-driven, from historical predictions)
+  // Priority 2: Temperature scaling (fallback when insufficient historical data)
+  const cal = calibrateProbs(raw.win, raw.draw, raw.loss);
+  if (isotonicCalibration) {
+    return cal;
+  }
   return temperatureScale(raw.win, raw.draw, raw.loss, 1.15);
 }
 
@@ -2141,6 +2155,283 @@ function applyIsotonicCalibration(probs, iso) {
 /** Compute calibration statistics from actual match results.
  *  Uses stored probabilities when available (the prediction made at the time),
  *  falls back to recalculating with current model state. */
+
+/** Calculate Expected Value (EV) for all upcoming matches
+ *  EV = (model_probability × market_payout) - 1
+ *  Positive EV = profitable bet opportunity */
+function calculateEV() {
+  const state = loadState();
+  const marketOdds = state.polymarketMatchOdds || {};
+  const results = [];
+
+  // Get upcoming matches
+  const schedules = Object.values(SCHEDULE || {}).flat();
+  const actualMap = buildActualResultsMap(state.actualResults || []);
+  const formMap = calculateDynamicForm(state.actualResults || []);
+
+  for (const m of schedules) {
+    const ta = m[1], tb = m[2], date = m[0];
+    const key = `${ta}|${tb}|`;
+    const mktOdds = marketOdds[key] || marketOdds[`${ta}|${tb}|`] || null;
+    if (!mktOdds) continue;
+
+    // Check if already played
+    const resultKey = `${ta}|${tb}`;
+    if (actualMap[resultKey]) continue;
+
+    // Get model prediction
+    const probs = matchProbs(ta, tb, formMap, date, mktOdds);
+    const modelProbs = [probs.win, probs.draw, probs.loss];
+    const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
+    const labels = ['W', 'D', 'L'];
+
+    for (let i = 0; i < 3; i++) {
+      // EV = (probability × payout) - 1
+      // Payout = 1 / market_odds (decimal odds)
+      const payout = 1 / Math.max(marketProbs[i], 0.01);
+      const ev = modelProbs[i] * payout - 1;
+      const edge = modelProbs[i] - marketProbs[i];  // Model vs Market difference
+
+      if (Math.abs(edge) > 0.03) {  // Only show if >3% edge
+        results.push({
+          team1: ta, team2: tb, date,
+          outcome: labels[i],
+          modelProb: modelProbs[i],
+          marketProb: marketProbs[i],
+          edge: edge,
+          ev: ev,
+          payout: payout,
+          confidence: Math.abs(edge) / Math.max(marketProbs[i], 0.01),
+          volume: mktOdds.volume || 0
+        });
+      }
+    }
+  }
+
+  // Sort by EV descending
+  results.sort((a, b) => b.ev - a.ev);
+  return results;
+}
+
+/** Render EV analysis panel */
+function renderEV() {
+  const evData = calculateEV();
+  let h = '<div class="data-card"><h4>💰 Expected Value Analysis</h4>';
+
+  if (evData.length === 0) {
+    h += '<p style="color:var(--text3)">No significant edge found (>3% difference required)</p>';
+  } else {
+    h += '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">Model vs Market probability difference. Positive EV = profitable opportunity.</div>';
+    h += '<table style="width:100%;font-size:0.75rem"><tr style="font-weight:600;color:var(--text2)">';
+    h += '<th style="text-align:left">Match</th><th>Bet</th><th>Model</th><th>Market</th><th>Edge</th><th>EV</th><th>Volume</th></tr>';
+
+    for (const r of evData.slice(0, 20)) {
+      const evColor = r.ev > 0 ? 'var(--green)' : 'var(--red)';
+      const edgeColor = r.edge > 0 ? 'var(--green)' : 'var(--red)';
+      const volStr = r.volume > 1000000 ? `$${(r.volume/1000000).toFixed(1)}M` :
+                     r.volume > 1000 ? `$${(r.volume/1000).toFixed(0)}k` : '-';
+      h += `<tr style="border-top:1px solid var(--border)">`;
+      h += `<td>${r.team1} vs ${r.team2}</td>`;
+      h += `<td style="font-weight:700">${r.outcome}</td>`;
+      h += `<td>${(r.modelProb*100).toFixed(1)}%</td>`;
+      h += `<td>${(r.marketProb*100).toFixed(1)}%</td>`;
+      h += `<td style="color:${edgeColor}">${r.edge>0?'+':''}${(r.edge*100).toFixed(1)}%</td>`;
+      h += `<td style="color:${evColor};font-weight:700">${r.ev>0?'+':''}${(r.ev*100).toFixed(1)}%</td>`;
+      h += `<td>${volStr}</td>`;
+      h += `</tr>`;
+    }
+    h += '</table>';
+  }
+  h += '</div>';
+  return h;
+}
+
+// ---- Simplified Gradient Boosting Decision Trees (GBDT) ----
+// Lightweight ensemble model trained on historical predictions
+// Complements Dixon-Coles with data-driven pattern recognition
+
+class SimpleGBDT {
+  constructor(nTrees = 20, learningRate = 0.1, maxDepth = 2) {
+    this.nTrees = nTrees;
+    this.lr = learningRate;
+    this.maxDepth = maxDepth;
+    this.trees = [];  // Array of decision stumps
+    this.trained = false;
+    this.featureNames = ['eloDiff', 'atkDiff', 'defDiff', 'formDiff', 'homeBonus', 'momentumDiff'];
+  }
+
+  /** Extract features from a match */
+  extractFeatures(team1, team2) {
+    const t1 = TEAMS[team1] || [1500, 1500, 50, 0, 0.5, 0, 0, 1.0, 1.0];
+    const t2 = TEAMS[team2] || [1500, 1500, 50, 0, 0.5, 0, 0, 1.0, 1.0];
+    const dynElo1 = (dynamicElo && dynamicElo[team1]) || t1[0];
+    const dynElo2 = (dynamicElo && dynamicElo[team2]) || t2[0];
+    const form1 = getForm(team1);
+    const form2 = getForm(team2);
+    const momentum1 = getMomentum ? getMomentum(team1) : 0;
+    const momentum2 = getMomentum ? getMomentum(team2) : 0;
+
+    return [
+      (dynElo1 - dynElo2) / 200,           // Elo diff (normalized)
+      (t1[7] - t2[7]) * 5,                  // ATK diff
+      (t1[8] - t2[8]) * 5,                  // DEF diff
+      (form1 - form2) * 2,                   // Form diff
+      (t1[5] - t2[5]) * 10,                 // Home bonus diff
+      (momentum1 - momentum2) * 2            // Momentum diff
+    ];
+  }
+
+  /** Train on historical results */
+  train(actualResults) {
+    if (!actualResults || actualResults.length < 10) {
+      this.trained = false;
+      return false;
+    }
+
+    // Prepare training data
+    const X = [], y = [];
+    for (const r of actualResults) {
+      const features = this.extractFeatures(r.team1, r.team2);
+      const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
+      X.push(features);
+      y.push(outcome);
+    }
+
+    // Initialize with uniform probabilities
+    const n = X.length;
+    const F = Array.from({ length: n }, () => [0, 0, 0]);  // Log-odds for W/D/L
+
+    // Gradient boosting loop
+    for (let t = 0; t < this.nTrees; t++) {
+      // Convert log-odds to probabilities
+      const probs = F.map(f => {
+        const expF = f.map(Math.exp);
+        const sum = expF.reduce((a, b) => a + b, 0);
+        return expF.map(e => e / sum);
+      });
+
+      // Compute negative gradient (residuals)
+      const residuals = Array.from({ length: n }, () => [0, 0, 0]);
+      for (let i = 0; i < n; i++) {
+        for (let c = 0; c < 3; c++) {
+          residuals[i][c] = (y[i] === c ? 1 : 0) - probs[i][c];
+        }
+      }
+
+      // Fit a decision stump for each class
+      for (let c = 0; c < 3; c++) {
+        const stump = this._fitStump(X, residuals.map(r => r[c]));
+        this.trees.push({ class: c, stump });
+
+        // Update predictions
+        for (let i = 0; i < n; i++) {
+          F[i][c] += this.lr * this._predictStump(stump, X[i]);
+        }
+      }
+    }
+
+    this.trained = true;
+    return true;
+  }
+
+  /** Fit a decision stump (1-level tree) */
+  _fitStump(X, residuals) {
+    let bestFeature = 0, bestThreshold = 0, bestGain = -Infinity;
+    let bestLeftVal = 0, bestRightVal = 0;
+
+    for (let f = 0; f < X[0].length; f++) {
+      const values = X.map(x => x[f]).sort((a, b) => a - b);
+      const thresholds = [];
+      for (let i = 0; i < values.length - 1; i++) {
+        thresholds.push((values[i] + values[i + 1]) / 2);
+      }
+
+      for (const threshold of thresholds.slice(0, 10)) {  // Limit thresholds for speed
+        let leftSum = 0, leftCount = 0, rightSum = 0, rightCount = 0;
+        for (let i = 0; i < X.length; i++) {
+          if (X[i][f] <= threshold) {
+            leftSum += residuals[i];
+            leftCount++;
+          } else {
+            rightSum += residuals[i];
+            rightCount++;
+          }
+        }
+
+        if (leftCount === 0 || rightCount === 0) continue;
+
+        const leftVal = leftSum / leftCount;
+        const rightVal = rightSum / rightCount;
+        const gain = leftCount * leftVal * leftVal + rightCount * rightVal * rightVal;
+
+        if (gain > bestGain) {
+          bestGain = gain;
+          bestFeature = f;
+          bestThreshold = threshold;
+          bestLeftVal = leftVal;
+          bestRightVal = rightVal;
+        }
+      }
+    }
+
+    return { feature: bestFeature, threshold: bestThreshold, leftVal: bestLeftVal, rightVal: bestRightVal };
+  }
+
+  /** Predict with a single stump */
+  _predictStump(stump, x) {
+    return x[stump.feature] <= stump.threshold ? stump.leftVal : stump.rightVal;
+  }
+
+  /** Predict probabilities for a match */
+  predict(team1, team2) {
+    if (!this.trained) return null;
+
+    const features = this.extractFeatures(team1, team2);
+    const F = [0, 0, 0];
+
+    for (const tree of this.trees) {
+      F[tree.class] += this.lr * this._predictStump(tree.stump, features);
+    }
+
+    // Convert log-odds to probabilities
+    const expF = F.map(Math.exp);
+    const sum = expF.reduce((a, b) => a + b, 0);
+    return {
+      win: expF[0] / sum,
+      draw: expF[1] / sum,
+      loss: expF[2] / sum
+    };
+  }
+}
+
+// Global GBDT instance
+const gbdt = new SimpleGBDT(15, 0.08, 2);
+
+/** Train GBDT on available data and blend with Dixon-Coles */
+function trainAndBlendGBDT(actualResults) {
+  if (!actualResults || actualResults.length < 15) return null;
+  gbdt.train(actualResults);
+  return gbdt.trained;
+}
+
+/** Get blended prediction: 80% Dixon-Coles + 20% GBDT */
+function getBlendedProbs(home, away, formMap, matchDate, marketProbs) {
+  const dcProbs = matchProbs(home, away, formMap, matchDate, marketProbs);
+
+  if (!gbdt.trained) return dcProbs;
+
+  const gbdtProbs = gbdt.predict(home, away);
+  if (!gbdtProbs) return dcProbs;
+
+  // Blend: 80% DC + 20% GBDT
+  const BLEND = 0.20;
+  return {
+    win: (1 - BLEND) * dcProbs.win + BLEND * gbdtProbs.win,
+    draw: (1 - BLEND) * dcProbs.draw + BLEND * gbdtProbs.draw,
+    loss: (1 - BLEND) * dcProbs.loss + BLEND * gbdtProbs.loss
+  };
+}
+
 function getCalibrationStats(actualResults) {
   if (!actualResults || actualResults.length < 3) return null;
 
@@ -2209,6 +2500,27 @@ function getCalibrationStats(actualResults) {
 // ---- Dynamic Elo system ----
 
 const dynamicElo = {};
+
+// ---- Isotonic Regression Calibration (等保回归校准) ----
+// Fitted from historical predictions+outcomes, applied to new predictions
+// Replaces temperature scaling with data-driven probability calibration
+let isotonicCalibration = null;  // {win: [{p, calP}], draw: [...], loss: [...]}
+
+/** Fit isotonic calibration from actualResults and cache it */
+function fitAndCacheCalibration(actualResults) {
+  isotonicCalibration = fitIsotonicCalibration(actualResults);
+}
+
+/** Apply cached isotonic calibration to raw probabilities */
+function calibrateProbs(pW, pD, pL) {
+  if (!isotonicCalibration) return { win: pW, draw: pD, loss: pL };
+  const calW = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration.win) ?? pW;
+  const calD = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration.draw) ?? pD;
+  const calL = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration.loss) ?? pL;
+  const total = calW + calD + calL;
+  if (total <= 0) return { win: pW, draw: pD, loss: pL };
+  return { win: calW / total, draw: calD / total, loss: calL / total };
+}
 
 /** Initialize dynamic Elo from static TEAMS data */
 function initDynamicElo() {
@@ -3322,6 +3634,9 @@ function renderRadar(){
   h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
   h+=`</div>`;
 
+  // EV Analysis Panel
+  try { h += renderEV(); } catch(e) {}
+
   // Brier Score Tracker (打脸榜)
   const brierScores = computeBrierScores();
   if(brierScores && brierScores.count >= 3) {
@@ -3508,6 +3823,7 @@ async function fetchPolymarketData(){
 async function fetchPolymarketMatchOdds() {
   try {
     const oddsMap = {};
+    const volumeMap = {};  // Track trading volume per match
     // Fetch all WC match events (series_slug=soccer-fifwc), paginated
     for (let offset = 0; offset < 500; offset += 100) {
       const url = `https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc&active=true&closed=false&limit=100&offset=${offset}`;
@@ -3526,7 +3842,7 @@ async function fetchPolymarketMatchOdds() {
         const date = ev.eventDate || '';
         if (!date) continue;
         // Find win/draw markets
-        let pWin1 = 0, pWin2 = 0, pDraw = 0;
+        let pWin1 = 0, pWin2 = 0, pDraw = 0, totalVolume = 0;
         const raw1 = tm[1].trim().toLowerCase();
         const raw2 = tm[2].trim().toLowerCase();
         for (const m of (ev.markets || [])) {
@@ -3534,6 +3850,9 @@ async function fetchPolymarketMatchOdds() {
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
           const yesPrice = parseFloat(prices[0]);
           if (isNaN(yesPrice) || yesPrice <= 0) continue;
+          // Accumulate volume
+          const vol = parseFloat(m.volume) || 0;
+          totalVolume += vol;
           if (q.includes('end in a draw')) {
             pDraw = yesPrice;
           } else if (q.includes(raw1) && !q.includes(raw2)) {
@@ -3573,13 +3892,18 @@ async function fetchPolymarketMatchOdds() {
         // De-vig: normalize so win + draw + loss = 1
         if (pDraw <= 0) pDraw = Math.max(0.05, 1 - pWin1 - pWin2);
         const total = pWin1 + pDraw + pWin2;
-        const odds = { win: pWin1 / total, draw: pDraw / total, loss: pWin2 / total };
+        const odds = { win: pWin1 / total, draw: pDraw / total, loss: pWin2 / total, volume: totalVolume };
         // Store with multiple keys for flexible lookup (handles timezone date mismatches)
         oddsMap[`${team1}|${team2}|${date}`] = odds;
         oddsMap[`${team1}|${team2}|`] = odds;  // date-agnostic fallback
+        volumeMap[`${team1}|${team2}`] = totalVolume;
       }
       if (events.length < 100) break;
     }
+    // Store volume map in state for sentiment analysis
+    const state = loadState();
+    state.polymarketVolumes = volumeMap;
+    saveState(state);
     return oddsMap;
   } catch (e) { return {}; }
 }
@@ -3667,6 +3991,9 @@ async function fetchPolymarketResults() {
 function reevaluateResults() {
   const state = loadState();
   if (!state.actualResults || state.actualResults.length === 0) return 0;
+  // Fit isotonic calibration and train GBDT from current data
+  fitAndCacheCalibration(state.actualResults);
+  trainAndBlendGBDT(state.actualResults);
   let changed = 0;
   for (const r of state.actualResults) {
     const mktOdds = r.preMatchOdds || null;
@@ -3866,6 +4193,9 @@ function validateData() {
   initDynamicElo();
   validateData(); // Check data integrity on every page load
 })();
+// Fit isotonic calibration from historical data on load
+fitAndCacheCalibration(loadState().actualResults || []);
+trainAndBlendGBDT(loadState().actualResults || []);
 runSimulation();applyLang();
 (async()=>{try{if(getApiKey('football-data'))await fetchResults();}catch(e){}})();
 </script>
