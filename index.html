@@ -492,10 +492,6 @@ body {
   padding: 0 0.3rem;
   gap: 0.6rem;
 }
-  padding: 0.1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
 
 .champion-hero {
   text-align: center;
@@ -2268,6 +2264,7 @@ function renderEVSection() {
   h += `</div>`;
 
   if (evData.length === 0) {
+    const state = loadState();
     const oddsCount = Object.keys(state.polymarketMatchOdds || {}).length;
     if (oddsCount === 0) {
       h += '<div class="data-card" style="text-align:center;padding:2rem">';
@@ -2311,7 +2308,7 @@ function renderEVSection() {
     h += `<div class="data-card" style="margin-bottom:0.6rem">`;
     h += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">`;
     h += `<div style="font-weight:700;font-size:0.9rem">${r.team1} vs ${r.team2}</div>`;
-    h += `<span class="ev-badge" style="background:${r.ev>0?'rgba(52,199,89,0.15)':'rgba(255,59,48,0.15)'};color:${evColor};padding:0.2rem 0.5rem;border-radius:4px;font-weight:700;font-size:0.8rem">EV ${r.ev>0?'+':''}${r.ev.toFixed(1)}%</span>`;
+    h += `<span class="ev-badge" style="background:${r.ev>0?'rgba(52,199,89,0.15)':'rgba(255,59,48,0.15)'};color:${evColor};padding:0.2rem 0.5rem;border-radius:4px;font-weight:700;font-size:0.8rem">EV ${r.ev>0?'+':''}${(r.ev*100).toFixed(1)}%</span>`;
     h += `</div>`;
 
     h += `<div style="display:flex;gap:0.8rem;align-items:center;margin-bottom:0.4rem">`;
@@ -2875,7 +2872,7 @@ const I18N = {
     'toast.invalid':'输入无效','toast.needKey':'请先设置 API Key','toast.testing':'测试中...',
     // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
-    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.13) + 温度收缩',
+    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.15/-0.12) + 温度收缩',
     'footer.mc':'蒙特卡洛 10k · RPS/ECE 校准 · localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
   },
@@ -2949,7 +2946,7 @@ const I18N = {
     'toast.invalid':'Invalid input','toast.needKey':'Set API key first','toast.testing':'Testing...',
     // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
-    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.13) + Temperature Scaling',
+    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.15/-0.12) + Temperature Scaling',
     'footer.mc':'Monte Carlo 10k · RPS/ECE · localStorage',
     'footer.disclaimer':'For entertainment only — football is unpredictable',
   }
@@ -3026,7 +3023,7 @@ function runSimulation(){
     }else{
       const matchKey=`${ta}|${tb}|${date}`;
       const mktProbs=marketOddsMap[matchKey]||null;
-      const probs=matchProbs(ta,tb,formMap);
+      const probs=matchProbs(ta,tb,formMap,date,mktProbs);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap,date,mktProbs);
       // Find most probable score consistent with predicted outcome
@@ -3360,7 +3357,7 @@ function runMonteCarloUI(){
       if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
     }
     done=end;
-    if(btn)btn.textContent=`'+t('prob.simulating')+' ${(done/N*100).toFixed(0)}%`;
+    if(btn)btn.textContent=`${t('prob.simulating')} ${(done/N*100).toFixed(0)}%`;
     if(done<N){setTimeout(processChunk,0);}
     else{
       mcResults={champ,finalist,semi,quarter,r16,N};
