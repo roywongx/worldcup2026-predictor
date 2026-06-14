@@ -2071,7 +2071,7 @@ function expectedCalibrationError(predictions, outcomes, nBins) {
  *  Returns calibration maps: {win: [{p, calP}], draw: [...], loss: [...]}
  *  Each map is a sorted lookup table from predicted probability to calibrated probability. */
 function fitIsotonicCalibration(actualResults) {
-  if (!actualResults || actualResults.length < 8) return null;
+  if (!actualResults || actualResults.length < 20) return null;  // Need 20+ for reliable calibration
 
   const outcomes = { win: [], draw: [], loss: [] };
   for (const r of actualResults) {
