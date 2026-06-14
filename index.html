@@ -1096,6 +1096,37 @@ const TEAMS = {
   "Panama":[1539,1555,30,2,0.50,0,25000,0.93,0.89]
 };
 
+/**
+ * 动态大洲修正 — 让大洲头部球队的 ATK 向 1.0 靠拢
+ * 公式: dynamicScale = baseScale + (teamElo - confAvgElo) / (GLOBAL_MAX_ELO - confAvgElo) × (1 - baseScale)
+ */
+(function applyDynamicConfScale() {
+  const CONF_BASE = {'UEFA':1.00,'CONMEBOL':0.95,'CONCACAF':0.80,'AFC':0.75,'CAF':0.75,'OFC':0.60};
+  const GLOBAL_MAX_ELO = 2150;
+  const CONF_MAP = {
+    'Mexico':'CONCACAF','United States':'CONCACAF','Canada':'CONCACAF','Haiti':'CONCACAF','Panama':'CONCACAF','Curaçao':'CONCACAF',
+    'Argentina':'CONMEBOL','Brazil':'CONMEBOL','Colombia':'CONMEBOL','Uruguay':'CONMEBOL','Ecuador':'CONMEBOL','Paraguay':'CONMEBOL',
+    'Japan':'AFC','South Korea':'AFC','Iran':'AFC','Saudi Arabia':'AFC','Australia':'AFC','Iraq':'AFC','Jordan':'AFC','Qatar':'AFC','Uzbekistan':'AFC',
+    'Morocco':'CAF','Senegal':'CAF','Egypt':'CAF','Algeria':'CAF','Tunisia':'CAF','Ivory Coast':'CAF','Ghana':'CAF','Cameroon':'CAF','DR Congo':'CAF','South Africa':'CAF','Cape Verde':'CAF',
+    'New Zealand':'OFC'
+  };
+  const confElo={},confN={};
+  for(const[t,d] of Object.entries(TEAMS)){const c=CONF_MAP[t]||'UEFA';confElo[c]=(confElo[c]||0)+d[0];confN[c]=(confN[c]||0)+1;}
+  const confAvgElo={};
+  for(const c of Object.keys(confElo))confAvgElo[c]=confElo[c]/confN[c];
+  for(const[team,data] of Object.entries(TEAMS)){
+    const conf=CONF_MAP[team]||'UEFA';
+    const base=CONF_BASE[conf];
+    if(base>=1.0)continue;
+    const elo=data[0],avg=confAvgElo[conf];
+    if(elo<=avg)continue;
+    const safeMax=Math.max(GLOBAL_MAX_ELO,elo);
+    const ratio=(elo-avg)/(safeMax-avg);
+    const dyn=base+ratio*(1-base);
+    data[7]=Math.round(data[7]*(dyn/base)*100)/100;
+  }
+})();
+
 const FLAGS = {
   "Mexico":"mx","South Africa":"za","South Korea":"kr","Czech Republic":"cz",
   "Canada":"ca","Bosnia Herzegovina":"ba","Qatar":"qa","Switzerland":"ch",
@@ -1627,31 +1658,81 @@ function simMatch(home, away, formMap, matchDate, marketOddsMap) {
 
 /** Simulate a knockout match with extra time and penalties if needed */
 function simKO(home, away, formMap, matchDate, marketOddsMap) {
-  let [ga, gb] = simMatch(home, away, formMap, matchDate, marketOddsMap);
-  let method;
+  const rho = getRho(matchDate);
+  const marketProbs = marketOddsMap ? (marketOddsMap[`${home}|${away}|${matchDate}`] || marketOddsMap[`${home}|${away}|`]) : null;
+  const [lh90, la90] = getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
+
+  // 90 minutes
+  const ga90 = poissonSample(lh90), gb90 = poissonSample(la90);
+  let ga = ga90, gb = gb90, method;
+
   if (ga !== gb) {
     method = "90'";
   } else {
-    const marketProbs = marketOddsMap ? (marketOddsMap[`${home}|${away}|${matchDate}`] || marketOddsMap[`${home}|${away}|`]) : null;
-    const [lh, la] = getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
-    // Extra time: 30 min base + fatigue effect → historically ~40% of regular time goals
-    const etH = poissonSample(lh * 0.40);
-    const etA = poissonSample(la * 0.40);
+    // Extra time: γ conservative factor (fatigue + cautious play)
+    // γ = 0.70 ± 0.05 × (eloDiff/400) — stronger team has deeper bench
+    const eloH = getEffectiveElo(home), eloA = getEffectiveElo(away);
+    const eloDiff = eloH - eloA;
+    const gammaH = 0.70 + 0.05 * (eloDiff / 400);
+    const gammaA = 0.70 - 0.05 * (eloDiff / 400);
+    const lhET = lh90 * (30 / 90) * gammaH;
+    const laET = la90 * (30 / 90) * gammaA;
+    const etH = poissonSample(lhET), etA = poissonSample(laET);
     ga += etH; gb += etA;
     if (ga !== gb) {
       method = 'AET';
     } else {
-      const eloH = getEffectiveElo(home);
-      const eloA = getEffectiveElo(away);
-      const eloDiff = eloH - eloA;
-      // PSO: historically ~50/50 with slight Elo edge
-      // 200 Elo diff → ~56/44, capped at ±20%
-      const pHome = 0.5 + Math.max(-0.20, Math.min(0.20, eloDiff / 1500));
+      // Penalty shootout: Elo-adjusted, clamped [0.40, 0.60]
+      const pHome = Math.max(0.40, Math.min(0.60, 0.50 + 0.05 * (eloDiff / 400)));
       if (Math.random() < pHome) ga++; else gb++;
       method = 'PSO';
     }
   }
   return [ga, gb, method];
+}
+
+/** Analytical knockout advance probabilities (3-stage: 90min + ET + PK) */
+function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
+  const rho = getRho(matchDate);
+  const marketProbs = marketOddsMap ? (marketOddsMap[`${home}|${away}|${matchDate}`] || marketOddsMap[`${home}|${away}|`]) : null;
+  const [lh90, la90] = getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
+
+  // 90min probabilities
+  let pW90=0, pD90=0, pL90=0;
+  for (let i=0;i<=10;i++) for (let j=0;j<=10;j++) {
+    const tau=1; // simplified for speed
+    const p=poissonPMF(i,lh90)*poissonPMF(j,la90)*dixonColesTau(i,j,lh90,la90,rho);
+    if(i>j)pW90+=p;else if(i===j)pD90+=p;else pL90+=p;
+  }
+  const t90=pW90+pD90+pL90; pW90/=t90; pD90/=t90; pL90/=t90;
+
+  // ET lambdas
+  const eloH=getEffectiveElo(home), eloA=getEffectiveElo(away), eloDiff=eloH-eloA;
+  const gammaH=0.70+0.05*(eloDiff/400), gammaA=0.70-0.05*(eloDiff/400);
+  const lhET=lh90*(30/90)*gammaH, laET=la90*(30/90)*gammaA;
+
+  let pW_ET=0,pD_ET=0,pL_ET=0;
+  for(let i=0;i<=5;i++)for(let j=0;j<=5;j++){
+    const p=poissonPMF(i,lhET)*poissonPMF(j,laET);
+    if(i>j)pW_ET+=p;else if(i===j)pD_ET+=p;else pL_ET+=p;
+  }
+  const tET=pW_ET+pD_ET+pL_ET; pW_ET/=tET; pD_ET/=tET; pL_ET/=tET;
+
+  // PK
+  const pPK_home=Math.max(0.40,Math.min(0.60,0.50+0.05*(eloDiff/400)));
+
+  // Advance probabilities
+  const pGoesET=pD90, pGoesPK=pD90*pD_ET;
+  const pAdvance_home=pW90+pD90*(pW_ET+pD_ET*pPK_home);
+  const pAdvance_away=pL90+pD90*(pL_ET+pD_ET*(1-pPK_home));
+
+  return {
+    p90:temperatureScale(pW90,pD90,pL90,1.15),
+    pET:{w:pW_ET,d:pD_ET,l:pL_ET},
+    pPK:{home:pPK_home,away:1-pPK_home},
+    pAdvance:temperatureScale(pAdvance_home,0,pAdvance_away,1.15),
+    pGoesET, pGoesPK
+  };
 }
 
 // ---- FIFA 2026 Round of 32 bracket ----
@@ -3087,7 +3168,7 @@ function renderModel(){
   h+=`<div class="model-card"><h4>${t('model.dc')}</h4>`;
   h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">2.30 (1.15 × 2)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.rate')}</span><span class="weight">400 Elo = 1 goal</span></div>`;
-  h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO}</span></div>`;
+  h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO_GROUP} (组) / ${RHO_KNOCKOUT} (淘)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.host')}</span><span class="weight">+${HOME_HOST} goals</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.floor')}</span><span class="weight">0.05</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.grid')}</span><span class="weight">10×10</span></div>`;
