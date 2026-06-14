@@ -4076,11 +4076,21 @@ async function fetchPolymarketResults() {
 function reevaluateResults() {
   const state = loadState();
   if (!state.actualResults || state.actualResults.length === 0) return 0;
-  // Fit isotonic calibration and train GBDT from current data
+
+  // 备份动态 Elo，重置为静态值（赛前状态）
+  // 确保赛后重算用赛前 Elo，不受比赛结果影响
+  const savedDynamicElo = { ...dynamicElo };
+  for (const t of Object.keys(TEAMS)) {
+    dynamicElo[t] = TEAMS[t][0];
+  }
+
+  // 用赛前 Elo 拟合校准和 GBDT
   fitAndCacheCalibration(state.actualResults);
   trainAndBlendGBDT(state.actualResults);
+
   let changed = 0;
   for (const r of state.actualResults) {
+    // 用赛前 Polymarket 赔率（如有）+ 赛前 Elo + 最新模型参数
     const mktOdds = r.preMatchOdds || null;
     const probs = matchProbs(r.team1, r.team2, null, r.date, mktOdds);
     const pred = probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw?r.team2:'draw');
@@ -4091,6 +4101,10 @@ function reevaluateResults() {
     r.probs = { win: probs.win, draw: probs.draw, loss: probs.loss };
     r.predGoals = [lh.toFixed(2), la.toFixed(2)];
   }
+
+  // 恢复动态 Elo（用于未来预测）
+  Object.assign(dynamicElo, savedDynamicElo);
+
   if (changed > 0) { saveState(state); showToast(`Re-evaluated: ${changed} predictions updated`); }
   return changed;
 }
