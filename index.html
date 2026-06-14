@@ -971,6 +971,7 @@ body {
     <button onclick="showSection('model', this)" data-i18n="tab.model">Model</button>
     <button onclick="showSection('data', this)" data-i18n="tab.data">Data</button>
     <button onclick="showSection('radar', this)" data-i18n="tab.radar">Radar</button>
+    <button onclick="showSection('ev', this)" data-i18n="tab.ev">💰 EV</button>
   </div>
 </div>
 
@@ -986,6 +987,7 @@ body {
 <div id="section-model" class="section"></div>
 <div id="section-data" class="section"></div>
 <div id="section-radar" class="section"></div>
+<div id="section-ev" class="section"></div>
 
 <div class="footer" id="footer-text">
   <span data-i18n="footer.group">Group stage: Poisson expected values (win/draw/loss probabilities → expected points)</span><br>
@@ -2198,6 +2200,8 @@ function calculateEV() {
           outcome: labels[i],
           modelProb: modelProbs[i],
           marketProb: marketProbs[i],
+          modelAll: { w: modelProbs[0], d: modelProbs[1], l: modelProbs[2] },
+          marketAll: { w: marketProbs[0], d: marketProbs[1], l: marketProbs[2] },
           edge: edge,
           ev: ev,
           payout: payout,
@@ -2244,6 +2248,83 @@ function renderEV() {
   }
   h += '</div>';
   return h;
+}
+
+/** Full EV Analysis Tab */
+function renderEVSection() {
+  const el = document.getElementById('section-ev');
+  if (!el) return;
+
+  const evData = calculateEV();
+  let h = `<div style="margin-bottom:1rem"><h3 style="font-size:1rem;font-weight:700;margin-bottom:0.3rem">💰 EV Analysis — Model vs Polymarket</h3>`;
+  h += `<p style="font-size:0.75rem;color:var(--text3)">Top deviations between Dixon-Coles + GBDT model and Polymarket real-money odds. Positive EV = profitable opportunity.</p></div>`;
+
+  // Filter buttons
+  h += `<div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">`;
+  h += `<button class="data-btn data-btn-primary" onclick="renderEVSection()">All</button>`;
+  h += `<button class="data-btn data-btn-green" onclick="renderEVSection('positive')">🔥 Positive EV</button>`;
+  h += `<button class="data-btn data-btn-secondary" onclick="renderEVSection('draw')">⚖️ Draw Bets</button>`;
+  h += `<button class="data-btn data-btn-secondary" onclick="renderEVSection('upset')">💥 Upsets</button>`;
+  h += `</div>`;
+
+  if (evData.length === 0) {
+    h += '<div class="data-card"><p style="color:var(--text3)">No significant edge found. Fetch Polymarket odds first.</p></div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  // Apply filter
+  let filtered = evData;
+  const filter = arguments[0];
+  if (filter === 'positive') filtered = evData.filter(r => r.ev > 0);
+  if (filter === 'draw') filtered = evData.filter(r => r.outcome === 'D');
+  if (filter === 'upset') filtered = evData.filter(r => r.edge > 0.10);
+
+  // Summary stats
+  const posEV = filtered.filter(r => r.ev > 0);
+  const negEV = filtered.filter(r => r.ev <= 0);
+  h += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1rem">`;
+  h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--text3)">Total Bets</div><div style="font-size:1.2rem;font-weight:700">${filtered.length}</div></div>`;
+  h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--green)">Positive EV</div><div style="font-size:1.2rem;font-weight:700;color:var(--green)">${posEV.length}</div></div>`;
+  h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--red)">Negative EV</div><div style="font-size:1.2rem;font-weight:700;color:var(--red)">${negEV.length}</div></div>`;
+  h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--text3)">Avg Edge</div><div style="font-size:1.2rem;font-weight:700">${(filtered.reduce((s,r)=>s+Math.abs(r.edge),0)/filtered.length*100).toFixed(1)}%</div></div>`;
+  h += `</div>`;
+
+  // Cards
+  for (const r of filtered.slice(0, 25)) {
+    const evColor = r.ev > 0 ? 'var(--green)' : 'var(--red)';
+    const edgeColor = r.edge > 0 ? 'var(--green)' : 'var(--red)';
+    const volStr = r.volume > 1000000 ? `$${(r.volume/1000000).toFixed(1)}M` :
+                   r.volume > 1000 ? `$${(r.volume/1000).toFixed(0)}k` : '-';
+    const outcomeLabel = r.outcome === 'W' ? `${r.team1}胜` : r.outcome === 'D' ? '平局' : `${r.team2}胜`;
+    const advice = r.ev > 30 ? '🔥 高EV机会' : r.ev > 10 ? '✅ 正EV' : r.ev > 0 ? '👍 小正EV' : '⚠️ 负EV，回避';
+    const adviceColor = r.ev > 10 ? 'var(--green)' : r.ev > 0 ? 'var(--green)' : 'var(--red)';
+
+    h += `<div class="data-card" style="margin-bottom:0.6rem">`;
+    h += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">`;
+    h += `<div style="font-weight:700;font-size:0.9rem">${r.team1} vs ${r.team2}</div>`;
+    h += `<span class="ev-badge" style="background:${r.ev>0?'rgba(52,199,89,0.15)':'rgba(255,59,48,0.15)'};color:${evColor};padding:0.2rem 0.5rem;border-radius:4px;font-weight:700;font-size:0.8rem">EV ${r.ev>0?'+':''}${r.ev.toFixed(1)}%</span>`;
+    h += `</div>`;
+
+    h += `<div style="display:flex;gap:0.8rem;align-items:center;margin-bottom:0.4rem">`;
+    h += `<span style="background:${r.outcome==='W'?'rgba(52,199,89,0.15)':r.outcome==='D'?'rgba(255,149,0,0.15)':'rgba(255,59,48,0.15)'};color:${r.outcome==='W'?'var(--green)':r.outcome==='D'?'var(--orange)':'var(--red)'};padding:0.15rem 0.4rem;border-radius:4px;font-weight:700;font-size:0.75rem">${outcomeLabel}</span>`;
+    h += `<span style="font-size:0.72rem;color:var(--text3)">Vol: ${volStr}</span>`;
+    h += `<span style="font-size:0.72rem;color:${edgeColor}">Edge: ${r.edge>0?'+':''}${(r.edge*100).toFixed(1)}%</span>`;
+    h += `<span style="font-size:0.72rem;color:var(--text3)">Payout: ${(100/Math.max(r.marketProb,1)).toFixed(1)}x</span>`;
+    h += `</div>`;
+
+    // Model vs Market comparison
+    h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.75rem;margin-bottom:0.4rem">`;
+    const m = r.modelAll || {}, k = r.marketAll || {};
+    h += `<div><span style="color:var(--text3)">Model:</span> W${((m.w||0)*100).toFixed(0)}% / D${((m.d||0)*100).toFixed(0)}% / L${((m.l||0)*100).toFixed(0)}%</div>`;
+    h += `<div><span style="color:var(--text3)">Market:</span> W${((k.w||0)*100).toFixed(0)}% / D${((k.d||0)*100).toFixed(0)}% / L${((k.l||0)*100).toFixed(0)}%</div>`;
+    h += `</div>`;
+
+    h += `<div style="font-size:0.8rem;color:${adviceColor};font-weight:600">${advice}</div>`;
+    h += `</div>`;
+  }
+
+  el.innerHTML = h;
 }
 
 // ---- Simplified Gradient Boosting Decision Trees (GBDT) ----
@@ -2721,7 +2802,7 @@ const I18N = {
     'hero.badge':'FIFA 世界杯 26','hero.title':'世界杯 <span>2026</span>','hero.sub':'Dixon-Coles 预测引擎',
     // Tabs
     'tab.standings':'积分榜','tab.matches':'全部比赛','tab.bracket':'对阵图',
-    'tab.probabilities':'概率分析','tab.model':'模型','tab.data':'数据','tab.radar':'雷达',
+    'tab.probabilities':'概率分析','tab.model':'模型','tab.data':'数据','tab.radar':'雷达','tab.ev':'💰 EV分析',
     // Standings table headers
     'sth.team':'球队','sth.group':'小组',
     // Match display
@@ -2795,7 +2876,7 @@ const I18N = {
     'hero.badge':'FIFA World Cup 26','hero.title':'World Cup <span>2026</span>','hero.sub':'Dixon-Coles Prediction Engine',
     // Tabs
     'tab.standings':'Standings','tab.matches':'All Matches','tab.bracket':'Bracket',
-    'tab.probabilities':'Probabilities','tab.model':'Model','tab.data':'Data','tab.radar':'Radar',
+    'tab.probabilities':'Probabilities','tab.model':'Model','tab.data':'Data','tab.radar':'Radar','tab.ev':'💰 EV',
     // Standings
     'sth.team':'Team','sth.group':'Group',
     // Match display
@@ -2910,7 +2991,7 @@ function showSection(id,btn){
   document.querySelectorAll('.segment button').forEach(b=>b.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('active');if(btn)btn.classList.add('active');
   if(id==='probabilities'&&!mcResults)renderProbabilities();
-  if(id==='model')renderModel();if(id==='data')renderData();if(id==='radar')renderRadar();
+  if(id==='model')renderModel();if(id==='data')renderData();if(id==='radar')renderRadar();if(id==='ev')renderEVSection();
   }catch(e){console.error('showSection:',e);}
 }
 
