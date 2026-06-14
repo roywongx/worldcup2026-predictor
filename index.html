@@ -1007,8 +1007,28 @@ const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,62
 
 /** Dixon-Coles correlation parameter (ρ = -0.13).
  *  Inflates low-score draws (0-0, 1-1) to match real football rates.
- *  ρ=-0.13 calibrated for international cup competitions (higher draw rate). */
-const RHO = -0.13;
+ *  小组赛 ρ=-0.15 (保守战术), 淘汰赛 ρ=-0.12 (开放战术) */
+const RHO_GROUP = -0.15;
+const RHO_KNOCKOUT = -0.12;
+const RHO = RHO_GROUP;
+
+/** 根据比赛日期返回对应的 rho 值 */
+function getRho(matchDate) {
+  if (matchDate && matchDate.substring(0, 10) >= '2026-06-28') return RHO_KNOCKOUT;
+  return RHO_GROUP;
+}
+
+/** 根据比赛日期计算 Polymarket blend 权重 (时间衰减: 赛前7天20% → 临场50%) */
+function getMarketBlend(matchDate) {
+  if (!matchDate) return 0.20;
+  const now = new Date();
+  const match = new Date(matchDate);
+  const hoursUntil = (match - now) / (1000 * 60 * 60);
+  if (hoursUntil <= 1) return 0.50;
+  if (hoursUntil <= 24) return 0.20 + 0.30 * (1 - (hoursUntil - 1) / 23);
+  if (hoursUntil <= 168) return 0.20 + 0.15 * (1 - (hoursUntil - 24) / 144);
+  return 0.20;
+}
 
 /** Elo-to-lambda parameters (400 Elo ≈ 1 goal) */
 
@@ -1023,55 +1043,57 @@ const MC_DEFAULT = 10000;
  *  attack/defense: 0.8-1.2 scale (1.0=avg, >1.0=above avg)
  *  attack = offensive multiplier, defense = defensive multiplier (higher = concedes fewer)
  */
+// Blended: WCQ xG (FootyStats) 70% + Understat club xG 30%
+// Elo: worldfootballrankings.com (June 2026)
 const TEAMS = {
-  "Mexico":[1875,1681,192,17,0.65,0.15,5000,1.00,0.98],
-  "South Africa":[1456,1070,55,3,0.45,0,75000,0.88,0.85],
-  "South Korea":[1589,1538,139,11,0.60,0,15000,0.95,0.95],
-  "Czech Republic":[1710,1480,180,2,0.50,0,18000,0.92,0.95],
-  "Canada":[1682,1673,80,2,0.55,0.10,20000,0.95,0.92],
-  "Bosnia Herzegovina":[1654,1376,85,0,0.45,0,30000,0.90,0.88],
-  "Qatar":[1647,1588,45,2,0.50,0,35000,0.85,0.85],
-  "Switzerland":[1891,1649,333,12,0.60,0,6500,1.02,1.05],
-  "Brazil":[1991,1761,928,22,0.60,0,950,1.18,0.98],
-  "Morocco":[1911,1756,448,7,0.70,0,2800,0.98,1.10],
-  "Haiti":[1505,1238,15,1,0.35,0,250000,0.82,0.80],
-  "Scotland":[1730,1480,165,9,0.50,0,15000,0.92,0.95],
-  "United States":[1788,1673,386,12,0.60,0.10,6000,1.05,0.95],
-  "Paraguay":[1667,1542,85,9,0.45,0,15000,0.88,0.92],
-  "Australia":[1696,1539,120,7,0.55,0,12000,0.92,0.92],
-  "Turkey":[1911,1599,474,3,0.65,0,6500,1.08,0.95],
-  "Germany":[1932,1730,947,21,0.60,0,1100,1.12,1.05],
-  "Curaçao":[1420,1046,15,0,0.35,0,250000,0.80,0.78],
-  "Ivory Coast":[1758,1554,155,4,0.55,0,15000,1.00,0.92],
-  "Ecuador":[1938,1595,369,4,0.60,0,8000,1.08,0.98],
-  "Netherlands":[2024,1758,754,11,0.65,0,1400,1.15,1.08],
-  "Japan":[1906,1660,271,7,0.70,0,5000,1.05,1.02],
-  "Sweden":[1726,1430,195,12,0.50,0,20000,0.92,0.95],
-  "Tunisia":[1682,1504,75,7,0.50,0,20000,0.88,0.95],
-  "Belgium":[1894,1735,548,14,0.55,0,2500,1.10,1.02],
-  "Egypt":[1639,1550,85,3,0.50,0,15000,0.90,0.92],
-  "Iran":[1715,1615,55,7,0.55,0,18000,0.88,1.00],
-  "New Zealand":[1608,1420,35,2,0.40,0,50000,0.85,0.85],
-  "Spain":[2157,1876,1220,16,0.75,0,450,1.20,1.12],
-  "Cape Verde":[1550,1310,20,0,0.45,0,75000,0.85,0.85],
-  "Saudi Arabia":[1652,1590,45,7,0.50,0,20000,0.88,0.88],
-  "Uruguay":[1892,1673,359,14,0.60,0,3500,1.05,1.08],
-  "France":[2063,1877,1520,16,0.70,0,500,1.18,1.10],
-  "Senegal":[1780,1689,478,4,0.60,0,8000,1.02,0.98],
-  "Iraq":[1616,1400,20,2,0.45,0,50000,0.88,0.88],
-  "Norway":[1914,1490,250,4,0.55,0,10000,1.10,0.92],
-  "Argentina":[2115,1875,783,18,0.70,0,950,1.15,1.08],
-  "Algeria":[1652,1508,95,5,0.50,0,30000,0.92,0.92],
-  "Austria":[1772,1593,245,8,0.55,0,10000,0.98,0.98],
-  "Jordan":[1588,1380,25,1,0.45,0,50000,0.85,0.85],
-  "Portugal":[1989,1764,1010,9,0.65,0,800,1.15,1.02],
-  "DR Congo":[1607,1410,85,2,0.45,0,100000,0.90,0.88],
-  "Uzbekistan":[1589,1410,40,0,0.50,0,50000,0.88,0.88],
-  "Colombia":[1982,1693,303,7,0.60,0,2000,1.08,1.00],
-  "England":[2024,1826,1360,17,0.65,0,700,1.12,1.08],
-  "Croatia":[1912,1717,387,7,0.60,0,3300,1.02,1.10],
-  "Ghana":[1621,1460,70,4,0.45,0,25000,0.92,0.88],
-  "Panama":[1614,1555,30,2,0.50,0,25000,0.85,0.85]
+  "Mexico":[1701,1681,192,17,0.65,0.15,5000,0.89,0.86],
+  "South Africa":[1415,1070,55,3,0.45,0,75000,0.86,0.92],
+  "South Korea":[1613,1538,139,11,0.60,0,15000,0.91,0.93],
+  "Czech Republic":[1485,1480,180,2,0.50,0,18000,1.04,0.86],
+  "Canada":[1552,1673,80,2,0.55,0.10,20000,0.96,0.94],
+  "Bosnia Herzegovina":[1395,1376,85,0,0.45,0,30000,0.96,0.83],
+  "Qatar":[1459,1588,45,2,0.50,0,35000,0.85,0.89],
+  "Switzerland":[1641,1649,333,12,0.60,0,6500,0.93,1.00],
+  "Brazil":[1765,1761,928,22,0.60,0,950,0.93,0.95],
+  "Morocco":[1756,1756,448,7,0.70,0,2800,0.96,1.05],
+  "Haiti":[1293,1238,15,1,0.35,0,250000,0.89,0.85],
+  "Scotland":[1503,1480,165,9,0.50,0,15000,0.93,0.83],
+  "United States":[1689,1673,386,12,0.60,0.10,6000,0.94,0.94],
+  "Paraguay":[1488,1542,85,9,0.45,0,15000,0.89,0.85],
+  "Australia":[1579,1539,120,7,0.55,0,12000,0.88,0.90],
+  "Turkey":[1606,1599,474,3,0.65,0,6500,0.96,0.91],
+  "Germany":[1736,1730,947,21,0.60,0,1100,1.07,1.00],
+  "Curaçao":[1295,1046,15,0,0.35,0,250000,0.88,0.84],
+  "Ivory Coast":[1541,1554,155,4,0.55,0,15000,0.93,0.99],
+  "Ecuador":[1599,1595,369,4,0.60,0,8000,0.89,0.89],
+  "Netherlands":[1754,1758,754,11,0.65,0,1400,1.07,1.00],
+  "Japan":[1662,1660,271,7,0.70,0,5000,0.89,1.01],
+  "Sweden":[1510,1430,195,12,0.50,0,20000,0.85,0.80],
+  "Tunisia":[1476,1504,75,7,0.50,0,20000,0.90,0.99],
+  "Belgium":[1742,1735,548,14,0.55,0,2500,1.10,0.99],
+  "Egypt":[1562,1550,85,3,0.50,0,15000,0.95,1.01],
+  "Iran":[1620,1615,55,7,0.55,0,18000,0.88,0.87],
+  "New Zealand":[1276,1420,35,2,0.40,0,50000,0.80,0.91],
+  "Spain":[1875,1876,1220,16,0.75,0,450,1.15,1.05],
+  "Cape Verde":[1371,1310,20,0,0.45,0,75000,0.85,0.91],
+  "Saudi Arabia":[1424,1590,45,7,0.50,0,20000,0.87,0.90],
+  "Uruguay":[1673,1673,359,14,0.60,0,3500,0.93,0.92],
+  "France":[1871,1877,1520,16,0.70,0,500,1.11,1.02],
+  "Senegal":[1684,1689,478,4,0.60,0,8000,0.91,0.92],
+  "Iraq":[1446,1400,20,2,0.45,0,50000,0.86,0.90],
+  "Norway":[1557,1490,250,4,0.55,0,10000,1.12,0.99],
+  "Argentina":[1877,1875,783,18,0.70,0,950,0.92,0.98],
+  "Algeria":[1571,1508,95,5,0.50,0,30000,0.91,0.97],
+  "Austria":[1597,1593,245,8,0.55,0,10000,1.05,0.95],
+  "Jordan":[1388,1380,25,1,0.45,0,50000,0.86,0.90],
+  "Portugal":[1768,1764,1010,9,0.65,0,800,1.17,0.95],
+  "DR Congo":[1474,1410,85,2,0.45,0,100000,0.86,0.93],
+  "Uzbekistan":[1459,1410,40,0,0.50,0,50000,0.87,0.90],
+  "Colombia":[1698,1693,303,7,0.60,0,2000,0.96,0.93],
+  "England":[1828,1826,1360,17,0.65,0,700,1.07,1.17],
+  "Croatia":[1715,1717,387,7,0.60,0,3300,1.12,0.98],
+  "Ghana":[1347,1460,70,4,0.45,0,25000,0.88,0.95],
+  "Panama":[1539,1555,30,2,0.50,0,25000,0.93,0.89]
 };
 
 const FLAGS = {
@@ -1348,8 +1370,8 @@ function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, 
   const eloModA = 0.3 + 1.4 * (1 - expectedWinH);
 
   // Attack/defense: power 0.45 damping (more interpretable than sqrt)
-  const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), 0.45);
-  const atkModA = Math.pow((atkA || 1.0) / (defH || 1.0), 0.45);
+  const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), 0.35);
+  const atkModA = Math.pow((atkA || 1.0) / (defH || 1.0), 0.35);
 
   // Host bonus as multiplicative (prevents inflation for weak hosts)
   const lh = Math.max(0.18, base * stageFactor * atkModH * eloModH * (1 + hostBonusH));
@@ -1384,14 +1406,31 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
 
   let finalH = Math.max(0.05, lh * adjH);
   let finalA = Math.max(0.05, la * adjA);
-  // Blend with Polymarket match odds if available (30% market, 70% model)
+  // Polymarket blend (time-decay: 20% base → 50% pre-match)
+  // Uses full win/draw/loss from Polymarket
   if (marketProbs && marketProbs.win > 0 && marketProbs.loss > 0) {
-    const MARKET_BLEND = 0.30;
-    const mktTotal = finalH + finalA;
-    const mktH = mktTotal * marketProbs.win / (marketProbs.win + marketProbs.loss);
-    const mktA = mktTotal * marketProbs.loss / (marketProbs.win + marketProbs.loss);
-    finalH = (1 - MARKET_BLEND) * finalH + MARKET_BLEND * mktH;
-    finalA = (1 - MARKET_BLEND) * finalA + MARKET_BLEND * mktA;
+    const MARKET_BLEND = getMarketBlend(matchDate);
+
+    // Step 1: Adjust win/loss ratio
+    const mktWL = marketProbs.win / marketProbs.loss;
+    const modelWL = finalH / finalA;
+    const ratioAdj = Math.pow(mktWL / modelWL, MARKET_BLEND);
+    let adjH = finalH * Math.sqrt(ratioAdj);
+    let adjA = finalA / Math.sqrt(ratioAdj);
+
+    // Step 2: Adjust total lambda based on market draw probability
+    if (marketProbs.draw > 0) {
+      const adjTotal = adjH + adjA;
+      const approxDraw = 2 * Math.sqrt(adjH * adjA) / adjTotal * 0.40;
+      const drawRatio = marketProbs.draw / Math.max(approxDraw, 0.01);
+      const drawAdj = Math.pow(drawRatio, MARKET_BLEND);
+      const mid = adjTotal / 2;
+      adjH = mid + (adjH - mid) / drawAdj;
+      adjA = mid + (adjA - mid) / drawAdj;
+    }
+
+    finalH = Math.max(0.05, adjH);
+    finalA = Math.max(0.05, adjA);
   }
   return [finalH, finalA];
 }
@@ -1431,13 +1470,13 @@ function getEffectiveElo(team) {
 /** Compute win/draw/loss probabilities using Dixon-Coles model.
  *  Single consistent path — no ensemble blending with market odds.
  *  Tournament winner odds ≠ match odds; blending them produces invalid probabilities. */
-function matchProbs(home, away, formMap) {
+function matchProbs(home, away, formMap, matchDate) {
   const [lh, la] = getFormAdjustedLambdas(home, away, formMap);
 
   let pW = 0, pD = 0, pL = 0;
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const p = poissonPMF(i, lh) * poissonPMF(j, la) * dixonColesTau(i, j, lh, la, RHO);
+      const p = poissonPMF(i, lh) * poissonPMF(j, la) * dixonColesTau(i, j, lh, la, getRho(matchDate));
       if (i > j) pW += p;
       else if (i === j) pD += p;
       else pL += p;
@@ -2345,7 +2384,7 @@ const I18N = {
     'data.batchImport':'批量导入','data.import':'导入',
     // Radar
     'radar.title':'冷门雷达 — 模型 vs 市场','radar.desc':'对比 Dixon-Coles 模型与 Polymarket 真金白银价格。',
-    'radar.fetch':'获取 Polymarket 数据','radar.champion':'冠军概率：模型 vs 市场',
+    'radar.fetch':'🔄 同步 Polymarket (赛果+赔率)','radar.champion':'冠军概率：模型 vs 市场',
     'radar.brierTracker':'打脸榜','radar.brierBetter':'预测更准',
     'radar.trend':'概率走势','radar.trendDesc':'过去 24h 概率变化',
     'radar.snapshots':'快照','radar.fetchMatchOdds':'获取单场赔率',
@@ -2419,7 +2458,7 @@ const I18N = {
     'data.batchImport':'Batch Import','data.import':'Import',
     // Radar
     'radar.title':'Cold Radar — Model vs Market','radar.desc':'Comparing Dixon-Coles model with Polymarket real-money prices.',
-    'radar.fetch':'Fetch Polymarket Data','radar.champion':'Champion: Model vs Market',
+    'radar.fetch':'🔄 Sync Polymarket (Results + Odds)','radar.champion':'Champion: Model vs Market',
     'radar.brierTracker':'Brier Tracker','radar.brierBetter':'more accurate',
     'radar.trend':'Probability Trend','radar.trendDesc':'Probability changes over past 24h',
     'radar.snapshots':'snapshots','radar.fetchMatchOdds':'Fetch Match Odds',
@@ -2515,7 +2554,8 @@ function runSimulation(){
       for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
         const outcome=x>y?'W':(x<y?'L':'D');
         if(outcome!==predOutcome) continue;
-        const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,RHO);
+        const rho=date?getRho(date):RHO;
+        const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,rho);
         if(p>bp){bp=p;lh2=x;la2=y;}
       }
       if(probs.win>probs.draw&&probs.win>probs.loss){a.W++;a.Pts+=3;b.L++;}
@@ -3194,7 +3234,8 @@ function renderRadar(){
   let h=`<div style="margin-bottom:1.5rem"><h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem">${t('radar.title')}</h3><p style="font-size:0.75rem;color:var(--text3)">${t('radar.desc')}</p></div>`;
   const state2=loadState();const autoOn=state2.polymarketAuto;
   h+=`<div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">`;
-  h+=`<button class="data-btn data-btn-primary" onclick="fetchPolymarketData().then(()=>renderRadar())">${t('radar.fetch')}</button>`;
+  h+=`<button class="data-btn data-btn-primary" onclick="syncPolymarketData()">🔄 Sync Polymarket</button>`;
+  h+=`<button class="data-btn data-btn-secondary" onclick="reevaluateResults();mcResults=null;runSimulation();renderAll()">🔁 Re-evaluate</button>`;
   h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?t('prob.stopAuto'):t('prob.auto5min')}</button>`;
   h+=`<button class="data-btn data-btn-green" onclick="fetchPolymarketMatchOdds().then(r=>{const s=loadState();s.polymarketMatchOdds=r;saveState(s);showToast('Match odds: '+Object.keys(r).length+' matches');})">📊 ${t('radar.fetchMatchOdds')}</button>`;
   h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
@@ -3330,7 +3371,8 @@ async function fetchResults(){
       state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
       nc++;existing.add(k);
     }
-    if(nc>0){state.lastUpdate=new Date().toISOString();saveState(state);mcResults=null;runSimulation();showToast(`Fetched ${nc} new results`);if(se)se.textContent=`+${nc} · ${new Date().toLocaleTimeString()}`;}
+    if(nc>0){state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
+  mcResults=null;runSimulation();showToast(`Fetched ${nc} new results`);if(se)se.textContent=`+${nc} · ${new Date().toLocaleTimeString()}`;}
     else{showToast('No new results');if(se)se.textContent=`No new · ${new Date().toLocaleTimeString()}`;}
     return true;
   }catch(e){if(se)se.textContent=`Error: ${e.message}`;showToast(`Error: ${e.message}`);return false;}
@@ -3463,6 +3505,121 @@ async function fetchPolymarketMatchOdds() {
 
 function mapPolymarketTeam(q){const pats=[/Will (.+?) win the/i,/Will (.+?) win/i,/(.+?) to win/i];for(const p of pats){const m=q.match(p);if(m)return mapTeamName(m[1].trim());}return null;}
 
+/** 从 gamma-api 获取已完成 WC 比赛结果，自动录入并更新 Elo */
+async function fetchPolymarketResults() {
+  try {
+    const state = loadState();
+    if (!state.actualResults) state.actualResults = [];
+    const existing = new Set(state.actualResults.map(r => `${r.team1}|${r.team2}`));
+    let added = 0;
+    for (let offset = 0; offset < 500; offset += 100) {
+      const url = `https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc&closed=true&limit=100&offset=${offset}`;
+      const resp = await fetch(url);
+      if (!resp.ok) break;
+      const events = await resp.json();
+      if (!events || events.length === 0) break;
+      const scores = {};
+      for (const ev of events) {
+        const title = ev.title || '';
+        if (!title.includes('Exact Score')) continue;
+        const base = title.replace(' - Exact Score', '').trim();
+        for (const m of (ev.markets || [])) {
+          const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+          if (!prices || parseFloat(prices[0]) <= 0.95) continue;
+          const sm = (m.question || '').match(/(\d+)\s*-\s*(\d+)/);
+          if (sm) scores[base] = [parseInt(sm[1]), parseInt(sm[2])];
+          break;
+        }
+      }
+      for (const ev of events) {
+        const title = ev.title || '';
+        if (title.includes('Exact Score') || title.includes('Halftime') || title.includes('Second Half') || title.includes('Over/Under')) continue;
+        const tm = title.match(/^(.+?)\s+vs\.?\s+(.+?)(?:\s*[-–(]|$)/);
+        if (!tm) continue;
+        const team1 = mapTeamName(tm[1].trim());
+        const team2 = mapTeamName(tm[2].trim());
+        if (!team1 || !team2 || !TEAMS[team1] || !TEAMS[team2]) continue;
+        const key = `${team1}|${team2}`;
+        if (existing.has(key)) continue;
+        let result = null, pWin1 = 0, pWin2 = 0, pDraw = 0;
+        for (const m of (ev.markets || [])) {
+          const q = (m.question || '').toLowerCase();
+          const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+          if (!prices) continue;
+          const p = parseFloat(prices[0]);
+          if (q.includes('draw')) { pDraw = p; if (p > 0.95) result = 'draw'; }
+          else if (q.includes('win')) {
+            const words1 = team1.toLowerCase().split(/\s+/);
+            const words2 = team2.toLowerCase().split(/\s+/);
+            if (words1.some(w => w.length > 2 && q.includes(w)) && !words2.some(w => w.length > 2 && q.includes(w))) { pWin1 = p; if (p > 0.95) result = team1; }
+            else if (words2.some(w => w.length > 2 && q.includes(w)) && !words1.some(w => w.length > 2 && q.includes(w))) { pWin2 = p; if (p > 0.95) result = team2; }
+          }
+        }
+        if (!result) continue;
+        const score = scores[title];
+        const s1 = score ? score[0] : (result === team1 ? 1 : 0);
+        const s2 = score ? score[1] : (result === team2 ? 1 : 0);
+        const preOdds = { win: pWin1/(pWin1+pDraw+pWin2), draw: pDraw/(pWin1+pDraw+pWin2), loss: pWin2/(pWin1+pDraw+pWin2) };
+        const dateStr = (ev.endDate || new Date().toISOString()).substring(0, 10) + 'T00:00:00Z';
+        const probs = matchProbs(team1, team2, null, dateStr, preOdds);
+        const pred = probs.win>=probs.draw&&probs.win>=probs.loss?team1:(probs.loss>=probs.draw?team2:'draw');
+        const [lh, la] = getFormAdjustedLambdas(team1, team2, null, dateStr, preOdds);
+        state.actualResults.push({team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds});
+        existing.add(key);
+        added++;
+      }
+      if (events.length < 100) break;
+    }
+    if (added > 0) {
+      initDynamicElo();
+      state.actualResults.forEach(r => updateElo(r.team1, r.team2, r.score1, r.score2, r.date));
+      state.lastUpdate = new Date().toISOString();
+      saveState(state);
+      mcResults = null;
+      showToast(`Polymarket: +${added} results, Elo updated`);
+    }
+    return added;
+  } catch (e) { showToast('Polymarket results error: ' + e.message); return 0; }
+}
+
+/** 用当前模型参数 + 赛前 Polymarket 赔率重新评估所有已完成比赛 */
+function reevaluateResults() {
+  const state = loadState();
+  if (!state.actualResults || state.actualResults.length === 0) return 0;
+  let changed = 0;
+  for (const r of state.actualResults) {
+    const mktOdds = r.preMatchOdds || null;
+    const probs = matchProbs(r.team1, r.team2, null, r.date, mktOdds);
+    const pred = probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw?r.team2:'draw');
+    const [lh, la] = getFormAdjustedLambdas(r.team1, r.team2, null, r.date, mktOdds);
+    if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
+    r.predicted = pred;
+    r.correct = (pred === r.actual);
+    r.probs = { win: probs.win, draw: probs.draw, loss: probs.loss };
+    r.predGoals = [lh.toFixed(2), la.toFixed(2)];
+  }
+  if (changed > 0) { saveState(state); showToast(`Re-evaluated: ${changed} predictions updated`); }
+  return changed;
+}
+
+/** 完整 Polymarket 同步 */
+async function syncPolymarketData() {
+  const btn = document.querySelector('[onclick="syncPolymarketData()"]');
+  if (btn) { btn.textContent = '⏳ Syncing...'; btn.disabled = true; }
+  try {
+    const newResults = await fetchPolymarketResults();
+    const odds = await fetchPolymarketMatchOdds();
+    const state = loadState();
+    state.polymarketMatchOdds = odds;
+    saveState(state);
+    reevaluateResults();
+    mcResults = null;
+    runSimulation();
+    showToast(`Sync: +${newResults} results, ${Object.keys(odds).length} odds`);
+  } catch (e) { showToast('Sync error: ' + e.message); }
+  if (btn) { btn.textContent = '🔄 Sync Polymarket'; btn.disabled = false; }
+}
+
 /** Toggle Polymarket auto-refresh (every 5 minutes).
  *  Since Polymarket has no rate limit, we can poll frequently. */
 function togglePolymarketAuto() {
@@ -3473,7 +3630,7 @@ function togglePolymarketAuto() {
   if (state.polymarketAuto) {
     polymarketAutoTimer = setInterval(async () => {
       try {
-        await fetchPolymarketData();
+        await syncPolymarketData();
         // Re-run simulation with new market data
         const s = loadState();
         const mo = s.polymarketMatchOdds || {};
@@ -3497,7 +3654,9 @@ async function refreshData(){
   try{await fetchResults();}catch(e){}
   if(getApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
   const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team][6]=odds;}
+  try{await fetchPolymarketResults();}catch(e){}
   try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds=mo;saveState(state);}}catch(e){}
+  reevaluateResults();
   mcResults=null;runSimulation();
   state.lastUpdate=new Date().toISOString();saveState(state);
   if(btn){btn.textContent='⟳ Refresh';btn.disabled=false;}showToast('Data refreshed');
@@ -3512,7 +3671,8 @@ function addResult(){
   const pred=probs.win>=probs.draw&&probs.win>=probs.loss?t1:(probs.loss>=probs.draw&&probs.loss>=probs.win?t2:'draw');
   const act=s1>s2?t1:(s2>s1?t2:'draw');
   state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'manual',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
-  state.lastUpdate=new Date().toISOString();saveState(state);mcResults=null;runSimulation();
+  state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
+  mcResults=null;runSimulation();
   showToast(`Added: ${t1} ${s1}-${s2} ${t2}`);renderData();
 }
 function clearResults(){const s=loadState();s.actualResults=[];saveState(s);showToast('Cleared');renderData();}
@@ -3523,7 +3683,8 @@ function importResults(){
       const probs=matchProbs(r.team1,r.team2);const pred=probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw&&probs.loss>=probs.win?r.team2:'draw');
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
       s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}
-    s.lastUpdate=new Date().toISOString();saveState(s);mcResults=null;runSimulation();showToast(`Imported ${c}`);renderData();
+    s.lastUpdate=new Date().toISOString();saveState(s);reevaluateResults();
+  mcResults=null;runSimulation();showToast(`Imported ${c}`);renderData();
   }catch(e){showToast('Invalid JSON');}
 }
 function exportResults(){const s=loadState();const ta=document.getElementById('results-json');if(ta)ta.value=JSON.stringify(s.actualResults,null,1);showToast('Exported');}
@@ -3531,7 +3692,8 @@ function applyCustomOdds(){
   const ta=document.getElementById('odds-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);const s=loadState();let c=0;
     for(const[team,odds]of Object.entries(d)){if(TEAMS[team]&&typeof odds==='number'&&odds>0){s.customOdds[team]=odds;TEAMS[team][6]=odds;c++;}}
-    s.lastUpdate=new Date().toISOString();saveState(s);showToast(`Updated ${c}`);mcResults=null;runSimulation();
+    s.lastUpdate=new Date().toISOString();saveState(s);showToast(`Updated ${c}`);reevaluateResults();
+  mcResults=null;runSimulation();
   }catch(e){showToast('Invalid JSON');}
 }
 function resetOdds(){const s=loadState();s.customOdds={};saveState(s);showToast('Reset — reload page');}
