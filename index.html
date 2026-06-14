@@ -2514,12 +2514,11 @@ function fitAndCacheCalibration(actualResults) {
 /** Apply cached isotonic calibration to raw probabilities */
 function calibrateProbs(pW, pD, pL) {
   if (!isotonicCalibration) return { win: pW, draw: pD, loss: pL };
-  const calW = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration.win) ?? pW;
-  const calD = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration.draw) ?? pD;
-  const calL = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration.loss) ?? pL;
-  const total = calW + calD + calL;
+  const cal = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration);
+  if (!cal || typeof cal.win !== 'number' || isNaN(cal.win)) return { win: pW, draw: pD, loss: pL };
+  const total = cal.win + cal.draw + cal.loss;
   if (total <= 0) return { win: pW, draw: pD, loss: pL };
-  return { win: calW / total, draw: calD / total, loss: calL / total };
+  return { win: cal.win / total, draw: cal.draw / total, loss: cal.loss / total };
 }
 
 /** Initialize dynamic Elo from static TEAMS data */
