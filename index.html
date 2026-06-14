@@ -2166,15 +2166,15 @@ function calculateEV() {
   const marketOdds = state.polymarketMatchOdds || {};
   const results = [];
 
-  // Get upcoming matches
-  const schedules = Object.values(SCHEDULE || {}).flat();
+  // Get upcoming matches from MATCHES array
   const actualMap = buildActualResultsMap(state.actualResults || []);
   const formMap = calculateDynamicForm(state.actualResults || []);
 
-  for (const m of schedules) {
-    const ta = m[1], tb = m[2], date = m[0];
-    const key = `${ta}|${tb}|`;
-    const mktOdds = marketOdds[key] || marketOdds[`${ta}|${tb}|`] || null;
+  for (const m of (typeof MATCHES !== 'undefined' ? MATCHES : [])) {
+    const date = m[0], ta = m[1], tb = m[2];
+    const key1 = `${ta}|${tb}|`;
+    const key2 = `${ta}|${tb}|${date}`;
+    const mktOdds = marketOdds[key1] || marketOdds[key2] || null;
     if (!mktOdds) continue;
 
     // Check if already played
@@ -2268,7 +2268,15 @@ function renderEVSection() {
   h += `</div>`;
 
   if (evData.length === 0) {
-    h += '<div class="data-card"><p style="color:var(--text3)">No significant edge found. Fetch Polymarket odds first.</p></div>';
+    const oddsCount = Object.keys(state.polymarketMatchOdds || {}).length;
+    if (oddsCount === 0) {
+      h += '<div class="data-card" style="text-align:center;padding:2rem">';
+      h += '<p style="color:var(--text3);margin-bottom:1rem">需要先获取 Polymarket 赔率数据</p>';
+      h += '<button class="data-btn data-btn-primary" onclick="fetchPolymarketMatchOdds().then(r=>{const s=loadState();s.polymarketMatchOdds=r;saveState(s);showToast(\'Odds: \'+Object.keys(r).length+\' matches\');renderEVSection();})">📊 获取 Polymarket 赔率</button>';
+      h += '</div>';
+    } else {
+      h += '<div class="data-card"><p style="color:var(--text3)">已获取 '+oddsCount+' 场赔率，无显著偏差（>3%差异要求）。点击 🔄 Sync Polymarket 更新。</p></div>';
+    }
     el.innerHTML = h;
     return;
   }
