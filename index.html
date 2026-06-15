@@ -4306,7 +4306,7 @@ async function syncPolymarketData() {
     mcResults = null;
     runSimulation();
     const total = (state.actualResults || []).length;
-    showToast(`Sync: ${total} results, ${Object.keys(odds).length} odds`);
+    showToast(`Sync: ${total} results, ${Object.keys(merged).length} odds`);
   } catch (e) { showToast('Sync error: ' + e.message); }
   if (btn) { btn.textContent = '🔄 Sync Polymarket'; btn.disabled = false; }
 }
