@@ -3946,6 +3946,8 @@ async function fetchPolymarketMatchOdds() {
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
           const yesPrice = parseFloat(prices[0]);
           if (isNaN(yesPrice) || yesPrice <= 0) continue;
+          // Skip placeholder prices (Polymarket uses 0.9995/0.0005 for unfilled markets)
+          if (yesPrice >= 0.999 || yesPrice <= 0.001) continue;
           // Accumulate volume
           const vol = parseFloat(m.volume) || 0;
           totalVolume += vol;
@@ -3985,6 +3987,8 @@ async function fetchPolymarketMatchOdds() {
           }
         }
         if (pWin1 <= 0 || pWin2 <= 0) continue;
+        // Filter out placeholder prices (Polymarket uses 0.9995/0.0005 for unfilled markets)
+        if (pWin1 >= 0.999 || pWin2 >= 0.999 || pWin1 <= 0.001 || pWin2 <= 0.001) continue;
         // De-vig: normalize so win + draw + loss = 1
         if (pDraw <= 0) pDraw = Math.max(0.05, 1 - pWin1 - pWin2);
         const total = pWin1 + pDraw + pWin2;
