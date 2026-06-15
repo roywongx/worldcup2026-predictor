@@ -1502,7 +1502,8 @@ function temperatureScale(pW, pD, pL, T) {
 
 /** Get effective Elo for a team (dynamic if available, else static) */
 function getEffectiveElo(team) {
-  return (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : TEAMS[team][0];
+  if (dynamicElo && dynamicElo[team]) return dynamicElo[team];
+  return TEAMS[team] ? TEAMS[team][0] : 1500;
 }
 
 /** Predict match outcome with draw threshold.
@@ -2724,6 +2725,23 @@ function calculateDynamicForm(actualResults) {
   return formMap;
 }
 
+/** Get team momentum (recent form trend) for GBDT features.
+ *  Returns -1..+1: positive = improving, negative = declining.
+ *  Compares win rate of last 3 matches vs previous 3. */
+function getMomentum(team) {
+  const state = loadState();
+  const results = state.actualResults || [];
+  const teamMatches = [];
+  for (const r of results) {
+    if (r.team1 === team) teamMatches.push({ gd: r.score1 - r.score2 });
+    else if (r.team2 === team) teamMatches.push({ gd: r.score2 - r.score1 });
+  }
+  if (teamMatches.length < 2) return 0;
+  const recent = teamMatches.slice(-3);
+  const prev = teamMatches.slice(-6, -3);
+  const winRate = ms => ms.length === 0 ? 0.5 : ms.reduce((s, m) => s + (m.gd > 0 ? 1 : m.gd === 0 ? 0.33 : 0), 0) / ms.length;
+  return Math.max(-1, Math.min(1, (winRate(recent) - (prev.length ? winRate(prev) : 0.5)) * 3));
+}
 
 // ---- Actual results map (cached) ----
 
@@ -3066,6 +3084,7 @@ function runSimulation(){
   function runKORound(teams){const res=[],winners=[];
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
+      // Known limitation: can't distinguish AET vs PSO from stored scores alone
       if(actual){const ga=actual.score1,gb=actual.score2;winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method:ga!==gb?"90'":'PSO'});}
       else{const[ga,gb,method]=simKO(home,away,formMap,'2026-06-28',marketOddsMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
     }return[winners,res];}
@@ -3073,7 +3092,7 @@ function runSimulation(){
   // Fix: use SF results (sfr) to identify semi-final losers, not QF results
   const sfLosers=sfr.map(m=>m.ga>m.gb?m.b:m.a);
   const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],formMap,'2026-07-14',marketOddsMap);
-  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap,'2026-07-19');
+  const[fa,fb,fm]=simKO(w4[0],w4[1],formMap,'2026-07-19',marketOddsMap);
   ko.R32=r32r;ko.R16=r16r;ko.QF=qfr;ko.SF=sfr;
   ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
   ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
