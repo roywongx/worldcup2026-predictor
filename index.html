@@ -3996,7 +3996,9 @@ async function fetchPolymarketMatchOdds() {
         const resolved = pWin1 >= 0.999 || pWin2 >= 0.999 || pWin1 <= 0.001 || pWin2 <= 0.001;
         if (resolved) {
           try {
-            const matchTs = new Date(date).getTime() / 1000;
+            // Use gameStartTime (actual kickoff) instead of eventDate for accurate cutoff
+            const gameTime = (ev.markets && ev.markets[0] && ev.markets[0].gameStartTime) || date;
+            const matchTs = new Date(gameTime).getTime() / 1000;
             // Get last pre-match price for each market using CLOB prices-history
             const fetchPreMatch = async (tokenId) => {
               const r = await fetch(`https://clob.polymarket.com/prices-history?market=${tokenId}&interval=max&fidelity=60`);
