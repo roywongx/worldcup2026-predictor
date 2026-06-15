@@ -1567,11 +1567,11 @@ function computeBrierScores() {
   for (const entry of log) {
     const mPred = [entry.model.w, entry.model.d, entry.model.l];
     const o = entry.outcome;
-    modelBrier += (mPred.elo - (o===0?1:0))**2 + (mPred[1] - (o===1?1:0))**2 + (mPred[2] - (o===2?1:0))**2;
+    modelBrier += (mPred[0] - (o===0?1:0))**2 + (mPred[1] - (o===1?1:0))**2 + (mPred[2] - (o===2?1:0))**2;
     count++;
     if (entry.market) {
       const mkPred = [entry.market.w, entry.market.d, entry.market.l];
-      marketBrier += (mkPred.elo - (o===0?1:0))**2 + (mkPred[1] - (o===1?1:0))**2 + (mkPred[2] - (o===2?1:0))**2;
+      marketBrier += (mkPred[0] - (o===0?1:0))**2 + (mkPred[1] - (o===1?1:0))**2 + (mkPred[2] - (o===2?1:0))**2;
       marketCount++;
     }
   }
@@ -1954,7 +1954,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
     currentRound = nextRound;
   }
 
-  return { champion: currentRound.elo, rounds, rankings, bestThirds };
+  return { champion: currentRound[0], rounds, rankings, bestThirds };
 }
 
 // ---- Monte Carlo simulation ----
@@ -2050,7 +2050,7 @@ function expectedCalibrationError(predictions, outcomes, nBins) {
 
   for (let i = 0; i < predictions.length; i++) {
     const pred = predictions[i];
-    const predictedClass = pred.elo >= pred[1] && pred.elo >= pred[2] ? 0 :
+    const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
                            pred[1] >= pred[2] ? 1 : 2;
     const confidence = pred[predictedClass];
     const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
@@ -2577,7 +2577,7 @@ function getCalibrationStats(actualResults) {
   const bins = Array.from({length: nBins}, () => ({count: 0, sumProb: 0, sumOutcome: 0}));
   for (let i = 0; i < predictions.length; i++) {
     const pred = predictions[i];
-    const predictedClass = pred.elo >= pred[1] && pred.elo >= pred[2] ? 0 :
+    const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
                            pred[1] >= pred[2] ? 1 : 2;
     const confidence = pred[predictedClass];
     const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
@@ -3638,10 +3638,10 @@ function renderModel(){
   const allTeams=Object.keys(TEAMS).sort((a,b)=>composite(b)-composite(a));
   h+=`<div class="team-breakdown"><h3>${t('model.breakdown')}</h3><div class="breakdown-grid">`;
   allTeams.slice(0,20).forEach(t=>{
-    if(!TEAMS[t])return;const[elo,fifa,mv,,form]=TEAMS[t];const de=dynamicElo[t]||elo;
+    if(!TEAMS[t])return;const{elo,fifa,mv,form}=TEAMS[t];const de=dynamicElo[t]||elo;
     const ep=Math.max(0,(de-1400)/800*100),fp=Math.max(0,(fifa-900)/1000*100),mp=Math.min(mv/1000,1)*100;
     const atk=Math.max(0,((de-1400)/800*0.45+(fifa-900)/1000*0.25+Math.min(mv/1000,1)*0.20+form*0.10)*100);
-    const def=Math.max(0,((de-1400)/800*0.40+(fifa-900)/1000*0.30+Math.min(mv/1000,1)*0.15+Math.min(TEAMS[t][3]/20,1)*0.15)*100);
+    const def=Math.max(0,((de-1400)/800*0.40+(fifa-900)/1000*0.30+Math.min(mv/1000,1)*0.15+Math.min(TEAMS[t].wc/20,1)*0.15)*100);
     const ed=de-elo,ec=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',es=ed>0?`+${ed}`:ed<0?`${ed}`:'0';
     h+=`<div class="breakdown-item"><div class="breakdown-header">${fl(t)}<span class="composite-score">${(composite(t)*100).toFixed(0)}</span></div><div class="breakdown-bars">`;
     h+=`<div class="bar-row"><span class="bar-label" style="color:var(--blue)">Elo ${de}</span><div class="bar-track"><div class="bar-fill elo" style="width:${ep}%"></div></div><span style="color:${ec};font-size:0.72rem;margin-left:4px">${es}</span></div>`;
