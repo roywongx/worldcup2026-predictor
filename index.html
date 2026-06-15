@@ -1009,8 +1009,8 @@ const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,62
 /** Dixon-Coles correlation parameter (ρ = -0.13).
  *  Inflates low-score draws (0-0, 1-1) to match real football rates.
  *  小组赛 ρ=-0.15 (保守战术), 淘汰赛 ρ=-0.12 (开放战术) */
-const RHO_GROUP = -0.15;
-const RHO_KNOCKOUT = -0.12;
+const RHO_GROUP = -0.20; // increased from -0.15 for better draw calibration with base=1.25
+const RHO_KNOCKOUT = -0.15; // increased from -0.12
 
 /** 根据比赛日期返回对应的 rho 值 */
 function getRho(matchDate) {
@@ -1109,35 +1109,10 @@ const TEAMS = {
  * 动态大洲修正 — 让大洲头部球队的 ATK 向 1.0 靠拢
  * 公式: dynamicScale = baseScale + (teamElo - confAvgElo) / (GLOBAL_MAX_ELO - confAvgElo) × (1 - baseScale)
  */
-/** Dynamic continent scaling — computed at call time, does NOT mutate TEAMS.
- *  Returns scaled ATK value for a team based on its conference and Elo ranking. */
-const CONF_BASE = {'UEFA':1.00,'CONMEBOL':0.95,'CONCACAF':0.80,'AFC':0.75,'CAF':0.75,'OFC':0.60};
-const CONF_MAP = {
-  'Mexico':'CONCACAF','United States':'CONCACAF','Canada':'CONCACAF','Haiti':'CONCACAF','Panama':'CONCACAF','Curaçao':'CONCACAF',
-  'Argentina':'CONMEBOL','Brazil':'CONMEBOL','Colombia':'CONMEBOL','Uruguay':'CONMEBOL','Ecuador':'CONMEBOL','Paraguay':'CONMEBOL',
-  'Japan':'AFC','South Korea':'AFC','Iran':'AFC','Saudi Arabia':'AFC','Australia':'AFC','Iraq':'AFC','Jordan':'AFC','Qatar':'AFC','Uzbekistan':'AFC',
-  'Morocco':'CAF','Senegal':'CAF','Egypt':'CAF','Algeria':'CAF','Tunisia':'CAF','Ivory Coast':'CAF','Ghana':'CAF','Cameroon':'CAF','DR Congo':'CAF','South Africa':'CAF','Cape Verde':'CAF',
-  'New Zealand':'OFC'
-};
-const CONF_AVG_ELO = (() => {
-  const confElo = {}, confN = {};
-  for (const [t, d] of Object.entries(TEAMS)) { const c = CONF_MAP[t] || 'UEFA'; confElo[c] = (confElo[c] || 0) + d.elo; confN[c] = (confN[c] || 0) + 1; }
-  const avg = {};
-  for (const c of Object.keys(confElo)) avg[c] = confElo[c] / confN[c];
-  return avg;
-})();
-function getConfScaledAtk(team) {
-  const data = TEAMS[team];
-  if (!data) return 1.0;
-  const conf = CONF_MAP[team] || 'UEFA';
-  const base = CONF_BASE[conf];
-  if (base >= 1.0) return data.atk;
-  const elo = data.elo, avg = CONF_AVG_ELO[conf] || 1500;
-  if (elo <= avg) return data.atk;
-  const safeMax = Math.max(2150, elo);
-  const ratio = (elo - avg) / (safeMax - avg);
-  const dyn = base + ratio * (1 - base);
-  return Math.round(data.atk * (dyn / base) * 100) / 100;
+/** Get team ATK from TEAMS. ATK values are already global-scale (WCQ xG 70% + club xG 30%).
+ *  No continent scaling needed — it was double-counting. */
+function getTeamAtk(team) {
+  return TEAMS[team] ? TEAMS[team].atk : 1.0;
 }
 
 const FLAGS = {
@@ -1401,8 +1376,8 @@ function getForm(team, formMap) {
  *  λ = base × stageFactor × atkMod × eloMod × (1 + host)
  *  Reference: Dixon-Coles (1997), Football Meets Data, cup26matches.com */
 function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, isKnockout) {
-  const base = 1.15;
-  const stageFactor = isKnockout ? 0.88 : 1.0;
+  const base = 1.25; // historical WC avg total goals ~2.5-2.7 (was 1.15→2.30, too low)
+  const stageFactor = isKnockout ? 0.92 : 1.0; // knockout ~2.3 total (was 0.88→2.02, too low)
 
   // Elo logistic mapping → win probability for home team
   const eloDiff = eloH - eloA;
@@ -1435,9 +1410,9 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
   const eloA = getEffectiveElo(away);
   // Determine if knockout stage (June 28+)
   const isKnockout = matchDate && matchDate.substring(0, 10) >= '2026-06-28';
-  const atkH = TEAMS[home] ? getConfScaledAtk(home) : 1.0;
+  const atkH = TEAMS[home] ? getTeamAtk(home) : 1.0;
   const defH = TEAMS[home] ? TEAMS[home].def : 1.0;
-  const atkA = TEAMS[away] ? getConfScaledAtk(away) : 1.0;
+  const atkA = TEAMS[away] ? getTeamAtk(away) : 1.0;
   const defA = TEAMS[away] ? TEAMS[away].def : 1.0;
   const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout);
 
@@ -1512,13 +1487,9 @@ function getEffectiveElo(team) {
   return TEAMS[team] ? TEAMS[team].elo : 1500;
 }
 
-/** Predict match outcome with draw threshold.
- *  Draw is predicted when draw probability is within 5% of the highest probability.
- *  This fixes the issue where Poisson model never produces draw as the single most probable outcome. */
-const DRAW_THRESHOLD = 0.05;
+/** Predict match outcome — highest probability wins. */
 function predictOutcome(probs, team1, team2) {
-  const maxP = Math.max(probs.win, probs.draw, probs.loss);
-  if (probs.draw >= maxP - DRAW_THRESHOLD) return 'draw';
+  if (probs.draw >= probs.win && probs.draw >= probs.loss) return 'draw';
   return probs.win >= probs.loss ? team1 : team2;
 }
 
@@ -1654,7 +1625,7 @@ function composite(team) {
   const oddsN = Math.min(rawProb / 0.22, 1);
   const formN = getForm(team);
   // Attack/defense: normalize from [0.78, 1.20] range to [0, 1]
-  const atk = getConfScaledAtk(team);
+  const atk = getTeamAtk(team);
   const def = TEAMS[team].def || 1.0;
   const atkDefN = Math.max(0, Math.min(1, ((atk + def) / 2 - 0.78) / 0.42));
   // Weights sum to ~1.0 (host is part of the base, not additive)
@@ -1755,11 +1726,14 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
   const pAdvance_home=pW90+pD90*(pW_ET+pD_ET*pPK_home);
   const pAdvance_away=pL90+pD90*(pL_ET+pD_ET*(1-pPK_home));
 
+  // Use same calibration path as matchProbs (isotonic > temperature)
+  const cal90 = calibrateProbs(pW90, pD90, pL90);
+  const calAdv = calibrateProbs(pAdvance_home, 0, pAdvance_away);
   return {
-    p90:temperatureScale(pW90,pD90,pL90,1.15),
+    p90: cal90,
     pET:{w:pW_ET,d:pD_ET,l:pL_ET},
     pPK:{home:pPK_home,away:1-pPK_home},
-    pAdvance:temperatureScale(pAdvance_home,0,pAdvance_away,1.15),
+    pAdvance: calAdv,
     pGoesET, pGoesPK
   };
 }
@@ -2376,7 +2350,7 @@ class SimpleGBDT {
 
     return [
       (dynElo1 - dynElo2) / 200,           // Elo diff (normalized)
-      (getConfScaledAtk(team1) - getConfScaledAtk(team2)) * 5, // ATK diff
+      (getTeamAtk(team1) - getTeamAtk(team2)) * 5, // ATK diff
       (t1.def - t2.def) * 5,                  // DEF diff
       (form1 - form2) * 2,                   // Form diff
       (t1.host - t2.host) * 10,                 // Home bonus diff
@@ -2750,7 +2724,7 @@ function calculateDynamicForm(actualResults) {
 
 /** Get team momentum (recent form trend) for GBDT features.
  *  Returns -1..+1: positive = improving, negative = declining.
- *  Compares win rate of last 3 matches vs previous 3. */
+ *  Compares win rate of last 5 matches vs previous 5. */
 function getMomentum(team) {
   const state = loadState();
   const results = state.actualResults || [];
@@ -2759,11 +2733,11 @@ function getMomentum(team) {
     if (r.team1 === team) teamMatches.push({ gd: r.score1 - r.score2 });
     else if (r.team2 === team) teamMatches.push({ gd: r.score2 - r.score1 });
   }
-  if (teamMatches.length < 2) return 0;
-  const recent = teamMatches.slice(-3);
-  const prev = teamMatches.slice(-6, -3);
+  if (teamMatches.length < 3) return 0;
+  const recent = teamMatches.slice(-5);
+  const prev = teamMatches.slice(-10, -5);
   const winRate = ms => ms.length === 0 ? 0.5 : ms.reduce((s, m) => s + (m.gd > 0 ? 1 : m.gd === 0 ? 0.33 : 0), 0) / ms.length;
-  return Math.max(-1, Math.min(1, (winRate(recent) - (prev.length ? winRate(prev) : 0.5)) * 3));
+  return Math.max(-1, Math.min(1, (winRate(recent) - (prev.length ? winRate(prev) : 0.5)) * 1.5));
 }
 
 // ---- Actual results map (cached) ----
@@ -3081,8 +3055,7 @@ function runSimulation(){
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap,date,mktProbs);
       // Find most probable score consistent with predicted outcome
-      const maxP=Math.max(probs.win,probs.draw,probs.loss);
-      const predOutcome = probs.draw>=maxP-DRAW_THRESHOLD?'D':(probs.win>=probs.loss?'W':'L');
+      const predOutcome = probs.draw>=probs.win && probs.draw>=probs.loss?'D':(probs.win>=probs.loss?'W':'L');
       let bp=0,lh2=1,la2=0;
       for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
         const outcome=x>y?'W':(x<y?'L':'D');
