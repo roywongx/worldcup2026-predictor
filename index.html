@@ -4175,12 +4175,16 @@ function reevaluateResults() {
   }); // end withPreTournamentElo
 }
 
-/** 完整 Polymarket 同步 */
+/** 完整 Polymarket 同步 + football-data.org 后备 */
 async function syncPolymarketData() {
   const btn = document.querySelector('[onclick="syncPolymarketData()"]');
   if (btn) { btn.textContent = '⏳ Syncing...'; btn.disabled = true; }
   try {
     const newResults = await fetchPolymarketResults();
+    // Fallback: try football-data.org for unsettled matches
+    if (getApiKey('football-data')) {
+      try { await fetchResults(); } catch (e) { console.log('football-data fallback:', e.message); }
+    }
     const odds = await fetchPolymarketMatchOdds();
     await fetchPolymarketData(); // fetch champion odds for Radar
     const state = loadState();
