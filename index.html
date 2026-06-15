@@ -3840,7 +3840,7 @@ async function testApiKey(){
   if(!key){if(el)el.textContent=t('prob.enterKey');return;}
   if(el)el.textContent=t('prob.testing');if(el)el.style.color='var(--text3)';
   try{
-    const r=await fetch(`/api/test?key=${encodeURIComponent(key)}`);
+    const r=await fetch('/api/test',{headers:{'X-API-Key':key}});
     const j=await r.json();
     if(j.ok){
       if(el){el.style.color='var(--green)';el.textContent=`✓ Key valid! Plan: ${j.plan}. Competitions: ${(j.competitions||[]).slice(0,5).join(', ')}...`;}
@@ -3856,7 +3856,7 @@ async function testOddsKey(){
   if(!key){if(el)el.textContent=t('prob.enterKey');return;}
   if(el)el.textContent=t('prob.testing');if(el)el.style.color='var(--text3)';
   try{
-    const r=await fetch(`/api/test-odds?key=${encodeURIComponent(key)}`);
+    const r=await fetch('/api/test-odds',{headers:{'X-API-Key':key}});
     const j=await r.json();
     if(j.ok){
       if(el){el.style.color='var(--green)';el.textContent=`✓ Key valid! Remaining: ${j.remaining} requests`;}
@@ -3874,7 +3874,7 @@ async function fetchResults(){
     let data=null;
     // Try local proxy first
     try{
-      const r=await fetch(`/api/results?key=${encodeURIComponent(apiKey)}`);
+      const r=await fetch('/api/results',{headers:{'X-API-Key':apiKey}});
       const j=await r.json();
       if(j.error){logFetch('results',false,j.error);}
       else if(j.matches){data=j;logFetch('results',true,'via proxy');}
@@ -3914,7 +3914,7 @@ async function fetchOdds(){
   const se=document.getElementById('fetch-status');if(se)se.textContent=t('prob.fetchingOdds');
   try{
     // Use local proxy to bypass CORS
-    const r=await fetch(`/api/odds?key=${encodeURIComponent(apiKey)}`);
+    const r=await fetch('/api/odds',{headers:{'X-API-Key':apiKey}});
     if(!r.ok){showToast(`Odds API error: ${r.status}`);return false;}
     const resp=await r.json();if(resp.error){showToast(`Odds error: ${resp.error}`);return false;}
     const data=resp.data||resp;const oddsMap={};

@@ -4,6 +4,7 @@ Serves static files and proxies football-data.org / the-odds-api.com requests
 to bypass browser CORS restrictions."""
 
 import http.server
+import socketserver
 import json
 import sys
 import urllib.request
@@ -13,6 +14,7 @@ from datetime import datetime
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 9090
 DIR = Path(__file__).parent
+BIND = '127.0.0.1'  # SEC-2: bind to localhost only
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -34,12 +36,21 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         ts = datetime.now().strftime('%H:%M:%S')
         print(f'  [{ts}] {msg}')
 
+    def _get_api_key(self):
+        """Extract API key from X-API-Key header (preferred) or query param (fallback)."""
+        # SEC-1: prefer header over URL param
+        key = self.headers.get('X-API-Key', '')
+        if key:
+            return key
+        # Fallback: query param (for backward compatibility)
+        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        return params.get('key', [''])[0]
+
     def _test_key(self):
         """Test if a football-data.org API key is valid."""
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        api_key = params.get('key', [''])[0]
+        api_key = self._get_api_key()
         if not api_key:
-            self._json_response({'error': 'Pass ?key=YOUR_KEY'}, 400)
+            self._json_response({'error': 'Pass X-API-Key header or ?key=YOUR_KEY'}, 400)
             return
 
         url = 'https://api.football-data.org/v4/competitions'
@@ -57,15 +68,15 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def _test_odds_key(self):
         """Test if a the-odds-api.com key is valid."""
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        api_key = params.get('key', [''])[0]
+        api_key = self._get_api_key()
         if not api_key:
-            self._json_response({'error': 'Pass ?key=YOUR_KEY'}, 400)
+            self._json_response({'error': 'Pass X-API-Key header or ?key=YOUR_KEY'}, 400)
             return
 
         url = f'https://api.the-odds-api.com/v4/sports?apiKey={api_key}'
         req = urllib.request.Request(url)
-        self._log(f'test-odds → key={api_key[:8]}...')
+        # SEC-1: don't log key
+        self._log('test-odds →')
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
@@ -82,12 +93,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'ok': False, 'error': str(e)}, 502)
 
     def _proxy_football_data(self):
-        """Proxy to football-data.org with API key from query param."""
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        api_key = params.get('key', [''])[0]
-
+        """Proxy to football-data.org with API key from header."""
+        api_key = self._get_api_key()
         if not api_key:
-            self._json_response({'error': 'Missing API key'}, 400)
+            self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
             return
 
         url = 'https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED'
@@ -95,7 +104,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             'X-Auth-Token': api_key,
             'Accept': 'application/json',
         })
-        self._log(f'football-data.org → key={api_key[:8]}...')
+        # SEC-1: don't log key
+        self._log('football-data.org →')
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
@@ -111,16 +121,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': str(e)}, 502)
 
     def _proxy_odds_api(self):
-        """Proxy to the-odds-api.com with API key from query param."""
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        api_key = params.get('key', [''])[0]
+        """Proxy to the-odds-api.com with API key from header."""
+        api_key = self._get_api_key()
         if not api_key:
-            self._json_response({'error': 'Missing API key'}, 400)
+            self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
             return
 
         url = f'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?apiKey={api_key}&regions=us&markets=outrights&oddsFormat=american'
         req = urllib.request.Request(url)
-        self._log(f'the-odds-api.com → key={api_key[:8]}...')
+        # SEC-1: don't log key
+        self._log('the-odds-api.com →')
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
@@ -140,14 +150,22 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
-        self.send_header('Access-Control-Allow-Origin', '*')
+        # SEC-2: restrict CORS to localhost origins
+        origin = self.headers.get('Origin', '')
+        if origin in ('http://localhost:9090', f'http://127.0.0.1:{PORT}', f'http://localhost:{PORT}'):
+            self.send_header('Access-Control-Allow-Origin', origin)
+        else:
+            self.send_header('Access-Control-Allow-Origin', f'http://localhost:{PORT}')
         self.end_headers()
         self.wfile.write(body)
 
+# SEC-3: use ThreadingHTTPServer for concurrent requests
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+
 print(f'World Cup Predictor server')
 print(f'   http://localhost:{PORT}')
-print(f'   http://0.0.0.0:{PORT}')
-print(f'   Test key: http://localhost:{PORT}/api/test?key=YOUR_KEY')
+print(f'   Bind: {BIND}:{PORT} (localhost only)')
 print()
 
-http.server.HTTPServer(('0.0.0.0', PORT), ProxyHandler).serve_forever()
+ThreadedHTTPServer((BIND, PORT), ProxyHandler).serve_forever()
