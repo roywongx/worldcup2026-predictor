@@ -4113,7 +4113,9 @@ async function fetchPolymarketResults() {
   try {
     const state = loadState();
     if (!state.actualResults) state.actualResults = [];
-    const existing = new Set(state.actualResults.map(r => `${r.team1}|${r.team2}`));
+    // Build lookup: key → index in actualResults (for update-in-place)
+    const existingMap = {};
+    state.actualResults.forEach((r, i) => { existingMap[`${r.team1}|${r.team2}`] = i; });
     let added = 0;
     for (let offset = 0; offset < 500; offset += 100) {
       const url = `https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc&closed=true&limit=100&offset=${offset}`;
@@ -4139,10 +4141,34 @@ async function fetchPolymarketResults() {
         scoreProbs.sort((a, b) => b.prob - a.prob);
         if (scoreProbs.length > 0) {
           const top = scoreProbs[0];
-          // Fully settled (>95%) or likely settled (top >40% and 10+ gap to second)
           const second = scoreProbs.length > 1 ? scoreProbs[1].prob : 0;
           if (top.prob > 0.95 || (top.prob > 0.40 && top.prob - second > 0.10)) {
             scores[base] = top.score;
+            // Also add/update result directly from Exact Score (for closed-but-not-settled main markets)
+            const tm = base.match(/^(.+?)\s+vs\.?\s+(.+?)(?:\s*[-–(]|$)/);
+            if (tm) {
+              const t1 = mapTeamName(tm[1].trim()), t2 = mapTeamName(tm[2].trim());
+              if (t1 && t2 && TEAMS[t1] && TEAMS[t2]) {
+                const key = `${t1}|${t2}`;
+                const result = top.score[0] > top.score[1] ? t1 : (top.score[0] < top.score[1] ? t2 : 'draw');
+                const dateStr = (ev.endDate || new Date().toISOString()).substring(0, 10) + 'T00:00:00Z';
+                const probs = matchProbs(t1, t2, null, dateStr);
+                const pred = predictOutcome(probs, t1, t2);
+                const newResult = {team1:t1,team2:t2,score1:top.score[0],score2:top.score[1],date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket-exact',predGoals:['0','0'],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}};
+                if (key in existingMap) {
+                  const idx = existingMap[key];
+                  const old = state.actualResults[idx];
+                  if (old.score1 !== top.score[0] || old.score2 !== top.score[1] || old.actual !== result) {
+                    state.actualResults[idx] = newResult;
+                    added++;
+                  }
+                } else {
+                  state.actualResults.push(newResult);
+                  existingMap[key] = state.actualResults.length - 1;
+                  added++;
+                }
+              }
+            }
           }
         }
       }
@@ -4155,7 +4181,6 @@ async function fetchPolymarketResults() {
         const team2 = mapTeamName(tm[2].trim());
         if (!team1 || !team2 || !TEAMS[team1] || !TEAMS[team2]) continue;
         const key = `${team1}|${team2}`;
-        if (existing.has(key)) continue;
         let result = null, pWin1 = 0, pWin2 = 0, pDraw = 0;
         for (const m of (ev.markets || [])) {
           const q = (m.question || '').toLowerCase();
@@ -4197,9 +4222,20 @@ async function fetchPolymarketResults() {
         const probs = matchProbs(team1, team2, null, dateStr, preOdds);
         const pred = predictOutcome(probs,team1,team2);
         const [lh, la] = getFormAdjustedLambdas(team1, team2, null, dateStr, preOdds);
-        state.actualResults.push({team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds});
-        existing.add(key);
-        added++;
+        const newResult = {team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds};
+        if (key in existingMap) {
+          // Update existing result (e.g., fix wrong score from earlier fetch)
+          const idx = existingMap[key];
+          const old = state.actualResults[idx];
+          if (old.score1 !== s1 || old.score2 !== s2 || old.actual !== result) {
+            state.actualResults[idx] = newResult;
+            added++;
+          }
+        } else {
+          state.actualResults.push(newResult);
+          existingMap[key] = state.actualResults.length - 1;
+          added++;
+        }
       }
       if (events.length < 100) break;
     }
