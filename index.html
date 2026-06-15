@@ -1008,7 +1008,6 @@ const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,62
  *  小组赛 ρ=-0.15 (保守战术), 淘汰赛 ρ=-0.12 (开放战术) */
 const RHO_GROUP = -0.15;
 const RHO_KNOCKOUT = -0.12;
-const RHO = RHO_GROUP;
 
 /** 根据比赛日期返回对应的 rho 值 */
 function getRho(matchDate) {
@@ -2922,7 +2921,8 @@ const I18N = {
     // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
     'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.15/-0.12) + 温度收缩',
-    'footer.mc':'蒙特卡洛 10k · RPS/ECE 校准 · localStorage',
+    'footer.radar':'雷达：Polymarket 真金白银价格 vs 模型预测',
+    'footer.mc':'蒙特卡洛 10k 概率分布 · 数据存储于 localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
   },
   en: {
@@ -2996,7 +2996,8 @@ const I18N = {
     // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
     'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.15/-0.12) + Temperature Scaling',
-    'footer.mc':'Monte Carlo 10k · RPS/ECE · localStorage',
+    'footer.radar':'Radar: Polymarket real-money prices vs model predictions',
+    'footer.mc':'Monte Carlo 10k for probability distributions · Data persisted in localStorage',
     'footer.disclaimer':'For entertainment only — football is unpredictable',
   }
 };
@@ -3640,15 +3641,16 @@ function renderModel(){
   allTeams.slice(0,20).forEach(t=>{
     if(!TEAMS[t])return;const{elo,fifa,mv,form}=TEAMS[t];const de=dynamicElo[t]||elo;
     const ep=Math.max(0,(de-1400)/800*100),fp=Math.max(0,(fifa-900)/1000*100),mp=Math.min(mv/1000,1)*100;
-    const atk=Math.max(0,((de-1400)/800*0.45+(fifa-900)/1000*0.25+Math.min(mv/1000,1)*0.20+form*0.10)*100);
-    const def=Math.max(0,((de-1400)/800*0.40+(fifa-900)/1000*0.30+Math.min(mv/1000,1)*0.15+Math.min(TEAMS[t].wc/20,1)*0.15)*100);
+    // Display-only composite scores (not the model's actual ATK/DEF from TEAMS)
+    const atkScore=Math.max(0,((de-1400)/800*0.45+(fifa-900)/1000*0.25+Math.min(mv/1000,1)*0.20+form*0.10)*100);
+    const defScore=Math.max(0,((de-1400)/800*0.40+(fifa-900)/1000*0.30+Math.min(mv/1000,1)*0.15+Math.min(TEAMS[t].wc/20,1)*0.15)*100);
     const ed=de-elo,ec=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',es=ed>0?`+${ed}`:ed<0?`${ed}`:'0';
     h+=`<div class="breakdown-item"><div class="breakdown-header">${fl(t)}<span class="composite-score">${(composite(t)*100).toFixed(0)}</span></div><div class="breakdown-bars">`;
     h+=`<div class="bar-row"><span class="bar-label" style="color:var(--blue)">Elo ${de}</span><div class="bar-track"><div class="bar-fill elo" style="width:${ep}%"></div></div><span style="color:${ec};font-size:0.72rem;margin-left:4px">${es}</span></div>`;
     h+=`<div class="bar-row"><span class="bar-label">FIFA ${fifa}</span><div class="bar-track"><div class="bar-fill fifa" style="width:${fp}%"></div></div></div>`;
     h+=`<div class="bar-row"><span class="bar-label">Value €${mv}m</span><div class="bar-track"><div class="bar-fill mv" style="width:${mp}%"></div></div></div>`;
-    h+=`<div class="bar-row"><span class="bar-label">Attack</span><div class="bar-track"><div class="bar-fill atk" style="width:${atk}%"></div></div></div>`;
-    h+=`<div class="bar-row"><span class="bar-label">Defense</span><div class="bar-track"><div class="bar-fill def" style="width:${def}%"></div></div></div>`;
+    h+=`<div class="bar-row"><span class="bar-label">Attack</span><div class="bar-track"><div class="bar-fill atk" style="width:${atkScore}%"></div></div></div>`;
+    h+=`<div class="bar-row"><span class="bar-label">Defense</span><div class="bar-track"><div class="bar-fill def" style="width:${defScore}%"></div></div></div>`;
     h+=`</div></div>`;
   });h+='</div></div>';
   document.getElementById('section-model').innerHTML=h;
