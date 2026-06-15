@@ -1107,32 +1107,36 @@ const TEAMS = {
  * 动态大洲修正 — 让大洲头部球队的 ATK 向 1.0 靠拢
  * 公式: dynamicScale = baseScale + (teamElo - confAvgElo) / (GLOBAL_MAX_ELO - confAvgElo) × (1 - baseScale)
  */
-(function applyDynamicConfScale() {
-  const CONF_BASE = {'UEFA':1.00,'CONMEBOL':0.95,'CONCACAF':0.80,'AFC':0.75,'CAF':0.75,'OFC':0.60};
-  const GLOBAL_MAX_ELO = 2150;
-  const CONF_MAP = {
-    'Mexico':'CONCACAF','United States':'CONCACAF','Canada':'CONCACAF','Haiti':'CONCACAF','Panama':'CONCACAF','Curaçao':'CONCACAF',
-    'Argentina':'CONMEBOL','Brazil':'CONMEBOL','Colombia':'CONMEBOL','Uruguay':'CONMEBOL','Ecuador':'CONMEBOL','Paraguay':'CONMEBOL',
-    'Japan':'AFC','South Korea':'AFC','Iran':'AFC','Saudi Arabia':'AFC','Australia':'AFC','Iraq':'AFC','Jordan':'AFC','Qatar':'AFC','Uzbekistan':'AFC',
-    'Morocco':'CAF','Senegal':'CAF','Egypt':'CAF','Algeria':'CAF','Tunisia':'CAF','Ivory Coast':'CAF','Ghana':'CAF','Cameroon':'CAF','DR Congo':'CAF','South Africa':'CAF','Cape Verde':'CAF',
-    'New Zealand':'OFC'
-  };
-  const confElo={},confN={};
-  for(const[t,d] of Object.entries(TEAMS)){const c=CONF_MAP[t]||'UEFA';confElo[c]=(confElo[c]||0)+d[0];confN[c]=(confN[c]||0)+1;}
-  const confAvgElo={};
-  for(const c of Object.keys(confElo))confAvgElo[c]=confElo[c]/confN[c];
-  for(const[team,data] of Object.entries(TEAMS)){
-    const conf=CONF_MAP[team]||'UEFA';
-    const base=CONF_BASE[conf];
-    if(base>=1.0)continue;
-    const elo=data[0],avg=confAvgElo[conf];
-    if(elo<=avg)continue;
-    const safeMax=Math.max(GLOBAL_MAX_ELO,elo);
-    const ratio=(elo-avg)/(safeMax-avg);
-    const dyn=base+ratio*(1-base);
-    data[7]=Math.round(data[7]*(dyn/base)*100)/100;
-  }
+/** Dynamic continent scaling — computed at call time, does NOT mutate TEAMS.
+ *  Returns scaled ATK value for a team based on its conference and Elo ranking. */
+const CONF_BASE = {'UEFA':1.00,'CONMEBOL':0.95,'CONCACAF':0.80,'AFC':0.75,'CAF':0.75,'OFC':0.60};
+const CONF_MAP = {
+  'Mexico':'CONCACAF','United States':'CONCACAF','Canada':'CONCACAF','Haiti':'CONCACAF','Panama':'CONCACAF','Curaçao':'CONCACAF',
+  'Argentina':'CONMEBOL','Brazil':'CONMEBOL','Colombia':'CONMEBOL','Uruguay':'CONMEBOL','Ecuador':'CONMEBOL','Paraguay':'CONMEBOL',
+  'Japan':'AFC','South Korea':'AFC','Iran':'AFC','Saudi Arabia':'AFC','Australia':'AFC','Iraq':'AFC','Jordan':'AFC','Qatar':'AFC','Uzbekistan':'AFC',
+  'Morocco':'CAF','Senegal':'CAF','Egypt':'CAF','Algeria':'CAF','Tunisia':'CAF','Ivory Coast':'CAF','Ghana':'CAF','Cameroon':'CAF','DR Congo':'CAF','South Africa':'CAF','Cape Verde':'CAF',
+  'New Zealand':'OFC'
+};
+const CONF_AVG_ELO = (() => {
+  const confElo = {}, confN = {};
+  for (const [t, d] of Object.entries(TEAMS)) { const c = CONF_MAP[t] || 'UEFA'; confElo[c] = (confElo[c] || 0) + d[0]; confN[c] = (confN[c] || 0) + 1; }
+  const avg = {};
+  for (const c of Object.keys(confElo)) avg[c] = confElo[c] / confN[c];
+  return avg;
 })();
+function getConfScaledAtk(team) {
+  const data = TEAMS[team];
+  if (!data) return 1.0;
+  const conf = CONF_MAP[team] || 'UEFA';
+  const base = CONF_BASE[conf];
+  if (base >= 1.0) return data[7];
+  const elo = data[0], avg = CONF_AVG_ELO[conf] || 1500;
+  if (elo <= avg) return data[7];
+  const safeMax = Math.max(2150, elo);
+  const ratio = (elo - avg) / (safeMax - avg);
+  const dyn = base + ratio * (1 - base);
+  return Math.round(data[7] * (dyn / base) * 100) / 100;
+}
 
 const FLAGS = {
   "Mexico":"mx","South Africa":"za","South Korea":"kr","Czech Republic":"cz",
@@ -1429,9 +1433,9 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
   const eloA = getEffectiveElo(away);
   // Determine if knockout stage (June 28+)
   const isKnockout = matchDate && matchDate.substring(0, 10) >= '2026-06-28';
-  const atkH = TEAMS[home] ? TEAMS[home][7] : 1.0;
+  const atkH = TEAMS[home] ? getConfScaledAtk(home) : 1.0;
   const defH = TEAMS[home] ? TEAMS[home][8] : 1.0;
-  const atkA = TEAMS[away] ? TEAMS[away][7] : 1.0;
+  const atkA = TEAMS[away] ? getConfScaledAtk(away) : 1.0;
   const defA = TEAMS[away] ? TEAMS[away][8] : 1.0;
   const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout);
 
@@ -1648,7 +1652,7 @@ function composite(team) {
   const oddsN = Math.min(rawProb / 0.22, 1);
   const formN = getForm(team);
   // Attack/defense: normalize from [0.78, 1.20] range to [0, 1]
-  const atk = TEAMS[team][7] || 1.0;
+  const atk = getConfScaledAtk(team);
   const def = TEAMS[team][8] || 1.0;
   const atkDefN = Math.max(0, Math.min(1, ((atk + def) / 2 - 0.78) / 0.42));
   // Weights sum to ~1.0 (host is part of the base, not additive)
@@ -2370,7 +2374,7 @@ class SimpleGBDT {
 
     return [
       (dynElo1 - dynElo2) / 200,           // Elo diff (normalized)
-      (t1[7] - t2[7]) * 5,                  // ATK diff
+      (getConfScaledAtk(team1) - getConfScaledAtk(team2)) * 5, // ATK diff
       (t1[8] - t2[8]) * 5,                  // DEF diff
       (form1 - form2) * 2,                   // Form diff
       (t1[5] - t2[5]) * 10,                 // Home bonus diff
@@ -4090,7 +4094,8 @@ async function fetchPolymarketResults() {
         for (const m of (ev.markets || [])) {
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
           if (!prices || parseFloat(prices[0]) <= 0.95) continue;
-          const sm = (m.question || '').match(/(\d+)\s*-\s*(\d+)/);
+          // Match "Exact Score: Team X - Y Team" format specifically
+          const sm = (m.question || '').match(/(?:Score[:\s]|^)\s*(\d+)\s*[-–]\s*(\d+)/i);
           if (sm) scores[base] = [parseInt(sm[1]), parseInt(sm[2])];
           break;
         }
