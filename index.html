@@ -1505,6 +1505,16 @@ function getEffectiveElo(team) {
   return (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : TEAMS[team][0];
 }
 
+/** Predict match outcome with draw threshold.
+ *  Draw is predicted when draw probability is within 5% of the highest probability.
+ *  This fixes the issue where Poisson model never produces draw as the single most probable outcome. */
+const DRAW_THRESHOLD = 0.05;
+function predictOutcome(probs, team1, team2) {
+  const maxP = Math.max(probs.win, probs.draw, probs.loss);
+  if (probs.draw >= maxP - DRAW_THRESHOLD) return 'draw';
+  return probs.win >= probs.loss ? team1 : team2;
+}
+
 /** Compute win/draw/loss probabilities using Dixon-Coles model.
  *  Single consistent path — no ensemble blending with market odds.
  *  Tournament winner odds ≠ match odds; blending them produces invalid probabilities. */
@@ -3027,7 +3037,8 @@ function runSimulation(){
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=getFormAdjustedLambdas(ta,tb,formMap,date,mktProbs);
       // Find most probable score consistent with predicted outcome
-      const predOutcome = probs.win>=probs.draw&&probs.win>=probs.loss?'W':(probs.loss>=probs.draw?'L':'D');
+      const maxP=Math.max(probs.win,probs.draw,probs.loss);
+      const predOutcome = probs.draw>=maxP-DRAW_THRESHOLD?'D':(probs.win>=probs.loss?'W':'L');
       let bp=0,lh2=1,la2=0;
       for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
         const outcome=x>y?'W':(x<y?'L':'D');
@@ -3036,9 +3047,9 @@ function runSimulation(){
         const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,rho);
         if(p>bp){bp=p;lh2=x;la2=y;}
       }
-      if(probs.win>probs.draw&&probs.win>probs.loss){a.W++;a.Pts+=3;b.L++;}
-      else if(probs.loss>probs.draw&&probs.loss>probs.win){b.W++;b.Pts+=3;a.L++;}
-      else{a.D++;a.Pts++;b.D++;b.Pts++;}
+      // Probability-weighted W/D/L (draws are common ~27% but rarely the single highest prob)
+      a.W+=probs.win;a.D+=probs.draw;a.L+=probs.loss;a.Pts+=probs.win*3+probs.draw;
+      b.W+=probs.loss;b.D+=probs.draw;b.L+=probs.win;b.Pts+=probs.loss*3+probs.draw;
       a.P++;b.P++;a.GF+=lh2;a.GA+=la2;b.GF+=la2;b.GA+=lh2;a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;
       a.ExpPts+=expH;b.ExpPts+=expA;
       matchResults.push({date,ta,sa:lh2,sb:la2,tb,grp,actual:false,probs,homeExpPts:expH,awayExpPts:expA});
@@ -3100,7 +3111,7 @@ function renderStandings(){
       const ec=s.ExpPts>s.Pts?'var(--green)':s.ExpPts<s.Pts?'var(--red)':'var(--text2)';
       let cls=i<2?'':(bestThirds.includes(team)?'':'eliminated');
       const fmtG=v=>Math.abs(v-Math.round(v))<0.05?Math.round(v):v.toFixed(1);
-      h+=`<tr class="${cls}"><td><span class="pos pos-${i+1}">${i+1}</span></td><td>${fl(team)}</td><td>${s.P}</td><td>${s.W}</td><td>${s.D}</td><td>${s.L}</td><td>${fmtG(s.GF)}</td><td>${fmtG(s.GA)}</td><td>${s.GD>0?'+':''}${fmtG(s.GD)}</td><td><strong>${s.Pts}</strong></td><td style="font-weight:700;color:${ec}">${s.ExpPts.toFixed(1)}</td><td style="font-size:0.7rem;color:${fc}">${(form*100).toFixed(0)}</td><td style="font-size:0.7rem;color:var(--blue)">${de}</td><td style="font-size:0.7rem;color:${dc}">${ds}</td></tr>`;
+      h+=`<tr class="${cls}"><td><span class="pos pos-${i+1}">${i+1}</span></td><td>${fl(team)}</td><td>${fmtG(s.P)}</td><td>${fmtG(s.W)}</td><td>${fmtG(s.D)}</td><td>${fmtG(s.L)}</td><td>${fmtG(s.GF)}</td><td>${fmtG(s.GA)}</td><td>${s.GD>0?'+':''}${fmtG(s.GD)}</td><td><strong>${fmtG(s.Pts)}</strong></td><td style="font-weight:700;color:${ec}">${s.ExpPts.toFixed(1)}</td><td style="font-size:0.7rem;color:${fc}">${(form*100).toFixed(0)}</td><td style="font-size:0.7rem;color:var(--blue)">${de}</td><td style="font-size:0.7rem;color:${dc}">${ds}</td></tr>`;
     });h+='</table></div></div>';
   });h+='</div>';
   document.getElementById('section-standings').innerHTML=h;
@@ -3188,7 +3199,7 @@ function renderMatches(){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
         // Use stored probs (not lambda) to determine predicted winner — respects draw
         const sp=stored.probs||{};
-        const predW=sp.win>=sp.draw&&sp.win>=sp.loss?m.ta:(sp.loss>=sp.draw?m.tb:'Draw');
+        const predW=predictOutcome(sp,m.ta,m.tb);
         const isCorrect=stored.correct;
         predLine=`<div style="font-size:0.72rem;color:var(--text3);margin-top:2px;padding-left:2.5rem">
           <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓':'✗'}</span>
@@ -3847,7 +3858,7 @@ async function fetchResults(){
       const k=`${t1}|${t2}`;if(existing.has(k))continue;
       const probs=matchProbs(t1,t2);
       const[lh,la]=getFormAdjustedLambdas(t1,t2);
-      const pred=probs.win>=probs.draw&&probs.win>=probs.loss?t1:(probs.loss>=probs.draw&&probs.loss>=probs.win?t2:'draw');
+      const pred=predictOutcome(probs,t1,t2);
       const act=s1>s2?t1:(s2>s1?t2:'draw');
       state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
       nc++;existing.add(k);
@@ -4052,7 +4063,7 @@ async function fetchPolymarketResults() {
         const preOdds = { win: pWin1/(pWin1+pDraw+pWin2), draw: pDraw/(pWin1+pDraw+pWin2), loss: pWin2/(pWin1+pDraw+pWin2) };
         const dateStr = (ev.endDate || new Date().toISOString()).substring(0, 10) + 'T00:00:00Z';
         const probs = matchProbs(team1, team2, null, dateStr, preOdds);
-        const pred = probs.win>=probs.draw&&probs.win>=probs.loss?team1:(probs.loss>=probs.draw?team2:'draw');
+        const pred = predictOutcome(probs,team1,team2);
         const [lh, la] = getFormAdjustedLambdas(team1, team2, null, dateStr, preOdds);
         state.actualResults.push({team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds});
         existing.add(key);
@@ -4093,7 +4104,7 @@ function reevaluateResults() {
     // 用赛前 Polymarket 赔率（如有）+ 赛前 Elo + 最新模型参数
     const mktOdds = r.preMatchOdds || null;
     const probs = matchProbs(r.team1, r.team2, null, r.date, mktOdds);
-    const pred = probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw?r.team2:'draw');
+    const pred = predictOutcome(probs,r.team1,r.team2);
     const [lh, la] = getFormAdjustedLambdas(r.team1, r.team2, null, r.date, mktOdds);
     if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
     r.predicted = pred;
@@ -4175,7 +4186,7 @@ function addResult(){
   const s1=parseInt(document.getElementById('res-score1').value),s2=parseInt(document.getElementById('res-score2').value);
   if(!t1||!t2||isNaN(s1)||isNaN(s2)||t1===t2){showToast('Invalid input');return;}
   const probs=matchProbs(t1,t2);const[lh,la]=getFormAdjustedLambdas(t1,t2);
-  const pred=probs.win>=probs.draw&&probs.win>=probs.loss?t1:(probs.loss>=probs.draw&&probs.loss>=probs.win?t2:'draw');
+  const pred=predictOutcome(probs,t1,t2);
   const act=s1>s2?t1:(s2>s1?t2:'draw');
   state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'manual',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
   state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
@@ -4187,7 +4198,7 @@ function importResults(){
   const ta=document.getElementById('results-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);if(!Array.isArray(d))throw 0;const s=loadState();let c=0;
     for(const r of d){if(r.team1&&r.team2&&typeof r.score1==='number'&&typeof r.score2==='number'){
-      const probs=matchProbs(r.team1,r.team2);const pred=probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw&&probs.loss>=probs.win?r.team2:'draw');
+      const probs=matchProbs(r.team1,r.team2);const pred=predictOutcome(probs,r.team1,r.team2);
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
       s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}
     s.lastUpdate=new Date().toISOString();saveState(s);reevaluateResults();
@@ -4269,7 +4280,7 @@ function validateData() {
         if(idx>=0&&!state.actualResults[idx].predGoals){
           const probs=matchProbs(r.team1,r.team2);
           const[lh,la]=getFormAdjustedLambdas(r.team1,r.team2);
-          const pred=probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw&&probs.loss>=probs.win?r.team2:'draw');
+          const pred=predictOutcome(probs,r.team1,r.team2);
           const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
           state.actualResults[idx].predGoals=[lh.toFixed(2),la.toFixed(2)];
           state.actualResults[idx].predicted=pred;
@@ -4281,7 +4292,7 @@ function validateData() {
       }
       const probs=matchProbs(r.team1,r.team2);
       const[lh,la]=getFormAdjustedLambdas(r.team1,r.team2);
-      const pred=probs.win>=probs.draw&&probs.win>=probs.loss?r.team1:(probs.loss>=probs.draw&&probs.loss>=probs.win?r.team2:'draw');
+      const pred=predictOutcome(probs,r.team1,r.team2);
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
       state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
     }
