@@ -2,26 +2,28 @@
 
 $ErrorActionPreference = "Stop"
 $Repo = "roywongx/worldcup2026-predictor"
-$File = "index.html"
-$Url = "https://raw.githubusercontent.com/$Repo/main/$File"
+$BaseUrl = "https://raw.githubusercontent.com/$Repo/main"
 
 Write-Host "🏆 Installing World Cup 2026 Predictor..." -ForegroundColor Cyan
 
 try {
-    Invoke-WebRequest -Uri $Url -OutFile worldcup2026.html -UseBasicParsing
-    Write-Host "✅ Downloaded to $(Get-Location)\worldcup2026.html" -ForegroundColor Green
-    
+    Invoke-WebRequest -Uri "$BaseUrl/index.html" -OutFile index.html -UseBasicParsing
+    Invoke-WebRequest -Uri "$BaseUrl/server.py" -OutFile server.py -UseBasicParsing
+    Write-Host "✅ Downloaded index.html + server.py" -ForegroundColor Green
+
     # Auto-open
-    Start-Process worldcup2026.html
-    
+    Start-Process "http://localhost:9090"
+
     Write-Host ""
-    Write-Host "📋 Next steps:" -ForegroundColor Yellow
-    Write-Host "   1. Click '⟳ Refresh' to fetch latest data"
-    Write-Host "   2. Go to Data tab to set API keys (optional, free)"
+    Write-Host "📋 Usage:" -ForegroundColor Yellow
+    Write-Host "   python3 server.py        # Start server on port 9090"
+    Write-Host "   Open http://localhost:9090"
     Write-Host ""
-    Write-Host "🔗 API Keys (free):" -ForegroundColor Yellow
-    Write-Host "   - football-data.org/client/register (match results)"
-    Write-Host "   - the-odds-api.com (betting odds)"
+    Write-Host "📊 Data sources (all free, no API key required):" -ForegroundColor Yellow
+    Write-Host "   - Polymarket gamma/clob API (odds + results)"
+    Write-Host "   - Dixon-Coles Poisson model (built-in)"
+    Write-Host ""
+    Write-Host "🔄 Click 'Sync Polymarket' in the app to fetch latest odds" -ForegroundColor Green
 } catch {
     Write-Host "❌ Error: $_" -ForegroundColor Red
     exit 1

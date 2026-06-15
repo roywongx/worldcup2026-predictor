@@ -1,12 +1,12 @@
 {
   "name": "worldcup2026-predictor",
   "version": "1.0.0",
-  "description": "2026 FIFA World Cup Predictor — Multi-factor composite model with real-time data integration",
-  "main": "index.html",
+  "description": "2026 FIFA World Cup Predictor — Dixon-Coles Poisson model with Polymarket integration",
+  "main": "server.py",
   "scripts": {
-    "start": "python -m http.server 8000",
-    "open": "start index.html",
-    "test": "echo \"No tests needed — single HTML file\" && exit 0"
+    "start": "python3 server.py 9090",
+    "open": "python3 -c \"import webbrowser; webbrowser.open('http://localhost:9090')\"",
+    "test": "python3 -c \"import ast; ast.parse(open('server.py').read()); print('✓ server.py syntax OK'); import http.server, json, socketserver; print('✓ stdlib imports OK'); print('All smoke tests passed')\""
   },
   "keywords": [
     "worldcup",
@@ -17,7 +17,8 @@
     "prediction",
     "elo",
     "monte-carlo",
-    "polymarket"
+    "polymarket",
+    "dixon-coles"
   ],
   "author": "roywongx",
   "license": "MIT",

@@ -4,12 +4,11 @@
 set -e
 
 REPO="roywongx/worldcup2026-predictor"
-FILE="index.html"
-URL="https://raw.githubusercontent.com/${REPO}/main/${FILE}"
+BASE_URL="https://raw.githubusercontent.com/${REPO}/main"
 
 echo "🏆 Installing World Cup 2026 Predictor..."
 
-# Detect platform
+# Detect platform for browser open
 if [[ "$OSTYPE" == "darwin"* ]]; then
     OPEN_CMD="open"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -20,30 +19,38 @@ else
     OPEN_CMD=""
 fi
 
-# Download
-if command -v curl &> /dev/null; then
-    curl -fsSL "$URL" -o worldcup2026.html
-elif command -v wget &> /dev/null; then
-    wget -q "$URL" -O worldcup2026.html
-else
-    echo "❌ curl or wget required"
-    exit 1
-fi
+# Download function
+download() {
+    local url="$1" output="$2"
+    if command -v curl &> /dev/null; then
+        curl -fsSL "$url" -o "$output"
+    elif command -v wget &> /dev/null; then
+        wget -q "$url" -O "$output"
+    else
+        echo "❌ curl or wget required"
+        exit 1
+    fi
+}
 
-echo "✅ Downloaded to $(pwd)/worldcup2026.html"
+# Download both files
+download "${BASE_URL}/index.html" "index.html"
+download "${BASE_URL}/server.py" "server.py"
+
+echo "✅ Downloaded index.html + server.py"
 
 # Auto-open if possible
 if [ -n "$OPEN_CMD" ]; then
     echo "🌐 Opening in browser..."
-    $OPEN_CMD worldcup2026.html 2>/dev/null || true
+    $OPEN_CMD "http://localhost:9090" 2>/dev/null || true
 fi
 
 echo ""
-echo "📋 Next steps:"
-echo "   1. Open worldcup2026.html in Chrome/Edge/Firefox"
-echo "   2. Click '⟳ Refresh' to fetch latest data"
-echo "   3. Go to Data tab to set API keys (optional, free)"
+echo "📋 Usage:"
+echo "   python3 server.py        # Start server on port 9090"
+echo "   Open http://localhost:9090"
 echo ""
-echo "🔗 API Keys (free):"
-echo "   - football-data.org/client/register (match results)"
-echo "   - the-odds-api.com (betting odds)"
+echo "📊 Data sources (all free, no API key required):"
+echo "   - Polymarket gamma/clob API (odds + results)"
+echo "   - Dixon-Coles Poisson model (built-in)"
+echo ""
+echo "🔄 Click 'Sync Polymarket' in the app to fetch latest odds"
