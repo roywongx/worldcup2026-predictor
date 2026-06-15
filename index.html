@@ -1053,54 +1053,54 @@ const MC_DEFAULT = 10000;
 // Blended: WCQ xG (FootyStats) 70% + Understat club xG 30%
 // Elo: worldfootballrankings.com (June 2026)
 const TEAMS = {
-  "Mexico":[1701,1681,192,17,0.65,0.15,5000,0.89,0.86],
-  "South Africa":[1415,1070,55,3,0.45,0,75000,0.86,0.92],
-  "South Korea":[1613,1538,139,11,0.60,0,15000,0.91,0.93],
-  "Czech Republic":[1485,1480,180,2,0.50,0,18000,1.04,0.86],
-  "Canada":[1552,1673,80,2,0.55,0.10,20000,0.96,0.94],
-  "Bosnia Herzegovina":[1395,1376,85,0,0.45,0,30000,0.96,0.83],
-  "Qatar":[1459,1588,45,2,0.50,0,35000,0.85,0.89],
-  "Switzerland":[1641,1649,333,12,0.60,0,6500,0.93,1.00],
-  "Brazil":[1765,1761,928,22,0.60,0,950,0.93,0.95],
-  "Morocco":[1756,1756,448,7,0.70,0,2800,0.96,1.05],
-  "Haiti":[1293,1238,15,1,0.35,0,250000,0.89,0.85],
-  "Scotland":[1503,1480,165,9,0.50,0,15000,0.93,0.83],
-  "United States":[1689,1673,386,12,0.60,0.10,6000,0.94,0.94],
-  "Paraguay":[1488,1542,85,9,0.45,0,15000,0.89,0.85],
-  "Australia":[1579,1539,120,7,0.55,0,12000,0.88,0.90],
-  "Turkey":[1606,1599,474,3,0.65,0,6500,0.96,0.91],
-  "Germany":[1736,1730,947,21,0.60,0,1100,1.07,1.00],
-  "Curaçao":[1295,1046,15,0,0.35,0,250000,0.88,0.84],
-  "Ivory Coast":[1541,1554,155,4,0.55,0,15000,0.93,0.99],
-  "Ecuador":[1599,1595,369,4,0.60,0,8000,0.89,0.89],
-  "Netherlands":[1754,1758,754,11,0.65,0,1400,1.07,1.00],
-  "Japan":[1662,1660,271,7,0.70,0,5000,0.89,1.01],
-  "Sweden":[1510,1430,195,12,0.50,0,20000,0.85,0.80],
-  "Tunisia":[1476,1504,75,7,0.50,0,20000,0.90,0.99],
-  "Belgium":[1742,1735,548,14,0.55,0,2500,1.10,0.99],
-  "Egypt":[1562,1550,85,3,0.50,0,15000,0.95,1.01],
-  "Iran":[1620,1615,55,7,0.55,0,18000,0.88,0.87],
-  "New Zealand":[1276,1420,35,2,0.40,0,50000,0.80,0.91],
-  "Spain":[1875,1876,1220,16,0.75,0,450,1.15,1.05],
-  "Cape Verde":[1371,1310,20,0,0.45,0,75000,0.85,0.91],
-  "Saudi Arabia":[1424,1590,45,7,0.50,0,20000,0.87,0.90],
-  "Uruguay":[1673,1673,359,14,0.60,0,3500,0.93,0.92],
-  "France":[1871,1877,1520,16,0.70,0,500,1.11,1.02],
-  "Senegal":[1684,1689,478,4,0.60,0,8000,0.91,0.92],
-  "Iraq":[1446,1400,20,2,0.45,0,50000,0.86,0.90],
-  "Norway":[1557,1490,250,4,0.55,0,10000,1.12,0.99],
-  "Argentina":[1877,1875,783,18,0.70,0,950,0.92,0.98],
-  "Algeria":[1571,1508,95,5,0.50,0,30000,0.91,0.97],
-  "Austria":[1597,1593,245,8,0.55,0,10000,1.05,0.95],
-  "Jordan":[1388,1380,25,1,0.45,0,50000,0.86,0.90],
-  "Portugal":[1768,1764,1010,9,0.65,0,800,1.17,0.95],
-  "DR Congo":[1474,1410,85,2,0.45,0,100000,0.86,0.93],
-  "Uzbekistan":[1459,1410,40,0,0.50,0,50000,0.87,0.90],
-  "Colombia":[1698,1693,303,7,0.60,0,2000,0.96,0.93],
-  "England":[1828,1826,1360,17,0.65,0,700,1.07,1.17],
-  "Croatia":[1715,1717,387,7,0.60,0,3300,1.12,0.98],
-  "Ghana":[1347,1460,70,4,0.45,0,25000,0.88,0.95],
-  "Panama":[1539,1555,30,2,0.50,0,25000,0.93,0.89]
+  "Mexico":{elo:1701,fifa:1681,mv:192,wc:17,form:0.65,host:0.15,odds:5000,atk:0.89,def:0.86},
+  "South Africa":{elo:1415,fifa:1070,mv:55,wc:3,form:0.45,host:0,odds:75000,atk:0.86,def:0.92},
+  "South Korea":{elo:1613,fifa:1538,mv:139,wc:11,form:0.60,host:0,odds:15000,atk:0.91,def:0.93},
+  "Czech Republic":{elo:1485,fifa:1480,mv:180,wc:2,form:0.50,host:0,odds:18000,atk:1.04,def:0.86},
+  "Canada":{elo:1552,fifa:1673,mv:80,wc:2,form:0.55,host:0.10,odds:20000,atk:0.96,def:0.94},
+  "Bosnia Herzegovina":{elo:1395,fifa:1376,mv:85,wc:0,form:0.45,host:0,odds:30000,atk:0.96,def:0.83},
+  "Qatar":{elo:1459,fifa:1588,mv:45,wc:2,form:0.50,host:0,odds:35000,atk:0.85,def:0.89},
+  "Switzerland":{elo:1641,fifa:1649,mv:333,wc:12,form:0.60,host:0,odds:6500,atk:0.93,def:1.00},
+  "Brazil":{elo:1765,fifa:1761,mv:928,wc:22,form:0.60,host:0,odds:950,atk:0.93,def:0.95},
+  "Morocco":{elo:1756,fifa:1756,mv:448,wc:7,form:0.70,host:0,odds:2800,atk:0.96,def:1.05},
+  "Haiti":{elo:1293,fifa:1238,mv:15,wc:1,form:0.35,host:0,odds:250000,atk:0.89,def:0.85},
+  "Scotland":{elo:1503,fifa:1480,mv:165,wc:9,form:0.50,host:0,odds:15000,atk:0.93,def:0.83},
+  "United States":{elo:1689,fifa:1673,mv:386,wc:12,form:0.60,host:0.10,odds:6000,atk:0.94,def:0.94},
+  "Paraguay":{elo:1488,fifa:1542,mv:85,wc:9,form:0.45,host:0,odds:15000,atk:0.89,def:0.85},
+  "Australia":{elo:1579,fifa:1539,mv:120,wc:7,form:0.55,host:0,odds:12000,atk:0.88,def:0.90},
+  "Turkey":{elo:1606,fifa:1599,mv:474,wc:3,form:0.65,host:0,odds:6500,atk:0.96,def:0.91},
+  "Germany":{elo:1736,fifa:1730,mv:947,wc:21,form:0.60,host:0,odds:1100,atk:1.07,def:1.00},
+  "Curaçao":{elo:1295,fifa:1046,mv:15,wc:0,form:0.35,host:0,odds:250000,atk:0.88,def:0.84},
+  "Ivory Coast":{elo:1541,fifa:1554,mv:155,wc:4,form:0.55,host:0,odds:15000,atk:0.93,def:0.99},
+  "Ecuador":{elo:1599,fifa:1595,mv:369,wc:4,form:0.60,host:0,odds:8000,atk:0.89,def:0.89},
+  "Netherlands":{elo:1754,fifa:1758,mv:754,wc:11,form:0.65,host:0,odds:1400,atk:1.07,def:1.00},
+  "Japan":{elo:1662,fifa:1660,mv:271,wc:7,form:0.70,host:0,odds:5000,atk:0.89,def:1.01},
+  "Sweden":{elo:1510,fifa:1430,mv:195,wc:12,form:0.50,host:0,odds:20000,atk:0.85,def:0.80},
+  "Tunisia":{elo:1476,fifa:1504,mv:75,wc:7,form:0.50,host:0,odds:20000,atk:0.90,def:0.99},
+  "Belgium":{elo:1742,fifa:1735,mv:548,wc:14,form:0.55,host:0,odds:2500,atk:1.10,def:0.99},
+  "Egypt":{elo:1562,fifa:1550,mv:85,wc:3,form:0.50,host:0,odds:15000,atk:0.95,def:1.01},
+  "Iran":{elo:1620,fifa:1615,mv:55,wc:7,form:0.55,host:0,odds:18000,atk:0.88,def:0.87},
+  "New Zealand":{elo:1276,fifa:1420,mv:35,wc:2,form:0.40,host:0,odds:50000,atk:0.80,def:0.91},
+  "Spain":{elo:1875,fifa:1876,mv:1220,wc:16,form:0.75,host:0,odds:450,atk:1.15,def:1.05},
+  "Cape Verde":{elo:1371,fifa:1310,mv:20,wc:0,form:0.45,host:0,odds:75000,atk:0.85,def:0.91},
+  "Saudi Arabia":{elo:1424,fifa:1590,mv:45,wc:7,form:0.50,host:0,odds:20000,atk:0.87,def:0.90},
+  "Uruguay":{elo:1673,fifa:1673,mv:359,wc:14,form:0.60,host:0,odds:3500,atk:0.93,def:0.92},
+  "France":{elo:1871,fifa:1877,mv:1520,wc:16,form:0.70,host:0,odds:500,atk:1.11,def:1.02},
+  "Senegal":{elo:1684,fifa:1689,mv:478,wc:4,form:0.60,host:0,odds:8000,atk:0.91,def:0.92},
+  "Iraq":{elo:1446,fifa:1400,mv:20,wc:2,form:0.45,host:0,odds:50000,atk:0.86,def:0.90},
+  "Norway":{elo:1557,fifa:1490,mv:250,wc:4,form:0.55,host:0,odds:10000,atk:1.12,def:0.99},
+  "Argentina":{elo:1877,fifa:1875,mv:783,wc:18,form:0.70,host:0,odds:950,atk:0.92,def:0.98},
+  "Algeria":{elo:1571,fifa:1508,mv:95,wc:5,form:0.50,host:0,odds:30000,atk:0.91,def:0.97},
+  "Austria":{elo:1597,fifa:1593,mv:245,wc:8,form:0.55,host:0,odds:10000,atk:1.05,def:0.95},
+  "Jordan":{elo:1388,fifa:1380,mv:25,wc:1,form:0.45,host:0,odds:50000,atk:0.86,def:0.90},
+  "Portugal":{elo:1768,fifa:1764,mv:1010,wc:9,form:0.65,host:0,odds:800,atk:1.17,def:0.95},
+  "DR Congo":{elo:1474,fifa:1410,mv:85,wc:2,form:0.45,host:0,odds:100000,atk:0.86,def:0.93},
+  "Uzbekistan":{elo:1459,fifa:1410,mv:40,wc:0,form:0.50,host:0,odds:50000,atk:0.87,def:0.90},
+  "Colombia":{elo:1698,fifa:1693,mv:303,wc:7,form:0.60,host:0,odds:2000,atk:0.96,def:0.93},
+  "England":{elo:1828,fifa:1826,mv:1360,wc:17,form:0.65,host:0,odds:700,atk:1.07,def:1.17},
+  "Croatia":{elo:1715,fifa:1717,mv:387,wc:7,form:0.60,host:0,odds:3300,atk:1.12,def:0.98},
+  "Ghana":{elo:1347,fifa:1460,mv:70,wc:4,form:0.45,host:0,odds:25000,atk:0.88,def:0.95},
+  "Panama":{elo:1539,fifa:1555,mv:30,wc:2,form:0.50,host:0,odds:25000,atk:0.93,def:0.89},
 };
 
 /**
@@ -1119,7 +1119,7 @@ const CONF_MAP = {
 };
 const CONF_AVG_ELO = (() => {
   const confElo = {}, confN = {};
-  for (const [t, d] of Object.entries(TEAMS)) { const c = CONF_MAP[t] || 'UEFA'; confElo[c] = (confElo[c] || 0) + d[0]; confN[c] = (confN[c] || 0) + 1; }
+  for (const [t, d] of Object.entries(TEAMS)) { const c = CONF_MAP[t] || 'UEFA'; confElo[c] = (confElo[c] || 0) + d.elo; confN[c] = (confN[c] || 0) + 1; }
   const avg = {};
   for (const c of Object.keys(confElo)) avg[c] = confElo[c] / confN[c];
   return avg;
@@ -1129,13 +1129,13 @@ function getConfScaledAtk(team) {
   if (!data) return 1.0;
   const conf = CONF_MAP[team] || 'UEFA';
   const base = CONF_BASE[conf];
-  if (base >= 1.0) return data[7];
-  const elo = data[0], avg = CONF_AVG_ELO[conf] || 1500;
-  if (elo <= avg) return data[7];
+  if (base >= 1.0) return data.atk;
+  const elo = data.elo, avg = CONF_AVG_ELO[conf] || 1500;
+  if (elo <= avg) return data.atk;
   const safeMax = Math.max(2150, elo);
   const ratio = (elo - avg) / (safeMax - avg);
   const dyn = base + ratio * (1 - base);
-  return Math.round(data[7] * (dyn / base) * 100) / 100;
+  return Math.round(data.atk * (dyn / base) * 100) / 100;
 }
 
 const FLAGS = {
@@ -1389,7 +1389,7 @@ function getForm(team, formMap) {
   if (currentResults && currentResults.formMap && currentResults.formMap[team] !== undefined) {
     return currentResults.formMap[team];
   }
-  return TEAMS[team] ? TEAMS[team][4] : 0.5;
+  return TEAMS[team] ? TEAMS[team].form : 0.5;
 }
 
 /** Convert Elo ratings to Poisson lambda (expected goals).
@@ -1434,9 +1434,9 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
   // Determine if knockout stage (June 28+)
   const isKnockout = matchDate && matchDate.substring(0, 10) >= '2026-06-28';
   const atkH = TEAMS[home] ? getConfScaledAtk(home) : 1.0;
-  const defH = TEAMS[home] ? TEAMS[home][8] : 1.0;
+  const defH = TEAMS[home] ? TEAMS[home].def : 1.0;
   const atkA = TEAMS[away] ? getConfScaledAtk(away) : 1.0;
-  const defA = TEAMS[away] ? TEAMS[away][8] : 1.0;
+  const defA = TEAMS[away] ? TEAMS[away].def : 1.0;
   const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout);
 
   // Apply form adjustment: form 0.5 = neutral, >0.5 = boost, <0.5 = penalty
@@ -1479,7 +1479,7 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
 
 /** Get home advantage bonus for a team */
 function getHomeBonus(team) {
-  const host = TEAMS[team] ? TEAMS[team][5] : 0;
+  const host = TEAMS[team] ? TEAMS[team].host : 0;
   if (host >= 0.10) return HOME_HOST;
   return 0;
 }
@@ -1507,7 +1507,7 @@ function temperatureScale(pW, pD, pL, T) {
 /** Get effective Elo for a team (dynamic if available, else static) */
 function getEffectiveElo(team) {
   if (dynamicElo && dynamicElo[team]) return dynamicElo[team];
-  return TEAMS[team] ? TEAMS[team][0] : 1500;
+  return TEAMS[team] ? TEAMS[team].elo : 1500;
 }
 
 /** Predict match outcome with draw threshold.
@@ -1567,11 +1567,11 @@ function computeBrierScores() {
   for (const entry of log) {
     const mPred = [entry.model.w, entry.model.d, entry.model.l];
     const o = entry.outcome;
-    modelBrier += (mPred[0] - (o===0?1:0))**2 + (mPred[1] - (o===1?1:0))**2 + (mPred[2] - (o===2?1:0))**2;
+    modelBrier += (mPred.elo - (o===0?1:0))**2 + (mPred[1] - (o===1?1:0))**2 + (mPred[2] - (o===2?1:0))**2;
     count++;
     if (entry.market) {
       const mkPred = [entry.market.w, entry.market.d, entry.market.l];
-      marketBrier += (mkPred[0] - (o===0?1:0))**2 + (mkPred[1] - (o===1?1:0))**2 + (mkPred[2] - (o===2?1:0))**2;
+      marketBrier += (mkPred.elo - (o===0?1:0))**2 + (mkPred[1] - (o===1?1:0))**2 + (mkPred[2] - (o===2?1:0))**2;
       marketCount++;
     }
   }
@@ -1642,7 +1642,7 @@ function getProbTrend() {
  *  Host bonus is included in the base calculation (not added on top). */
 function composite(team) {
   if (!TEAMS[team]) return 0;
-  const [elo, fifa, mv, wcApps, form, host, odds] = TEAMS[team];
+  const {elo, fifa, mv, wc:wcApps, form, host, odds} = TEAMS[team];
   const dynElo = (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : elo;
   const eloN = (dynElo - 1400) / 800;
   const fifaN = (fifa - 900) / 1000;
@@ -1653,7 +1653,7 @@ function composite(team) {
   const formN = getForm(team);
   // Attack/defense: normalize from [0.78, 1.20] range to [0, 1]
   const atk = getConfScaledAtk(team);
-  const def = TEAMS[team][8] || 1.0;
+  const def = TEAMS[team].def || 1.0;
   const atkDefN = Math.max(0, Math.min(1, ((atk + def) / 2 - 0.78) / 0.42));
   // Weights sum to ~1.0 (host is part of the base, not additive)
   const base = 0.25*eloN + 0.12*fifaN + 0.10*mvN + 0.10*formN + 0.05*xpN + 0.25*oddsN + 0.08*atkDefN + 0.05*host;
@@ -1954,7 +1954,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
     currentRound = nextRound;
   }
 
-  return { champion: currentRound[0], rounds, rankings, bestThirds };
+  return { champion: currentRound.elo, rounds, rankings, bestThirds };
 }
 
 // ---- Monte Carlo simulation ----
@@ -2050,7 +2050,7 @@ function expectedCalibrationError(predictions, outcomes, nBins) {
 
   for (let i = 0; i < predictions.length; i++) {
     const pred = predictions[i];
-    const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
+    const predictedClass = pred.elo >= pred[1] && pred.elo >= pred[2] ? 0 :
                            pred[1] >= pred[2] ? 1 : 2;
     const confidence = pred[predictedClass];
     const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
@@ -2363,10 +2363,10 @@ class SimpleGBDT {
 
   /** Extract features from a match */
   extractFeatures(team1, team2) {
-    const t1 = TEAMS[team1] || [1500, 1500, 50, 0, 0.5, 0, 0, 1.0, 1.0];
-    const t2 = TEAMS[team2] || [1500, 1500, 50, 0, 0.5, 0, 0, 1.0, 1.0];
-    const dynElo1 = (dynamicElo && dynamicElo[team1]) || t1[0];
-    const dynElo2 = (dynamicElo && dynamicElo[team2]) || t2[0];
+    const t1 = TEAMS[team1] || {elo:1500,fifa:1500,mv:50,wc:0,form:0.5,host:0,odds:0,atk:1.0,def:1.0};
+    const t2 = TEAMS[team2] || {elo:1500,fifa:1500,mv:50,wc:0,form:0.5,host:0,odds:0,atk:1.0,def:1.0};
+    const dynElo1 = (dynamicElo && dynamicElo[team1]) || t1.elo;
+    const dynElo2 = (dynamicElo && dynamicElo[team2]) || t2.elo;
     const form1 = getForm(team1);
     const form2 = getForm(team2);
     const momentum1 = getMomentum ? getMomentum(team1) : 0;
@@ -2375,9 +2375,9 @@ class SimpleGBDT {
     return [
       (dynElo1 - dynElo2) / 200,           // Elo diff (normalized)
       (getConfScaledAtk(team1) - getConfScaledAtk(team2)) * 5, // ATK diff
-      (t1[8] - t2[8]) * 5,                  // DEF diff
+      (t1.def - t2.def) * 5,                  // DEF diff
       (form1 - form2) * 2,                   // Form diff
-      (t1[5] - t2[5]) * 10,                 // Home bonus diff
+      (t1.host - t2.host) * 10,                 // Home bonus diff
       (momentum1 - momentum2) * 2            // Momentum diff
     ];
   }
@@ -2577,7 +2577,7 @@ function getCalibrationStats(actualResults) {
   const bins = Array.from({length: nBins}, () => ({count: 0, sumProb: 0, sumOutcome: 0}));
   for (let i = 0; i < predictions.length; i++) {
     const pred = predictions[i];
-    const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
+    const predictedClass = pred.elo >= pred[1] && pred.elo >= pred[2] ? 0 :
                            pred[1] >= pred[2] ? 1 : 2;
     const confidence = pred[predictedClass];
     const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
@@ -2625,7 +2625,7 @@ function calibrateProbs(pW, pD, pL) {
 /** Initialize dynamic Elo from static TEAMS data */
 function initDynamicElo() {
   for (const t of Object.keys(TEAMS)) {
-    dynamicElo[t] = TEAMS[t][0];
+    dynamicElo[t] = TEAMS[t].elo;
   }
 }
 
@@ -2680,12 +2680,12 @@ function calculateDynamicForm(actualResults) {
     const daysAgo = (now - new Date(r.date)) / (1000 * 60 * 60 * 24);
     teamMatches[r.team1].push({
       opponent: r.team2,
-      opponentElo: dynamicElo[r.team2] || (TEAMS[r.team2] ? TEAMS[r.team2][0] : 1600),
+      opponentElo: dynamicElo[r.team2] || (TEAMS[r.team2] ? TEAMS[r.team2].elo : 1600),
       score1: r.score1, score2: r.score2, daysAgo
     });
     teamMatches[r.team2].push({
       opponent: r.team1,
-      opponentElo: dynamicElo[r.team1] || (TEAMS[r.team1] ? TEAMS[r.team1][0] : 1600),
+      opponentElo: dynamicElo[r.team1] || (TEAMS[r.team1] ? TEAMS[r.team1].elo : 1600),
       score1: r.score2, score2: r.score1, daysAgo
     });
   }
@@ -2695,7 +2695,7 @@ function calculateDynamicForm(actualResults) {
 
   for (const team of Object.keys(TEAMS)) {
     const matches = teamMatches[team] || [];
-    const preTournamentForm = TEAMS[team][4];
+    const preTournamentForm = TEAMS[team].form;
 
     if (matches.length === 0) { formMap[team] = preTournamentForm; continue; }
 
@@ -3126,9 +3126,9 @@ function renderStandings(){
     h+=`<div class="group-card"><div class="group-head"><h3>${t('sth.group')} ${g}</h3></div><div class="table-wrap">`;
     h+=`<table class="group-table"><tr><th>#</th><th>${t('sth.team')}</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>ExpPts</th><th>Form</th><th>Elo</th><th>Δ</th></tr>`;
     rankings[g].forEach((team,i)=>{
-      const s=standings[g][team];const form=formMap?(formMap[team]||TEAMS[team][4]):TEAMS[team][4];
+      const s=standings[g][team];const form=formMap?(formMap[team]||TEAMS[team].form):TEAMS[team].form;
       const fc=form>=0.65?'var(--green)':form>=0.45?'var(--orange)':'var(--red)';
-      const be=TEAMS[team][0],de=dynamicElo[team]||be,ed=de-be;
+      const be=TEAMS[team].elo,de=dynamicElo[team]||be,ed=de-be;
       const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)';
       const ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
       const ec=s.ExpPts>s.Pts?'var(--green)':s.ExpPts<s.Pts?'var(--red)':'var(--text2)';
@@ -3519,9 +3519,9 @@ function renderProbabilities(){
   teams.forEach(t=>{
     const cp=(champ[t]||0)/N*100,fp=(finalist[t]||0)/N*100,sp=(semi[t]||0)/N*100,qp=(quarter[t]||0)/N*100,rp=(r16[t]||0)/N*100;
     if(cp<0.05&&fp<0.3)return;
-    const be=TEAMS[t][0],de=dynamicElo[t]||be,ed=de-be;
+    const be=TEAMS[t].elo,de=dynamicElo[t]||be,ed=de-be;
     const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
-    const op=oddsToProb(TEAMS[t][6]);
+    const op=oddsToProb(TEAMS[t].odds);
     h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
   });
   h+='</table></div>';
@@ -3709,7 +3709,7 @@ function renderData(){
   // Form status
   h+=`<div class="data-card"><h4>📈 ${t('data.formStatus')}</h4>`;
   const formMap=currentResults?currentResults.formMap:{};
-  const ft=Object.keys(TEAMS).map(t=>({team:t,form:formMap[t]||TEAMS[t][4]})).sort((a,b)=>b.form-a.form);
+  const ft=Object.keys(TEAMS).map(t=>({team:t,form:formMap[t]||TEAMS[t].form})).sort((a,b)=>b.form-a.form);
   h+=`<div style="font-size:0.75rem;margin-bottom:0.5rem"><strong>${t('data.topForm')}</strong></div>`;
   ft.slice(0,10).forEach(t=>{const fc=t.form>=0.65?'var(--green)':t.form>=0.45?'var(--orange)':'var(--red)';
     h+=`<div style="display:flex;justify-content:space-between;font-size:0.72rem;padding:0.15rem 0"><span>${fl(t.team)}</span><span style="color:${fc};font-weight:600">${(t.form*100).toFixed(0)}%</span></div>`;});
@@ -3732,8 +3732,8 @@ function renderData(){
     h+='</div></div>';}
   // Quick odds editor
   h+=`<div class="data-card"><h4>🔧 Quick Odds Editor</h4><div class="odds-input-grid">`;
-  Object.keys(TEAMS).sort((a,b)=>TEAMS[a][6]-TEAMS[b][6]).forEach(t=>{
-    h+=`<span>${fl(t)}</span><input type="number" value="${TEAMS[t][6]}" min="100" step="50" onchange="quickOddsUpdate('${t}',this.value)">`;});
+  Object.keys(TEAMS).sort((a,b)=>TEAMS[a].odds-TEAMS[b].odds).forEach(t=>{
+    h+=`<span>${fl(t)}</span><input type="number" value="${TEAMS[t].odds}" min="100" step="50" onchange="quickOddsUpdate('${t}',this.value)">`;});
   h+='</div></div>';
   document.getElementById('section-data').innerHTML=h;
   }catch(e){document.getElementById('section-data').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+e.message+'</p></div>';}
@@ -3904,7 +3904,7 @@ async function fetchOdds(){
     const data=resp.data||resp;const oddsMap={};
     if(Array.isArray(data)&&data.length>0){for(const ev of data){for(const bk of ev.bookmakers||[]){for(const mk of bk.markets||[]){for(const oc of mk.outcomes||[]){const tn=mapTeamName(oc.name);if(tn&&TEAMS[tn])oddsMap[tn]=oc.price;}}}}}
     if(Object.keys(oddsMap).length>0){
-      const state=loadState();for(const[team,odds]of Object.entries(oddsMap)){if(TEAMS[team]&&typeof odds==='number'){TEAMS[team][6]=odds;state.customOdds[team]=odds;}}
+      const state=loadState();for(const[team,odds]of Object.entries(oddsMap)){if(TEAMS[team]&&typeof odds==='number'){TEAMS[team].odds=odds;state.customOdds[team]=odds;}}
       state.lastUpdate=new Date().toISOString();saveState(state);showToast(`Updated ${Object.keys(oddsMap).length} odds`);return true;
     }return false;
   }catch(e){showToast(`Error: ${e.message}`);return false;}
@@ -4160,7 +4160,7 @@ function reevaluateResults() {
   // 确保赛后重算用赛前 Elo，不受比赛结果影响
   const savedDynamicElo = { ...dynamicElo };
   for (const t of Object.keys(TEAMS)) {
-    dynamicElo[t] = TEAMS[t][0];
+    dynamicElo[t] = TEAMS[t].elo;
   }
 
   // 用赛前 Elo 拟合校准和 GBDT
@@ -4242,7 +4242,7 @@ async function refreshData(){
   const btn=document.querySelector('[onclick="refreshData()"]');if(btn){btn.textContent='⟳ Fetching...';btn.disabled=true;}
   try{await fetchResults();}catch(e){}
   if(getApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
-  const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team][6]=odds;}
+  const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   try{await fetchPolymarketResults();}catch(e){}
   try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds=mo;saveState(state);}}catch(e){}
   reevaluateResults();
@@ -4280,14 +4280,14 @@ function exportResults(){const s=loadState();const ta=document.getElementById('r
 function applyCustomOdds(){
   const ta=document.getElementById('odds-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);const s=loadState();let c=0;
-    for(const[team,odds]of Object.entries(d)){if(TEAMS[team]&&typeof odds==='number'&&odds>0){s.customOdds[team]=odds;TEAMS[team][6]=odds;c++;}}
+    for(const[team,odds]of Object.entries(d)){if(TEAMS[team]&&typeof odds==='number'&&odds>0){s.customOdds[team]=odds;TEAMS[team].odds=odds;c++;}}
     s.lastUpdate=new Date().toISOString();saveState(s);showToast(`Updated ${c}`);reevaluateResults();
   mcResults=null;runSimulation();
   }catch(e){showToast('Invalid JSON');}
 }
 function resetOdds(){const s=loadState();s.customOdds={};saveState(s);showToast('Reset — reload page');}
-function exportOddsJSON(){const o={};Object.keys(TEAMS).forEach(t=>{o[t]=TEAMS[t][6];});const ta=document.getElementById('odds-json');if(ta)ta.value=JSON.stringify(o,null,1);showToast('Exported');}
-function quickOddsUpdate(team,val){const odds=parseInt(val);if(TEAMS[team]&&odds>0){TEAMS[team][6]=odds;const s=loadState();s.customOdds[team]=odds;saveState(s);}}
+function exportOddsJSON(){const o={};Object.keys(TEAMS).forEach(t=>{o[t]=TEAMS[t].odds;});const ta=document.getElementById('odds-json');if(ta)ta.value=JSON.stringify(o,null,1);showToast('Exported');}
+function quickOddsUpdate(team,val){const odds=parseInt(val);if(TEAMS[team]&&odds>0){TEAMS[team].odds=odds;const s=loadState();s.customOdds[team]=odds;saveState(s);}}
 
 // ── Data Validation (runs on init, catches data errors early) ─────────
 function validateData() {
@@ -4332,7 +4332,7 @@ function validateData() {
 (function init(){
   if(window.location.protocol==='file:'){const w=document.getElementById('file-protocol-warning');if(w)w.style.display='block';}
   const state=loadState();
-  for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team][6]=odds;}
+  for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   if(!state.actualResults)state.actualResults=[];
   // Seed initial results (version 3 = with predGoals for comparison)
   if(!state.dataVersion || state.dataVersion < 3){
