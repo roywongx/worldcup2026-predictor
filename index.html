@@ -4087,13 +4087,24 @@ async function fetchPolymarketResults() {
         const title = ev.title || '';
         if (!title.includes('Exact Score')) continue;
         const base = title.replace(' - Exact Score', '').trim();
+        // Collect all score probabilities
+        const scoreProbs = [];
         for (const m of (ev.markets || [])) {
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
-          if (!prices || parseFloat(prices[0]) <= 0.95) continue;
-          // Match "Exact Score: Team X - Y Team" format specifically
+          if (!prices) continue;
+          const p = parseFloat(prices[0]);
           const sm = (m.question || '').match(/(?:Score[:\s]|^)\s*(\d+)\s*[-–]\s*(\d+)/i);
-          if (sm) scores[base] = [parseInt(sm[1]), parseInt(sm[2])];
-          break;
+          if (sm) scoreProbs.push({score: [parseInt(sm[1]), parseInt(sm[2])], prob: p});
+        }
+        // Sort by probability descending
+        scoreProbs.sort((a, b) => b.prob - a.prob);
+        if (scoreProbs.length > 0) {
+          const top = scoreProbs[0];
+          // Fully settled (>95%) or likely settled (top >40% and 10+ gap to second)
+          const second = scoreProbs.length > 1 ? scoreProbs[1].prob : 0;
+          if (top.prob > 0.95 || (top.prob > 0.40 && top.prob - second > 0.10)) {
+            scores[base] = top.score;
+          }
         }
       }
       for (const ev of events) {
@@ -4112,12 +4123,21 @@ async function fetchPolymarketResults() {
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
           if (!prices) continue;
           const p = parseFloat(prices[0]);
-          if (q.includes('draw')) { pDraw = p; if (p > 0.95) result = 'draw'; }
+          // Skip placeholder/resolved prices (0.9995/0.0005)
+          if (p >= 0.999 || p <= 0.001) continue;
+          if (q.includes('draw')) { pDraw = p; if (p > 0.80) result = 'draw'; }
           else if (q.includes('win')) {
             const words1 = team1.toLowerCase().split(/\s+/);
             const words2 = team2.toLowerCase().split(/\s+/);
-            if (words1.some(w => w.length > 2 && q.includes(w)) && !words2.some(w => w.length > 2 && q.includes(w))) { pWin1 = p; if (p > 0.95) result = team1; }
-            else if (words2.some(w => w.length > 2 && q.includes(w)) && !words1.some(w => w.length > 2 && q.includes(w))) { pWin2 = p; if (p > 0.95) result = team2; }
+            if (words1.some(w => w.length > 2 && q.includes(w)) && !words2.some(w => w.length > 2 && q.includes(w))) { pWin1 = p; if (p > 0.80) result = team1; }
+            else if (words2.some(w => w.length > 2 && q.includes(w)) && !words1.some(w => w.length > 2 && q.includes(w))) { pWin2 = p; if (p > 0.80) result = team2; }
+          }
+        }
+        // Fallback: use Exact Score market if main market not settled
+        if (!result) {
+          const score = scores[title];
+          if (score) {
+            result = score[0] > score[1] ? team1 : (score[0] < score[1] ? team2 : 'draw');
           }
         }
         if (!result) continue;
