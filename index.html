@@ -1313,12 +1313,12 @@ const WC2022_RESULTS = [
 
 /** 2022-era Elo ratings for teams not in 2026 TEAMS (eloratings.net, Nov 2022) */
 const WC2022_TEAMS = {
-  'Wales': [1771, 1570, 160, 2, 0.50, 0, 15000, 0.92, 0.95],
-  'Costa Rica': [1584, 1500, 45, 6, 0.45, 0, 25000, 0.85, 0.90],
-  'Cameroon': [1554, 1485, 90, 8, 0.45, 0, 25000, 0.90, 0.85],
-  'Serbia': [1726, 1550, 200, 4, 0.50, 0, 15000, 0.95, 0.92],
-  'Denmark': [1832, 1670, 310, 6, 0.55, 0, 8000, 1.00, 1.05],
-  'Poland': [1722, 1548, 180, 9, 0.50, 0, 15000, 0.92, 0.95],
+  'Wales': {elo:1771,fifa:1570,mv:160,wc:2,form:0.50,host:0,odds:15000,atk:0.92,def:0.95},
+  'Costa Rica': {elo:1584,fifa:1500,mv:45,wc:6,form:0.45,host:0,odds:25000,atk:0.85,def:0.90},
+  'Cameroon': {elo:1554,fifa:1485,mv:90,wc:8,form:0.45,host:0,odds:25000,atk:0.90,def:0.85},
+  'Serbia': {elo:1726,fifa:1550,mv:200,wc:4,form:0.50,host:0,odds:15000,atk:0.95,def:0.92},
+  'Denmark': {elo:1832,fifa:1670,mv:310,wc:6,form:0.55,host:0,odds:8000,atk:1.00,def:1.05},
+  'Poland': {elo:1722,fifa:1548,mv:180,wc:9,form:0.50,host:0,odds:15000,atk:0.92,def:0.95},
 };
 
 /** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
@@ -2906,6 +2906,7 @@ const I18N = {
     'data.fetchResults':'获取赛果','data.fetchOdds':'获取赔率','data.fetchAll':'获取全部',
     'data.calibration':'模型校准','data.accuracy':'准确率','data.rps':'RPS','data.brier':'Brier','data.logLoss':'对数损失','data.ece':'ECE',
     'data.resultsUsed':'结果数','data.correctTotal':'正确/总数',
+    'data.apiKeys':'API 密钥','data.results':'赛果 API','data.odds':'赔率 API','data.save':'保存',
     'data.formStatus':'动态状态','data.topForm':'状态最好:','data.bottomForm':'状态最差:',
     'data.formDesc':'基于最近比赛结果（指数衰减）',
     'data.manualOdds':'手动赔率 (美式)','data.apply':'应用','data.export':'导出','data.reset':'重置',
@@ -2981,6 +2982,7 @@ const I18N = {
     'data.fetchResults':'Fetch Results','data.fetchOdds':'Fetch Odds','data.fetchAll':'Fetch All',
     'data.calibration':'Model Calibration','data.accuracy':'Accuracy','data.rps':'RPS','data.brier':'Brier','data.logLoss':'Log Loss','data.ece':'ECE',
     'data.resultsUsed':'Results Used','data.correctTotal':'Correct/Total',
+    'data.apiKeys':'API Keys','data.results':'Results API','data.odds':'Odds API','data.save':'Save',
     'data.formStatus':'Dynamic Form','data.topForm':'Top Form:','data.bottomForm':'Bottom:',
     'data.formDesc':'Based on recent results (exponential decay)',
     'data.manualOdds':'Manual Odds (American)','data.apply':'Apply','data.export':'Export','data.reset':'Reset',
@@ -3085,7 +3087,7 @@ function runSimulation(){
       for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
         const outcome=x>y?'W':(x<y?'L':'D');
         if(outcome!==predOutcome) continue;
-        const rho=date?getRho(date):RHO;
+        const rho=date?getRho(date):RHO_GROUP;
         const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,rho);
         if(p>bp){bp=p;lh2=x;la2=y;}
       }
@@ -4207,6 +4209,7 @@ async function syncPolymarketData() {
   try {
     const newResults = await fetchPolymarketResults();
     const odds = await fetchPolymarketMatchOdds();
+    await fetchPolymarketData(); // fetch champion odds for Radar
     const state = loadState();
     // Merge: keep existing pre-match odds for in-progress/completed matches
     // New fetch only has pre-match odds; don't overwrite frozen predictions
@@ -4330,8 +4333,8 @@ function validateData() {
   if (FLAGS['Scotland'] === 'gb') errors.push("Scotland flag is 'gb' (UK), should be 'gb-sct'");
   // 6. Attack/defense in range
   for (const [t, d] of Object.entries(TEAMS)) {
-    if (d[7] !== undefined && (d[7] < 0.75 || d[7] > 1.25)) errors.push(`${t} attack ${d[7]} out of range`);
-    if (d[8] !== undefined && (d[8] < 0.75 || d[8] > 1.25)) errors.push(`${t} defense ${d[8]} out of range`);
+    if (d.atk !== undefined && (d.atk < 0.75 || d.atk > 1.25)) errors.push(`${t} attack ${d.atk} out of range`);
+    if (d.def !== undefined && (d.def < 0.75 || d.def > 1.25)) errors.push(`${t} defense ${d.def} out of range`);
   }
   if (errors.length) {
     console.warn('⚠️ Data validation errors:');
