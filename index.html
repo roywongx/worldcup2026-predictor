@@ -2629,6 +2629,23 @@ function initDynamicElo() {
   }
 }
 
+/** Safely execute fn with pre-tournament Elo, then restore dynamic state.
+ *  Prevents stale reads if fn throws. */
+function withPreTournamentElo(fn) {
+  const saved = { ...dynamicElo };
+  initDynamicElo();
+  try { return fn(); }
+  finally { Object.assign(dynamicElo, saved); }
+}
+
+/** Rebuild dynamic Elo from scratch by replaying all results. */
+function rebuildDynamicElo(results) {
+  initDynamicElo();
+  for (const r of (results || [])) {
+    updateElo(r.team1, r.team2, r.score1, r.score2, r.date);
+  }
+}
+
 /** Elo expected score for team A */
 function eloExpected(ra, rb) {
   return 1 / (Math.pow(10, -(ra - rb) / 400) + 1);
@@ -3035,9 +3052,8 @@ function showSection(id,btn){
 // ── Main Simulation ──────────────────────────────────────────────────────
 function runSimulation(){
   try{
-  initDynamicElo();
   const state=loadState();const results=state.actualResults||[];
-  results.forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2,r.date));
+  rebuildDynamicElo(results);
   const formMap=calculateDynamicForm(results);
   const actualMap=buildActualResultsMap(results);
   const marketOddsMap=state.polymarketMatchOdds||{};
@@ -3374,7 +3390,7 @@ function runMonteCarloUI(){
   const btn=document.querySelector('[onclick="runMonteCarloUI()"]');
   if(btn){btn.textContent=t('prob.running');btn.disabled=true;}
   const state=loadState();const actualMap=buildActualResultsMap(state.actualResults||[]);
-  initDynamicElo();(state.actualResults||[]).forEach(r=>updateElo(r.team1,r.team2,r.score1,r.score2,r.date));
+  rebuildDynamicElo(state.actualResults||[]);
   const formMap=calculateDynamicForm(state.actualResults||[]);
   const marketOddsMap=state.polymarketMatchOdds||{};
   const N=MC_DEFAULT,chunkSize=500;
@@ -4140,8 +4156,7 @@ async function fetchPolymarketResults() {
       if (events.length < 100) break;
     }
     if (added > 0) {
-      initDynamicElo();
-      state.actualResults.forEach(r => updateElo(r.team1, r.team2, r.score1, r.score2, r.date));
+      rebuildDynamicElo(state.actualResults);
       state.lastUpdate = new Date().toISOString();
       saveState(state);
       mcResults = null;
@@ -4156,36 +4171,28 @@ function reevaluateResults() {
   const state = loadState();
   if (!state.actualResults || state.actualResults.length === 0) return 0;
 
-  // 备份动态 Elo，重置为静态值（赛前状态）
-  // 确保赛后重算用赛前 Elo，不受比赛结果影响
-  const savedDynamicElo = { ...dynamicElo };
-  for (const t of Object.keys(TEAMS)) {
-    dynamicElo[t] = TEAMS[t].elo;
-  }
+  return withPreTournamentElo(() => {
+    // 用赛前 Elo 拟合校准和 GBDT
+    fitAndCacheCalibration(state.actualResults);
+    trainAndBlendGBDT(state.actualResults);
 
-  // 用赛前 Elo 拟合校准和 GBDT
-  fitAndCacheCalibration(state.actualResults);
-  trainAndBlendGBDT(state.actualResults);
-
-  let changed = 0;
-  for (const r of state.actualResults) {
-    // 用赛前 Polymarket 赔率（如有）+ 赛前 Elo + 最新模型参数
-    const mktOdds = r.preMatchOdds || null;
-    const probs = matchProbs(r.team1, r.team2, null, r.date, mktOdds);
-    const pred = predictOutcome(probs,r.team1,r.team2);
-    const [lh, la] = getFormAdjustedLambdas(r.team1, r.team2, null, r.date, mktOdds);
-    if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
-    r.predicted = pred;
-    r.correct = (pred === r.actual);
+    let changed = 0;
+    for (const r of state.actualResults) {
+      // 用赛前 Polymarket 赔率（如有）+ 赛前 Elo + 最新模型参数
+      const mktOdds = r.preMatchOdds || null;
+      const probs = matchProbs(r.team1, r.team2, null, r.date, mktOdds);
+      const pred = predictOutcome(probs,r.team1,r.team2);
+      const [lh, la] = getFormAdjustedLambdas(r.team1, r.team2, null, r.date, mktOdds);
+      if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
+      r.predicted = pred;
+      r.correct = (pred === r.actual);
     r.probs = { win: probs.win, draw: probs.draw, loss: probs.loss };
     r.predGoals = [lh.toFixed(2), la.toFixed(2)];
   }
 
-  // 恢复动态 Elo（用于未来预测）
-  Object.assign(dynamicElo, savedDynamicElo);
-
   if (changed > 0) { saveState(state); showToast(`Re-evaluated: ${changed} predictions updated`); }
   return changed;
+  }); // end withPreTournamentElo
 }
 
 /** 完整 Polymarket 同步 */
