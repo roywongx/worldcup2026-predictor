@@ -443,8 +443,11 @@ body {
   overflow-x: auto;
   padding: 1rem 0;
   -webkit-overflow-scrolling: touch;
-  min-width: 1000px;
   gap: 0;
+}
+@media (max-width: 768px) {
+  .bracket-pyramid { justify-content: flex-start; padding: 0.5rem; }
+  .bracket-pyramid .round-col { min-width: 70px; }
 }
 
 .pyramid-side {
@@ -882,7 +885,7 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   z-index: 9999;
-  animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 1.6s forwards; /* total 2.2s matches JS setTimeout */
   box-shadow: var(--shadow-lg);
 }
 
