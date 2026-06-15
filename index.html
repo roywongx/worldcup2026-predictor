@@ -3992,8 +3992,41 @@ async function fetchPolymarketMatchOdds() {
           }
         }
         if (pWin1 <= 0 || pWin2 <= 0) continue;
-        // Filter out placeholder prices (Polymarket uses 0.9995/0.0005 for unfilled markets)
-        if (pWin1 >= 0.999 || pWin2 >= 0.999 || pWin1 <= 0.001 || pWin2 <= 0.001) continue;
+        // If prices are resolved (0.9995/0.0005), fetch pre-match odds from CLOB price history
+        const resolved = pWin1 >= 0.999 || pWin2 >= 0.999 || pWin1 <= 0.001 || pWin2 <= 0.001;
+        if (resolved) {
+          try {
+            const matchTs = new Date(date).getTime() / 1000;
+            // Get last pre-match price for each market using CLOB prices-history
+            const fetchPreMatch = async (tokenId) => {
+              const r = await fetch(`https://clob.polymarket.com/prices-history?market=${tokenId}&interval=max&fidelity=60`);
+              if (!r.ok) return null;
+              const d = await r.json();
+              const hist = d.history || [];
+              let last = null;
+              for (const h of hist) { if (h.t < matchTs) last = h; else break; }
+              return last ? last.p : null;
+            };
+            let preW1 = null, preW2 = null, preD = null;
+            for (const m2 of (ev.markets || [])) {
+              const q2 = (m2.question || '').toLowerCase();
+              const tokens = m2.clobTokenIds || [];
+              if (tokens.length < 1) continue;
+              const yesToken = tokens[0];
+              if (q2.includes('end in a draw')) {
+                preD = await fetchPreMatch(yesToken);
+              } else if (q2.includes(raw1) && !q2.includes(raw2)) {
+                preW1 = await fetchPreMatch(yesToken);
+              } else if (q2.includes(raw2) && !q2.includes(raw1)) {
+                preW2 = await fetchPreMatch(yesToken);
+              }
+            }
+            if (preW1 && preW2 && preW1 > 0.001 && preW2 > 0.001) {
+              pWin1 = preW1; pWin2 = preW2;
+              if (preD && preD > 0.001) pDraw = preD;
+            } else { continue; }
+          } catch (e) { continue; }
+        }
         // De-vig: normalize so win + draw + loss = 1
         if (pDraw <= 0) pDraw = Math.max(0.05, 1 - pWin1 - pWin2);
         const total = pWin1 + pDraw + pWin2;
