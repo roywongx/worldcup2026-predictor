@@ -23,6 +23,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/api/results'):
             self._proxy_football_data()
+        elif self.path.startswith('/api/match-odds'):
+            self._proxy_match_odds()
         elif self.path.startswith('/api/odds'):
             self._proxy_odds_api()
         elif self.path.startswith('/api/test-odds'):
@@ -144,6 +146,33 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self._log(f'the-odds-api.com ✗ {e}')
             self._json_response({'error': str(e)}, 502)
+
+    def _proxy_match_odds(self):
+        """Proxy to the-odds-api.com for match-level h2h odds."""
+        api_key = self._get_api_key()
+        if not api_key:
+            self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
+            return
+        # Try multiple sport keys for WC match odds
+        for sport in ['soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']:
+            url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={api_key}&regions=us,eu&markets=h2h&oddsFormat=decimal'
+            req = urllib.request.Request(url)
+            self._log(f'the-odds-api.com match-odds → {sport}')
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read())
+                    remaining = resp.headers.get('x-requests-remaining', '')
+                    self._log(f'the-odds-api.com match-odds ✓ {len(data)} events, remaining={remaining}')
+                    self._json_response({'data': data, 'remaining': remaining, 'sport': sport})
+                    return
+            except urllib.error.HTTPError as e:
+                body = e.read().decode('utf-8', errors='replace')[:200]
+                self._log(f'the-odds-api.com match-odds ✗ {sport} HTTP {e.code}')
+                if e.code == 404:
+                    continue  # try next sport key
+            except Exception as e:
+                self._log(f'the-odds-api.com match-odds ✗ {e}')
+        self._json_response({'error': 'No WC match odds available'}, 404)
 
     def _json_response(self, data, status=200):
         body = json.dumps(data).encode('utf-8')

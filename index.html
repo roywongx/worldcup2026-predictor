@@ -3906,6 +3906,45 @@ async function fetchOdds(){
   }catch(e){showToast(`Error: ${e.message}`);return false;}
 }
 
+/** Fetch match-level h2h odds from the-odds-api.com → W/D/L probabilities */
+async function fetchMatchOdds(){
+  const apiKey=getApiKey('oddsapi');if(!apiKey)return{};
+  try{
+    const r=await fetch('/api/match-odds',{headers:{'X-API-Key':apiKey}});
+    if(!r.ok)return{};
+    const resp=await r.json();if(resp.error)return{};
+    const data=resp.data||[];const oddsMap={};
+    if(Array.isArray(data)){
+      for(const ev of data){
+        const t1=mapTeamName(ev.home_team),t2=mapTeamName(ev.away_team);
+        if(!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
+        // Aggregate h2h odds across bookmakers
+        let sumW=0,sumD=0,sumL=0,count=0;
+        for(const bk of ev.bookmakers||[]){
+          for(const mk of bk.markets||[]){
+            if(mk.key!=='h2h')continue;
+            const outcomes=mk.outcomes||[];
+            const w=outcomes.find(o=>mapTeamName(o.name)===t1);
+            const l=outcomes.find(o=>mapTeamName(o.name)===t2);
+            const d=outcomes.find(o=>o.name==='Draw');
+            if(w&&l){
+              // Convert decimal odds to probabilities
+              const pw=1/w.price,pl=1/l.price,pd=d?1/d.price:0;
+              const total=pw+pl+pd;
+              sumW+=pw/total;sumL+=pl/total;sumD+=(pd/total);count++;
+            }
+          }
+        }
+        if(count>0){
+          oddsMap[`${t1}|${t2}`]={win:sumW/count,draw:sumD/count,loss:sumL/count,source:'the-odds-api'};
+        }
+      }
+    }
+    if(Object.keys(oddsMap).length>0)showToast(`Match odds: ${Object.keys(oddsMap).length} events`);
+    return oddsMap;
+  }catch(e){return{};}
+}
+
 async function fetchPolymarketData(){
   const se=document.getElementById('radar-status');if(se)se.textContent='Fetching...';
   try{
@@ -4206,15 +4245,16 @@ async function syncPolymarketData() {
     }
     const polyResults = await fetchPolymarketResults();
 
-    // 2. 赔率: Polymarket match odds
-    const odds = await fetchPolymarketMatchOdds();
+    // 2. 赔率: Polymarket + the-odds-api.com
+    const polyOdds = await fetchPolymarketMatchOdds();
+    const matchOdds = await fetchMatchOdds(); // the-odds-api.com h2h
 
     // 3. 冠军赔率: Polymarket champion odds (Radar)
     await fetchPolymarketData();
 
-    // 4. 合并存储
+    // 4. 合并存储: Polymarket 优先, the-odds-api 补充
     const state = loadState();
-    const merged = { ...(state.polymarketMatchOdds || {}), ...odds };
+    const merged = { ...matchOdds, ...(state.polymarketMatchOdds || {}), ...polyOdds };
     state.polymarketMatchOdds = merged;
     saveState(state);
     reevaluateResults();
@@ -4261,7 +4301,9 @@ async function refreshData(){
   if(getApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
   const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   try{await fetchPolymarketResults();}catch(e){}
-  try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds=mo;saveState(state);}}catch(e){}
+  // Merge match odds: the-odds-api + Polymarket
+  const matchOdds = await fetchMatchOdds();
+  try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds={...matchOdds,...mo};saveState(state);}}catch(e){}
   reevaluateResults();
   mcResults=null;runSimulation();
   state.lastUpdate=new Date().toISOString();saveState(state);
