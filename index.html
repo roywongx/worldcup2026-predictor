@@ -4162,14 +4162,23 @@ async function fetchPolymarketResults() {
           const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
           if (!prices) continue;
           const p = parseFloat(prices[0]);
-          // Skip placeholder/resolved prices (0.9995/0.0005)
-          if (p >= 0.999 || p <= 0.001) continue;
-          if (q.includes('draw')) { pDraw = p; if (p > 0.80) result = 'draw'; }
-          else if (q.includes('win')) {
+          // Check resolved prices first (0.9995 = yes, 0.0005 = no)
+          if (q.includes('draw')) {
+            pDraw = p >= 0.999 ? 0.999 : p;
+            if (p >= 0.999) result = 'draw';
+            else if (p > 0.80) result = 'draw';
+          } else if (q.includes('win')) {
             const words1 = team1.toLowerCase().split(/\s+/);
             const words2 = team2.toLowerCase().split(/\s+/);
-            if (words1.some(w => w.length > 2 && q.includes(w)) && !words2.some(w => w.length > 2 && q.includes(w))) { pWin1 = p; if (p > 0.80) result = team1; }
-            else if (words2.some(w => w.length > 2 && q.includes(w)) && !words1.some(w => w.length > 2 && q.includes(w))) { pWin2 = p; if (p > 0.80) result = team2; }
+            if (words1.some(w => w.length > 2 && q.includes(w)) && !words2.some(w => w.length > 2 && q.includes(w))) {
+              pWin1 = p >= 0.999 ? 0.999 : p;
+              if (p >= 0.999) result = team1;
+              else if (p > 0.80) result = team1;
+            } else if (words2.some(w => w.length > 2 && q.includes(w)) && !words1.some(w => w.length > 2 && q.includes(w))) {
+              pWin2 = p >= 0.999 ? 0.999 : p;
+              if (p >= 0.999) result = team2;
+              else if (p > 0.80) result = team2;
+            }
           }
         }
         // Fallback: use Exact Score market if main market not settled
