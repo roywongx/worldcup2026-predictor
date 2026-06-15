@@ -4117,11 +4117,13 @@ async function fetchPolymarketResults() {
     const existingMap = {};
     state.actualResults.forEach((r, i) => { existingMap[`${r.team1}|${r.team2}`] = i; });
     let added = 0;
+    console.log('[Poly] Starting fetch, existing results:', state.actualResults.length);
     for (let offset = 0; offset < 500; offset += 100) {
       const url = `https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc&closed=true&limit=100&offset=${offset}`;
       const resp = await fetch(url);
       if (!resp.ok) break;
       const events = await resp.json();
+      console.log('[Poly] Fetched', events?.length, 'events at offset', offset);
       if (!events || events.length === 0) break;
       const scores = {};
       for (const ev of events) {
@@ -4144,10 +4146,12 @@ async function fetchPolymarketResults() {
           const second = scoreProbs.length > 1 ? scoreProbs[1].prob : 0;
           if (top.prob > 0.95 || (top.prob > 0.40 && top.prob - second > 0.10)) {
             scores[base] = top.score;
+            console.log('[Poly] Exact Score:', base, top.score[0]+'-'+top.score[1], 'prob='+top.prob);
             // Also add/update result directly from Exact Score (for closed-but-not-settled main markets)
             const tm = base.match(/^(.+?)\s+vs\.?\s+(.+?)(?:\s*[-–(]|$)/);
             if (tm) {
               const t1 = mapTeamName(tm[1].trim()), t2 = mapTeamName(tm[2].trim());
+              console.log('[Poly] Mapped:', tm[1], '->', t1, '|', tm[2], '->', t2);
               if (t1 && t2 && TEAMS[t1] && TEAMS[t2]) {
                 const key = `${t1}|${t2}`;
                 const result = top.score[0] > top.score[1] ? t1 : (top.score[0] < top.score[1] ? t2 : 'draw');
@@ -4158,14 +4162,17 @@ async function fetchPolymarketResults() {
                 if (key in existingMap) {
                   const idx = existingMap[key];
                   const old = state.actualResults[idx];
+                  console.log('[Poly] Updating:', key, 'old:', old.score1+'-'+old.score2, 'new:', top.score[0]+'-'+top.score[1]);
                   if (old.score1 !== top.score[0] || old.score2 !== top.score[1] || old.actual !== result) {
                     state.actualResults[idx] = newResult;
                     added++;
+                    console.log('[Poly] Updated!', key);
                   }
                 } else {
                   state.actualResults.push(newResult);
                   existingMap[key] = state.actualResults.length - 1;
                   added++;
+                  console.log('[Poly] Added new:', key, top.score[0]+'-'+top.score[1]);
                 }
               }
             }
@@ -4239,6 +4246,7 @@ async function fetchPolymarketResults() {
       }
       if (events.length < 100) break;
     }
+    console.log('[Poly] Done, added:', added, 'total results:', state.actualResults.length);
     if (added > 0) {
       rebuildDynamicElo(state.actualResults);
       state.lastUpdate = new Date().toISOString();
@@ -4247,7 +4255,7 @@ async function fetchPolymarketResults() {
       showToast(`Polymarket: +${added} results, Elo updated`);
     }
     return added;
-  } catch (e) { showToast('Polymarket results error: ' + e.message); return 0; }
+  } catch (e) { console.error('[Poly] Error:', e); showToast('Polymarket results error: ' + e.message); return 0; }
 }
 
 /** 用当前模型参数 + 赛前 Polymarket 赔率重新评估所有已完成比赛 */
