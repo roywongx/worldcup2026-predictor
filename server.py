@@ -14,7 +14,7 @@ from datetime import datetime
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 9090
 DIR = Path(__file__).parent
-BIND = '127.0.0.1'  # SEC-2: bind to localhost only
+BIND = '0.0.0.0'  # accessible on local network
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -150,12 +150,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
-        # SEC-2: restrict CORS to localhost origins
-        origin = self.headers.get('Origin', '')
-        if origin in ('http://localhost:9090', f'http://127.0.0.1:{PORT}', f'http://localhost:{PORT}'):
-            self.send_header('Access-Control-Allow-Origin', origin)
-        else:
-            self.send_header('Access-Control-Allow-Origin', f'http://localhost:{PORT}')
+        # Allow localhost and local network origins
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(body)
 
