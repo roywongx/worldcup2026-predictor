@@ -4137,7 +4137,10 @@ async function syncPolymarketData() {
     const newResults = await fetchPolymarketResults();
     const odds = await fetchPolymarketMatchOdds();
     const state = loadState();
-    state.polymarketMatchOdds = odds;
+    // Merge: keep existing pre-match odds for in-progress/completed matches
+    // New fetch only has pre-match odds; don't overwrite frozen predictions
+    const merged = { ...(state.polymarketMatchOdds || {}), ...odds };
+    state.polymarketMatchOdds = merged;
     saveState(state);
     reevaluateResults();
     mcResults = null;
