@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2026 FIFA World Cup Predictor</title>
+<title>2026 FIFA World Cup Predictor v2</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4070,8 +4070,11 @@ async function fetchPolymarketMatchOdds() {
             let preW1 = null, preW2 = null, preD = null;
             for (const m2 of (ev.markets || [])) {
               const q2 = (m2.question || '').toLowerCase();
-              const rawTokens = m2.clobTokenIds;
-              const tokens = typeof rawTokens === 'string' ? JSON.parse(rawTokens) : (rawTokens || []);
+              let tokens;
+              try {
+                const raw = m2.clobTokenIds;
+                tokens = typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
+              } catch (e) { continue; }
               if (!tokens || tokens.length < 1) continue;
               const yesToken = tokens[0];
               if (q2.includes('end in a draw')) {
