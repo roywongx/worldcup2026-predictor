@@ -52,15 +52,17 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         return key
 
     def _odds_request(self, path, params=None):
-        """Build the-odds-api request using header auth so keys stay out of URLs."""
+        """Build the-odds-api request.
+        the-odds-api.com requires apiKey as query parameter (not header).
+        Key arrives via X-API-Key header from frontend (never in browser URL)."""
         api_key = self._get_api_key()
         if not api_key or len(api_key) < 10:
             self._log(f'⚠ _odds_request: invalid API key (len={len(api_key)}) — will get 401')
-        query = urllib.parse.urlencode(params or {})
-        url = f'https://api.the-odds-api.com/v4/{path}'
-        if query:
-            url += '?' + query
-        return urllib.request.Request(url, headers={'x-api-key': api_key})
+        all_params = dict(params or {})
+        all_params['apiKey'] = api_key
+        query = urllib.parse.urlencode(all_params)
+        url = f'https://api.the-odds-api.com/v4/{path}?{query}'
+        return urllib.request.Request(url)
 
     def _test_key(self):
         """Test if a football-data.org API key is valid."""
