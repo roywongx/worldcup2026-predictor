@@ -1238,86 +1238,161 @@ for (const g of GROUPS) for (const t of GROUP_TEAMS[g]) teamToGroup[t] = g;
  *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
  *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 24-27 */
 const MATCHES = [
-  // ── Matchday 1: Jun 11-17 ──
-  ["2026-06-11","Mexico","South Africa","A"],["2026-06-11","South Korea","Czech Republic","A"],
-  ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","United States","Paraguay","D"],
-  ["2026-06-13","Qatar","Switzerland","B"],["2026-06-13","Brazil","Morocco","C"],
-  ["2026-06-13","Haiti","Scotland","C"],["2026-06-13","Australia","Turkey","D"],
-  ["2026-06-14","Germany","Curaçao","E"],["2026-06-14","Ivory Coast","Ecuador","E"],
-  ["2026-06-14","Netherlands","Japan","F"],["2026-06-14","Sweden","Tunisia","F"],
-  ["2026-06-15","Belgium","Egypt","G"],["2026-06-15","Iran","New Zealand","G"],
-  ["2026-06-15","Spain","Cape Verde","H"],["2026-06-15","Saudi Arabia","Uruguay","H"],
-  ["2026-06-16","France","Senegal","I"],["2026-06-16","Iraq","Norway","I"],
-  ["2026-06-16","Argentina","Algeria","J"],["2026-06-16","Austria","Jordan","J"],
-  ["2026-06-17","Portugal","DR Congo","K"],["2026-06-17","Uzbekistan","Colombia","K"],
-  ["2026-06-17","England","Croatia","L"],["2026-06-17","Ghana","Panama","L"],
-  // ── Matchday 2: Jun 18-23 ──
-  ["2026-06-18","Czech Republic","South Africa","A"],["2026-06-18","Mexico","South Korea","A"],
-  ["2026-06-18","Switzerland","Bosnia Herzegovina","B"],["2026-06-18","Canada","Qatar","B"],
-  ["2026-06-19","Scotland","Morocco","C"],["2026-06-19","Brazil","Haiti","C"],
-  ["2026-06-19","United States","Australia","D"],["2026-06-19","Turkey","Paraguay","D"],
-  ["2026-06-20","Germany","Ivory Coast","E"],["2026-06-20","Ecuador","Curaçao","E"],
-  ["2026-06-20","Netherlands","Sweden","F"],["2026-06-20","Tunisia","Japan","F"],
-  ["2026-06-21","Belgium","Iran","G"],["2026-06-21","New Zealand","Egypt","G"],
-  ["2026-06-21","Spain","Saudi Arabia","H"],["2026-06-21","Uruguay","Cape Verde","H"],
-  ["2026-06-22","France","Iraq","I"],["2026-06-22","Norway","Senegal","I"],
-  ["2026-06-22","Argentina","Austria","J"],["2026-06-22","Jordan","Algeria","J"],
-  ["2026-06-23","Portugal","Uzbekistan","K"],["2026-06-23","Colombia","DR Congo","K"],
-  ["2026-06-23","England","Ghana","L"],["2026-06-23","Panama","Croatia","L"],
-  // ── Matchday 3: Jun 24-27 (simultaneous kick-offs) ──
-  ["2026-06-24","Czech Republic","Mexico","A"],["2026-06-24","South Africa","South Korea","A"],
-  ["2026-06-24","Switzerland","Canada","B"],["2026-06-24","Bosnia Herzegovina","Qatar","B"],
-  ["2026-06-24","Scotland","Brazil","C"],["2026-06-24","Morocco","Haiti","C"],
-  ["2026-06-25","Turkey","United States","D"],["2026-06-25","Paraguay","Australia","D"],
-  ["2026-06-25","Ecuador","Germany","E"],["2026-06-25","Curaçao","Ivory Coast","E"],
-  ["2026-06-25","Japan","Sweden","F"],["2026-06-25","Tunisia","Netherlands","F"],
-  ["2026-06-26","Egypt","Iran","G"],["2026-06-26","New Zealand","Belgium","G"],
-  ["2026-06-26","Cape Verde","Saudi Arabia","H"],["2026-06-26","Uruguay","Spain","H"],
-  ["2026-06-26","Norway","France","I"],["2026-06-26","Senegal","Iraq","I"],
-  ["2026-06-27","Algeria","Austria","J"],["2026-06-27","Jordan","Argentina","J"],
-  ["2026-06-27","Colombia","Portugal","K"],["2026-06-27","DR Congo","Uzbekistan","K"],
-  ["2026-06-27","Panama","England","L"],["2026-06-27","Croatia","Ghana","L"]
+  // ── MD1: Jun 12-18 (北京时间) ──
+  // Jun 12
+  ["2026-06-11","Mexico","South Africa","A"],
+  ["2026-06-11","South Korea","Czech Republic","A"],
+  // Jun 13
+  ["2026-06-12","Canada","Bosnia Herzegovina","B"],
+  ["2026-06-12","United States","Paraguay","D"],
+  // Jun 14
+  ["2026-06-13","Qatar","Switzerland","B"],
+  ["2026-06-13","Brazil","Morocco","C"],
+  ["2026-06-13","Haiti","Scotland","C"],
+  ["2026-06-13","Australia","Turkey","D"],
+  // Jun 15
+  ["2026-06-14","Germany","Curaçao","E"],
+  ["2026-06-14","Netherlands","Japan","F"],
+  ["2026-06-14","Ivory Coast","Ecuador","E"],
+  ["2026-06-14","Sweden","Tunisia","F"],
+  // Jun 16
+  ["2026-06-15","Spain","Cape Verde","H"],
+  ["2026-06-15","Belgium","Egypt","G"],
+  ["2026-06-15","Saudi Arabia","Uruguay","H"],
+  ["2026-06-15","Iran","New Zealand","G"],
+  // Jun 17
+  ["2026-06-16","France","Senegal","I"],
+  ["2026-06-16","Iraq","Norway","I"],
+  ["2026-06-16","Argentina","Algeria","J"],
+  ["2026-06-16","Austria","Jordan","J"],
+  // Jun 18
+  ["2026-06-17","Portugal","DR Congo","K"],
+  ["2026-06-17","England","Croatia","L"],
+  ["2026-06-17","Ghana","Panama","L"],
+  ["2026-06-17","Uzbekistan","Colombia","K"],
+  // ── MD2: Jun 19-24 (北京时间) ──
+  // Jun 19
+  ["2026-06-18","Czech Republic","South Africa","A"],
+  ["2026-06-18","Switzerland","Bosnia Herzegovina","B"],
+  ["2026-06-18","Canada","Qatar","B"],
+  ["2026-06-18","Mexico","South Korea","A"],
+  // Jun 20
+  ["2026-06-19","United States","Australia","D"],
+  ["2026-06-19","Scotland","Morocco","C"],
+  ["2026-06-19","Brazil","Haiti","C"],
+  ["2026-06-19","Turkey","Paraguay","D"],
+  // Jun 21
+  ["2026-06-20","Netherlands","Sweden","F"],
+  ["2026-06-20","Germany","Ivory Coast","E"],
+  ["2026-06-20","Ecuador","Curaçao","E"],
+  ["2026-06-20","Tunisia","Japan","F"],
+  // Jun 22
+  ["2026-06-21","Spain","Saudi Arabia","H"],
+  ["2026-06-21","Belgium","Iran","G"],
+  ["2026-06-21","Uruguay","Cape Verde","H"],
+  ["2026-06-21","New Zealand","Egypt","G"],
+  // Jun 23
+  ["2026-06-22","Argentina","Austria","J"],
+  ["2026-06-22","France","Iraq","I"],
+  ["2026-06-22","Norway","Senegal","I"],
+  ["2026-06-22","Jordan","Algeria","J"],
+  // Jun 24
+  ["2026-06-23","Portugal","Uzbekistan","K"],
+  ["2026-06-23","England","Ghana","L"],
+  ["2026-06-23","Panama","Croatia","L"],
+  ["2026-06-23","Colombia","DR Congo","K"],
+  // ── MD3: Jun 25-28 (北京时间, 同时开球) ──
+  // Jun 25
+  ["2026-06-24","Switzerland","Canada","B"],
+  ["2026-06-24","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-24","Scotland","Brazil","C"],
+  ["2026-06-24","Morocco","Haiti","C"],
+  ["2026-06-24","Czech Republic","Mexico","A"],
+  ["2026-06-24","South Africa","South Korea","A"],
+  // Jun 26
+  ["2026-06-25","Curaçao","Ivory Coast","E"],
+  ["2026-06-25","Ecuador","Germany","E"],
+  ["2026-06-25","Japan","Sweden","F"],
+  ["2026-06-25","Tunisia","Netherlands","F"],
+  ["2026-06-25","Turkey","United States","D"],
+  ["2026-06-25","Paraguay","Australia","D"],
+  // Jun 27
+  ["2026-06-26","Norway","France","I"],
+  ["2026-06-26","Senegal","Iraq","I"],
+  ["2026-06-26","Cape Verde","Saudi Arabia","H"],
+  ["2026-06-26","Uruguay","Spain","H"],
+  ["2026-06-26","Egypt","Iran","G"],
+  ["2026-06-26","New Zealand","Belgium","G"],
+  // Jun 28
+  ["2026-06-27","Panama","England","L"],
+  ["2026-06-27","Croatia","Ghana","L"],
+  ["2026-06-27","Colombia","Portugal","K"],
+  ["2026-06-27","DR Congo","Uzbekistan","K"],
+  ["2026-06-27","Algeria","Austria","J"],
+  ["2026-06-27","Jordan","Argentina","J"]
 ];
 
 /** Venue/city for each match (order matches MATCHES array).
  *  Source: FIFA official via kickoffadventures.com
  *  Short city names for compact display. */
 const VENUES = [
-  // MD1: Jun 11 (Group A)
+  // MD1: Jun 12 (Beijing) — Groups A
   "Mexico City 🇲🇽","Guadalajara 🇲🇽",
-  // MD1: Jun 12 (Groups B, D)
+  // Jun 13 — Groups B, D
   "Toronto 🇨🇦","Los Angeles 🇺🇸",
-  // MD1: Jun 13 (Groups B, C, D)
+  // Jun 14 — Groups B, C, D
   "San Francisco 🇺🇸","New York 🇺🇸","Boston 🇺🇸","Vancouver 🇨🇦",
-  // MD1: Jun 14 (Groups E, F)
-  "Houston 🇺🇸","Philadelphia 🇺🇸","Dallas 🇺🇸","Guadalajara 🇲🇽",
-  // MD1: Jun 15 (Groups G, H)
-  "Seattle 🇺🇸","Los Angeles 🇺🇸","Atlanta 🇺🇸","Miami 🇺🇸",
-  // MD1: Jun 16 (Groups I, J)
+  // Jun 15 — Groups E, F
+  "Houston 🇺🇸","Dallas 🇺🇸","Philadelphia 🇺🇸","Guadalajara 🇲🇽",
+  // Jun 16 — Groups G, H
+  "Atlanta 🇺🇸","Seattle 🇺🇸","Miami 🇺🇸","Los Angeles 🇺🇸",
+  // Jun 17 — Groups I, J
   "New York 🇺🇸","Boston 🇺🇸","Kansas City 🇺🇸","San Francisco 🇺🇸",
-  // MD1: Jun 17 (Groups K, L)
-  "Houston 🇺🇸","Mexico City 🇲🇽","Dallas 🇺🇸","Toronto 🇨🇦",
-  // MD2: Jun 18 (Groups A, B)
-  "Atlanta 🇺🇸","Guadalajara 🇲🇽","Los Angeles 🇺🇸","Vancouver 🇨🇦",
-  // MD2: Jun 19 (Groups C, D)
-  "Boston 🇺🇸","Philadelphia 🇺🇸","Seattle 🇺🇸","San Francisco 🇺🇸",
-  // MD2: Jun 20 (Groups E, F)
-  "Toronto 🇨🇦","Kansas City 🇺🇸","Houston 🇺🇸","Guadalajara 🇲🇽",
-  // MD2: Jun 21 (Groups G, H)
-  "Los Angeles 🇺🇸","Vancouver 🇨🇦","Atlanta 🇺🇸","Miami 🇺🇸",
-  // MD2: Jun 22 (Groups I, J)
-  "Philadelphia 🇺🇸","New York 🇺🇸","Dallas 🇺🇸","San Francisco 🇺🇸",
-  // MD2: Jun 23 (Groups K, L)
-  "Houston 🇺🇸","Guadalajara 🇲🇽","Boston 🇺🇸","Toronto 🇨🇦",
-  // MD3: Jun 24 (Groups A, B, C)
-  "Mexico City 🇲🇽","Guadalajara 🇲🇽","Vancouver 🇨🇦","Seattle 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸",
-  // MD3: Jun 25 (Groups D, E, F)
-  "Los Angeles 🇺🇸","San Francisco 🇺🇸","Philadelphia 🇺🇸","New York 🇺🇸","Dallas 🇺🇸","Kansas City 🇺🇸",
-  // MD3: Jun 26 (Groups G, H, I)
-  "Seattle 🇺🇸","Vancouver 🇨🇦","Houston 🇺🇸","Guadalajara 🇲🇽","Boston 🇺🇸","Toronto 🇨🇦",
-  // MD3: Jun 27 (Groups J, K, L)
-  "Kansas City 🇺🇸","Dallas 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","New York 🇺🇸","Philadelphia 🇺🇸"
+  // Jun 18 — Groups K, L
+  "Houston 🇺🇸","Dallas 🇺🇸","Toronto 🇨🇦","Mexico City 🇲🇽",
+  // MD2: Jun 19 — Groups A, B
+  "Atlanta 🇺🇸","Los Angeles 🇺🇸","Vancouver 🇨🇦","Guadalajara 🇲🇽",
+  // Jun 20 — Groups C, D
+  "Seattle 🇺🇸","Boston 🇺🇸","Philadelphia 🇺🇸","San Francisco 🇺🇸",
+  // Jun 21 — Groups E, F
+  "Houston 🇺🇸","Toronto 🇨🇦","Kansas City 🇺🇸","Guadalajara 🇲🇽",
+  // Jun 22 — Groups G, H
+  "Atlanta 🇺🇸","Los Angeles 🇺🇸","Miami 🇺🇸","Vancouver 🇨🇦",
+  // Jun 23 — Groups I, J
+  "Dallas 🇺🇸","Philadelphia 🇺🇸","New York 🇺🇸","San Francisco 🇺🇸",
+  // Jun 24 — Groups K, L
+  "Houston 🇺🇸","Boston 🇺🇸","Toronto 🇨🇦","Guadalajara 🇲🇽",
+  // MD3: Jun 25 — Groups B, C, A
+  "Vancouver 🇨🇦","Seattle 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","Mexico City 🇲🇽","Guadalajara 🇲🇽",
+  // Jun 26 — Groups E, F, D
+  "Philadelphia 🇺🇸","New York 🇺🇸","Dallas 🇺🇸","Kansas City 🇺🇸","Los Angeles 🇺🇸","San Francisco 🇺🇸",
+  // Jun 27 — Groups I, H, G
+  "Boston 🇺🇸","Toronto 🇨🇦","Houston 🇺🇸","Guadalajara 🇲🇽","Seattle 🇺🇸","Vancouver 🇨🇦",
+  // Jun 28 — Groups L, K, J
+  "New York 🇺🇸","Philadelphia 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","Kansas City 🇺🇸","Dallas 🇺🇸"
 ];
+
+/** 北京时间转换：将 UTC 日期+偏移转为北京时间字符串 */
+function toBeijingTime(dateStr, utcOffset) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return '';
+  const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+  const bj = new Date(utc + 8 * 3600000);
+  const h = bj.getHours().toString().padStart(2, '0');
+  const m = bj.getMinutes().toString().padStart(2, '0');
+  return `${bj.getMonth()+1}/${bj.getDate()} ${h}:${m}`;
+}
+
+/** 比赛的 UTC 偏移量（按场地城市） */
+const VENUE_UTC = {
+  "Mexico City 🇲🇽": -6, "Guadalajara 🇲🇽": -6, "Monterrey 🇲🇽": -6,
+  "Toronto 🇨🇦": -4, "Vancouver 🇨🇦": -7,
+  "New York 🇺🇸": -4, "Boston 🇺🇸": -4, "Philadelphia 🇺🇸": -4,
+  "Miami 🇺🇸": -4, "Atlanta 🇺🇸": -4,
+  "Los Angeles 🇺🇸": -7, "San Francisco 🇺🇸": -7, "Seattle 🇺🇸": -7,
+  "Houston 🇺🇸": -5, "Dallas 🇺🇸": -5, "Kansas City 🇺🇸": -5
+};
 
 // ---- FIFA Annex C: 495 third-place combination matrix ----
 // Maps which 8 groups' third-place teams qualify → R32 assignments
@@ -3345,13 +3420,38 @@ function renderMatches(){
     }
   }
 
-  // Match list
+  // Match list — 按北京时间排序
   let ld='';
+  // Pre-compute Beijing time for each match
+  const matchBJTime = {};
+  matchResults.forEach(m => {
+    const venue = getVenue(m.ta, m.tb, m.date);
+    const utcOffset = VENUE_UTC[venue] || -5;
+    // Parse date and add offset to get Beijing time
+    const d = new Date(m.date);
+    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+    const bj = new Date(utc + (utcOffset + 8) * 3600000);
+    matchBJTime[`${m.ta}|${m.tb}|${m.date}`] = bj;
+  });
+  // Sort matches by Beijing time
+  matchResults.sort((a, b) => {
+    const bjA = matchBJTime[`${a.ta}|${a.tb}|${a.date}`] || new Date(a.date);
+    const bjB = matchBJTime[`${b.ta}|${b.tb}|${b.date}`] || new Date(b.date);
+    return bjA - bjB;
+  });
   matchResults.forEach(m=>{
-    if(m.date!==ld){ld=m.date;const d=new Date(m.date+'T00:00:00');h+=`<div class="match-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>`;}
+    // Get Beijing time display
+    const bjKey = `${m.ta}|${m.tb}|${m.date}`;
+    const bj = matchBJTime[bjKey];
+    const bjDateStr = bj ? `${bj.getMonth()+1}/${bj.getDate()}` : '';
+    const bjTimeStr = bj ? `${bj.getHours().toString().padStart(2,'0')}:${bj.getMinutes().toString().padStart(2,'0')}` : '';
+    const bjDisplay = bj ? `${bjDateStr} ${bjTimeStr}` : '';
+    
+    if(bjDateStr!==ld){ld=bjDateStr;h+=`<div class="match-date">📅 ${bjDateStr} (北京时间)</div>`;}
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
 
     const venue=getVenue(m.ta,m.tb,m.date);
+    const bjTimeHtml = bjTimeStr ? `<span style="font-size:0.72rem;color:var(--blue);font-weight:600;margin-right:0.4rem">${bjTimeStr}</span>` : '';
     const venueHtml=venue?`<span style="font-size:0.72rem;color:var(--text3);margin-left:auto;padding-left:0.5rem;white-space:nowrap">${venue}</span>`:'';
 
     // Look up Polymarket de-vigged odds for this match
@@ -3379,6 +3479,7 @@ function renderMatches(){
       h+=`<div style="border-left:3px solid var(--green);background:var(--card);border-radius:var(--radius-sm);padding:0.5rem 1rem;margin-bottom:0.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
         <div style="display:flex;align-items:center">
           <span class="m-group">${m.grp}</span>
+          ${bjTimeHtml}
           <span class="m-team home ${wA}">${fl(m.ta)}</span>
           <span class="m-score">${m.sa} - ${m.sb} <span style="font-size:0.72rem;color:var(--green);font-weight:700">✓</span></span>
           <span class="m-team away ${wB}">${fl(m.tb)}</span>
@@ -3414,7 +3515,7 @@ function renderMatches(){
         }
         probLine += `</div>`;
       }
-      h+=`<div class="match-card" style="flex-wrap:wrap"><span class="m-group">${m.grp}</span><span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span>${venueHtml}${probLine}</div>`;
+      h+=`<div class="match-card" style="flex-wrap:wrap"><span class="m-group">${m.grp}</span>${bjTimeHtml}<span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span>${venueHtml}${probLine}</div>`;
     }
   });
   [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
