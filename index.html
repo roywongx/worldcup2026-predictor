@@ -1043,16 +1043,6 @@ function negBinPMF(k, mu, r) {
   return Math.exp(logCoeff + r * Math.log(p) + k * Math.log(1 - p));
 }
 
-/** Sample from Negative Binomial via Gamma-Poisson mixture.
- *  X ~ Poisson(G) where G ~ Gamma(r, r/mu). Consistent with negBinPMF. */
-function negBinSample(mu, r) {
-  if (mu <= 0) return 0;
-  if (r <= 0) return poissonSample(mu);
-  // Marsaglia and Tsang's method for Gamma(r, 1) when r >= 1
-  const g = gammaSample(r);
-  return poissonSample(mu * g / r);
-}
-
 /** Gamma(r,1) sample via Marsaglia-Tsang (r >= 1) with boost for r < 1 */
 function gammaSample(r) {
   if (r < 1) return gammaSample(r + 1) * Math.pow(Math.random(), 1 / r);
@@ -1117,6 +1107,8 @@ function getMarketBlend(matchDate, volume) {
   const now = new Date();
   const match = new Date(matchDate);
   const hoursUntil = (match - now) / (1000 * 60 * 60);
+  // Past matches: no market blend (pure model re-evaluation)
+  if (hoursUntil < 0) return 0;
   let blend;
   if (hoursUntil <= 1) blend = 0.50;
   else if (hoursUntil <= 24) blend = 0.20 + 0.30 * (1 - (hoursUntil - 1) / 23);
@@ -1662,11 +1654,24 @@ function matchProbs(home, away, formMap, matchDate, marketProbs) {
 
   // Priority 1: Isotonic regression calibration (data-driven, from historical predictions)
   // Priority 2: Temperature scaling (fallback when insufficient historical data)
-  const cal = calibrateProbs(raw.win, raw.draw, raw.loss);
-  if (isotonicCalibration) {
-    return cal;
+  let probs = calibrateProbs(raw.win, raw.draw, raw.loss);
+  if (!isotonicCalibration) {
+    probs = temperatureScale(raw.win, raw.draw, raw.loss, 1.15);
   }
-  return temperatureScale(raw.win, raw.draw, raw.loss, 1.15);
+
+  // GBDT blend: 80% DC + 20% GBDT (when trained)
+  if (gbdt.trained) {
+    const gbdtProbs = gbdt.predict(home, away);
+    if (gbdtProbs) {
+      const BLEND = 0.20;
+      probs = {
+        win: (1 - BLEND) * probs.win + BLEND * gbdtProbs.win,
+        draw: (1 - BLEND) * probs.draw + BLEND * gbdtProbs.draw,
+        loss: (1 - BLEND) * probs.loss + BLEND * gbdtProbs.loss,
+      };
+    }
+  }
+  return probs;
 }
 
 // ---- American odds to probability ----
@@ -1797,12 +1802,12 @@ function negBinSample(mu, r) {
   return _poissonSampleRaw(mu * g / r);
 }
 
-/** Raw Poisson sample (Knuth algorithm; k<20 safe for lam < 5) */
+/** Raw Poisson sample (Knuth algorithm; k<30 safe for lam < 6 via NB gamma mixing) */
 function _poissonSampleRaw(lam) {
   if (lam <= 0) return 0;
   const L = Math.exp(-lam);
   let k = 0, p = 1;
-  do { k++; p *= Math.random(); } while (p > L && k < 20);
+  do { k++; p *= Math.random(); } while (p > L && k < 30);
   return k - 1;
 }
 
@@ -1897,9 +1902,11 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
   const pAdvance_home=pW90+pD90*(pW_ET+pD_ET*pPK_home);
   const pAdvance_away=pL90+pD90*(pL_ET+pD_ET*(1-pPK_home));
 
-  // Use same calibration path as matchProbs (isotonic > temperature)
+  // Calibrate 90min probs (isotonic > temperature)
   const cal90 = calibrateProbs(pW90, pD90, pL90);
-  const calAdv = calibrateProbs(pAdvance_home, 0, pAdvance_away);
+  // Advance probs use raw values — calibration tables are trained on matchProbs
+  // (W/D/L) which have different distribution than advance (win/loss only)
+  const calAdv = { win: pAdvance_home, draw: 0, loss: pAdvance_away };
   return {
     p90: cal90,
     pET:{w:pW_ET,d:pD_ET,l:pL_ET},
@@ -2260,6 +2267,9 @@ function expectedCalibrationError(predictions, outcomes, nBins) {
  *  Reference: Wilkens (2026) "Can simple models predict football?"
  *  Returns calibration maps: {win: [{p, calP}], draw: [...], loss: [...]}
  *  Each map is a sorted lookup table from predicted probability to calibrated probability. */
+/** Fit isotonic calibration using PAVA (O(n²) repeated scan — sufficient for n<100).
+ *  Standard stack-based PAVA is O(n) but the repeated-scan version is simpler
+ *  and correct; dataset size makes the difference negligible. */
 function fitIsotonicCalibration(actualResults) {
   if (!actualResults || actualResults.length < 20) return null;  // Need 20+ for reliable calibration
 
@@ -2576,6 +2586,7 @@ class SimpleGBDT {
       this.trained = false;
       return false;
     }
+    this.trees = [];  // Reset before retraining to prevent accumulation
 
     // Prepare training data
     const X = [], y = [];
@@ -3694,9 +3705,10 @@ function runMonteCarloUI(){
       if(result.rounds.length>=3)for(const m of result.rounds[2]){semi[m.a]=(semi[m.a]||0)+1;semi[m.b]=(semi[m.b]||0)+1;}
       if(result.rounds.length>=2)for(const m of result.rounds[1]){quarter[m.a]=(quarter[m.a]||0)+1;quarter[m.b]=(quarter[m.b]||0)+1;}
       if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
-      // Store lightweight history for What-If filtering (rounds 1-3 only, ~14MB for 10k)
+      // Store lightweight history for What-If filtering (rounds 1-4, ~18MB for 10k)
+      // Round tags: 1=R32, 2=R16, 3=QF, 4=SF (rounds[0]=R32, rounds[1]=R16, etc.)
       const mr = {};
-      result.rounds.slice(1,4).forEach((round, ri) => {
+      result.rounds.slice(0,4).forEach((round, ri) => {
         for(const m of round) mr[`${m.a}|${m.b}`] = {ga:m.ga,gb:m.gb,round:ri+1};
       });
       simulationHistory.push({ champion: result.champion, matchResults: mr });
@@ -3745,9 +3757,11 @@ function queryWhatIf(lockedMatches) {
     if (run.champion) champ[run.champion] = (champ[run.champion] || 0) + 1;
     for (const [key, mr] of Object.entries(run.matchResults)) {
       const [a, b] = key.split('|');
-      if (mr.round === 3) { finalist[a]=(finalist[a]||0)+1; finalist[b]=(finalist[b]||0)+1; }
-      if (mr.round === 2) { semi[a]=(semi[a]||0)+1; semi[b]=(semi[b]||0)+1; }
-      if (mr.round === 1) { quarter[a]=(quarter[a]||0)+1; quarter[b]=(quarter[b]||0)+1; r16[a]=(r16[a]||0)+1; r16[b]=(r16[b]||0)+1; }
+      // Round tags: 1=R32, 2=R16, 3=QF, 4=SF
+      if (mr.round === 4) { finalist[a]=(finalist[a]||0)+1; finalist[b]=(finalist[b]||0)+1; }
+      if (mr.round === 3) { semi[a]=(semi[a]||0)+1; semi[b]=(semi[b]||0)+1; }
+      if (mr.round === 2) { quarter[a]=(quarter[a]||0)+1; quarter[b]=(quarter[b]||0)+1; }
+      if (mr.round === 1) { r16[a]=(r16[a]||0)+1; r16[b]=(r16[b]||0)+1; }
     }
   }
 
@@ -4575,7 +4589,8 @@ async function fetchPolymarketResults() {
         const score = scores[title];
         const s1 = score ? score[0] : null;
         const s2 = score ? score[1] : null;
-        const preOdds = { win: pWin1/(pWin1+pDraw+pWin2), draw: pDraw/(pWin1+pDraw+pWin2), loss: pWin2/(pWin1+pDraw+pWin2) };
+        const oddsSum = pWin1+pDraw+pWin2;
+        const preOdds = oddsSum > 0 ? { win: pWin1/oddsSum, draw: pDraw/oddsSum, loss: pWin2/oddsSum } : null;
         const dateStr = resolveMatchDate(ev, team1, team2);
         const probs = matchProbs(team1, team2, preFormMap, dateStr, preOdds);
         const pred = predictOutcome(probs,team1,team2);
