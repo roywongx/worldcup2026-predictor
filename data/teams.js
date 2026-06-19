@@ -22,7 +22,7 @@ WC26.NB_R = 8.5;
 WC26.HOME_HOST = 0.30;
 
 /** Monte Carlo default */
-WC26.MC_DEFAULT = 10000;
+WC26.MC_DEFAULT = 50000;
 
 /** UEFA club teams for 30% valuation correction */
 WC26.UEFA_TEAMS = new Set([

@@ -3413,6 +3413,10 @@ runSimulation();applyLang();
     }else{await fetchResults();}
   }
 }catch(e){}})();
+// Service Worker for offline caching
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
