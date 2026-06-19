@@ -1,8 +1,70 @@
 # 🏆 2026 FIFA World Cup Predictor
 
-**Dixon-Coles Poisson 模型 + 等保回归校准 + GBDT 集成 + Polymarket 三 API 整合**
+**Dixon-Coles Poisson 模型 + 等保回归校准 + GBDT 集成 + Polymarket 数据整合**
 
-[English](#english) · [中文](#中文)
+English below · [中文](#中文)
+
+---
+
+## English
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Data Layer                              │
+├──────────────┬──────────────┬──────────────┬────────────────┤
+│ Elo ratings  │ WCQ xG       │ Club xG      │ Polymarket     │
+│ eloratings   │ FootyStats   │ Understat    │ gamma/clob API │
+│ 48/48 teams  │ 43/48 teams  │ 119×3 seasons│ odds+results   │
+└──────┬───────┴──────┬───────┴──────┬───────┴────────┬───────┘
+       ▼              ▼              ▼                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Prediction Layer                           │
+├──────────────────────┬──────────────────────────────────────┤
+│ Dixon-Coles (80%)    │ GBDT Auxiliary (20%)                 │
+│ • Poisson score grid │ • 15 trees, lr=0.08                 │
+│ • ρ = -0.20/-0.15    │ • Features: Elo/ATK/DEF/form diff   │
+│ • Isotonic calibrate │ • Activates with ≥15 historical     │
+└──────────┬───────────┴──────────────────────────────────────┘
+           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Output Layer                           │
+├──────────────┬──────────────┬──────────────┬────────────────┤
+│ Match W/D/L  │ Knockout     │ Champion     │ EV Analysis    │
+│ probabilities│ advancement  │ Monte Carlo  │ Model vs Market│
+│              │ 90min+ET+PK  │ 10,000 sims  │ +EV highlight  │
+└──────────────┴──────────────┴──────────────┴────────────────┘
+```
+
+### Model Parameters
+
+| Parameter | Value | Source |
+|-----------|-------|--------|
+| Base λ | 1.25 | Half of WC avg total goals (~2.5 per match) |
+| Elo scale | 400 | Standard Elo |
+| ATK/DEF damping | 0.35 | Tuned (reduces attack/defense impact) |
+| ρ group stage | -0.20 | Dixon & Coles 1997, tuned for draw calibration |
+| ρ knockout | -0.15 | Same |
+| Temperature T | 1.15 | Guo et al. 2017 (fallback when no isotonic data) |
+| Polymarket blend | 20%→50% | Time-decay + volume sentiment |
+| GBDT blend | 20% | Gradient boosting auxiliary |
+
+### Run
+
+```bash
+python3 server.py        # Start server on port 9090
+# Open http://localhost:9090
+```
+
+### Features
+
+- **🔄 Sync Polymarket** — Fetch latest odds + results + re-evaluate
+- **🔁 Re-evaluate** — Re-run model with current parameters (no network)
+- **💰 EV Analysis** — Positive expected value opportunities
+- **📊 Backtest** — Log Loss, Brier Score, accuracy on 2022 WC data
+- **🔮 What-If** — Conditional Monte Carlo (lock match outcomes)
+- **📈 Radar** — Model vs Polymarket real-money odds comparison
 
 ---
 
@@ -12,95 +74,30 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    数据层 (Data Layer)                        │
+│                      数据层                                   │
 ├──────────────┬──────────────┬──────────────┬────────────────┤
 │ Elo 评分      │ WCQ xG       │ 俱乐部 xG    │ Polymarket     │
-│ worldfootball │ FootyStats   │ Understat    │ gamma/clob/data│
-│ rankings.com  │ (Exa搜索)    │ (Playwright) │ (API直连)      │
-│ 48/48队       │ 43/48队      │ 119队×3赛季  │ 赛果+赔率+交易量│
+│ eloratings   │ FootyStats   │ Understat    │ gamma/clob API │
+│ 48/48队       │ 43/48队      │ 119队×3赛季  │ 赔率+赛果      │
 └──────┬───────┴──────┬───────┴──────┬───────┴────────┬───────┘
-       │              │              │                │
        ▼              ▼              ▼                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  特征工程 (Feature Engineering)               │
-├─────────────────────────────────────────────────────────────┤
-│ Elo → eloMod (0.3 + 1.4 × expectedWin)                     │
-│ ATK/DEF → atkMod ((myATK/oppDEF)^0.35)                      │
-│ 动态大洲修正 → AFC/CAF头部ATK向1.0靠拢                        │
-│ 交易量情绪 → volumeFactor 调整 market blend 权重               │
-│ Polymarket blend → 时间衰减 20%→50%, 含平局概率               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  预测层 (Prediction Layer)                    │
+│                      预测层                                   │
 ├──────────────────────┬──────────────────────────────────────┤
-│ Dixon-Coles 模型 (80%)│ GBDT 辅助模型 (20%)                  │
-│ • Poisson 比分网格     │ • 15棵决策树, lr=0.08               │
-│ • rho 修正 (-0.15/-0.12)│ • 特征: Elo差/ATK差/DEF差/状态     │
-│ • 温度/等保校准        │ • ≥15场历史数据时激活                │
+│ Dixon-Coles (80%)    │ GBDT 辅助模型 (20%)                  │
+│ • Poisson 比分网格    │ • 15 棵决策树, lr=0.08              │
+│ • ρ = -0.20/-0.15    │ • 特征: Elo/ATK/DEF/状态差           │
+│ • 等保回归校准        │ • ≥15 场历史数据时激活               │
 └──────────┬───────────┴──────────────────────────────────────┘
-           │
            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  校准层 (Calibration Layer)                   │
-├─────────────────────────────────────────────────────────────┤
-│ 等保回归 (PAVA) — 从历史预测+结果学习校准曲线                   │
-│ 优先于温度缩放, 无数据时回退 T=1.15                            │
-│ Log Loss + Brier Score 回测评估                               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  输出层 (Output Layer)                        │
+│                       输出层                                  │
 ├──────────────┬──────────────┬──────────────┬────────────────┤
 │ 单场胜/平/负  │ 淘汰赛晋级率  │ 冠军概率      │ EV 分析        │
-│ Dixon-Coles   │ 三段式       │ Monte Carlo   │ 模型 vs 市场   │
-│ +GBDT+校准    │ 90min+ET+PK │ 10,000次      │ 正期望高亮     │
+│ 概率          │ 90min+ET+PK │ Monte Carlo   │ 模型 vs 市场   │
+│              │ 三段式       │ 10,000 次     │ 正期望高亮     │
 └──────────────┴──────────────┴──────────────┴────────────────┘
 ```
-
-### 数据源
-
-| 数据 | 来源 | 覆盖 | 获取方式 |
-|------|------|------|---------|
-| Elo 评分 | worldfootballrankings.com | 48/48 队 | WebFetch |
-| WCQ 预选赛 xG | FootyStats.com | 43/48 队 | Exa 搜索 |
-| 俱乐部 xG | Understat | 五大联赛 3 赛季 119 队 | Playwright 抓取 |
-| 赛果 + 比分 | Polymarket gamma-api | 自动同步 | API 直连 |
-| 赛前赔率 | Polymarket gamma-api + clob-api | 65 场 | gamma 实时 + clob 价格历史 |
-| 交易量 | Polymarket gamma-api | 每场交易额 | API 直连 |
-
-### Polymarket 赔率处理策略
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│              Polymarket 赔率生命周期                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  赛前同步 ──→ gamma-api 获取当前赔率                         │
-│     │        (active=true, closed=false)                    │
-│     ▼                                                       │
-│  价格验证 ──→ 过滤占位符 (0.9995/0.0005)                     │
-│     │        过滤赛中赔率 (开球后 0-4h)                       │
-│     ▼                                                       │
-│  已结算比赛 ─→ 从 clob-api prices-history 获取赛前最后一刻赔率 │
-│     │        以 gameStartTime 为截止点                       │
-│     ▼                                                       │
-│  合并存储 ──→ 新数据与已有数据 merge（不覆盖已冻结的赛前赔率）  │
-│     │                                                       │
-│     ▼                                                       │
-│  预测冻结 ──→ 开赛后预测不再变化，使用赛前最后一刻赔率          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 平局预测策略
-
-传统 "最高概率即结果" 方法会导致零平局（即使平局概率 27% 也从未被选中）。采用两项改进：
-
-1. **概率加权 W/D/L** — 积分榜显示 `W += pWin, D += pDraw, L += pLoss`（小数），真实反映概率分布
-2. **5% 阈值判定** — 当平局概率与最高概率差距 < 5% 时判定为平局（如 Brazil vs Morocco: W=33.4% D=32.7%）
 
 ### 模型参数
 
@@ -109,43 +106,11 @@
 | 基础 λ | 1.25 | 每队期望进球（×2 ≈ WC 均场 2.5 球） |
 | Elo 标尺 | 400 | 标准 Elo |
 | 攻防阻尼 | 0.35 | 调参（降低攻防影响力） |
-| ρ 小组赛 | -0.15 | Dixon & Cole 1997 + 评估建议 |
-| ρ 淘汰赛 | -0.12 | 同上 |
+| ρ 小组赛 | -0.20 | Dixon & Coles 1997，针对平局校准优化 |
+| ρ 淘汰赛 | -0.15 | 同上 |
 | 温度 T | 1.15 | Guo et al. 2017（等保回归无数据时回退） |
 | Polymarket blend | 20%→50% | 时间衰减 + 交易量情绪调整 |
-| ET 保守系数 γ | 0.70±0.05 | 历史世界杯数据 |
-| PK 截断 | [0.40, 0.60] | 经验值 |
 | GBDT blend | 20% | 梯度提升辅助模型 |
-
-### 五项前沿改进（基于 2021-2026 研究报告）
-
-1. **等保回归校准 (PAVA)** — 替代温度缩放，用历史预测+结果训练单调映射函数
-2. **Log Loss + Brier Score 回测** — 金标准评估指标，替代 RPS
-3. **Polymarket 交易量情绪** — 高交易量→市场更自信→增加 blend 权重
-4. **EV 分析面板** — 模型概率 vs 市场赔率，高亮正期望投注
-5. **GBDT 辅助模型** — 15 棵决策树，梯度提升，80% DC + 20% GBDT
-
-### 赔率与预测策略改进
-
-6. **CLOB 价格历史** — 已结算比赛从 clob-api 获取赛前最后一刻赔率，解决赛后赔率被结算价格覆盖的问题
-7. **赛前赔率冻结** — 开赛后预测自动冻结，合并存储策略防止赔率丢失
-8. **概率加权积分榜** — W/D/L 显示概率加权小数，真实反映不确定性
-9. **平局阈值判定** — 5% 阈值解决 Poisson 模型中平局概率从未成为最高概率的数学特性
-
-### 已知修复记录
-
-#### Fix: Isotonic Calibration 退化导致所有比赛概率趋同
-
-**问题**：`reevaluateResults()` 在页面初始化时被调用，内部 `fitAndCacheCalibration()` 会拟合等保回归校准表。当 localStorage 中积累了大量 Polymarket 同步数据后，PAVA 算法因输入 probs 分布过于集中而退化——所有 win/draw/loss bin 被合并为 1-2 个极端值（calP=0 或 calP=1），导致 `calibrateProbs()` 将所有比赛概率映射为 W80%/D20%/L0% 或类似极端值。
-
-**根因**：`fitIsotonicCalibration()` 对退化数据缺少防护，`calibrateProbs()` 对退化校准结果缺少检测。
-
-**修复**：在 `calibrateProbs()` 中增加双重安全检查：
-1. 校准表每类别至少需要 3 个 bin，否则丢弃校准
-2. 校准后任一概率 >95% 或 <5% 时丢弃校准，回退原始概率
-3. 丢弃时自动将 `isotonicCalibration` 置 null，防止后续重复触发
-
-**验证**：25 条模拟 Polymarket 同步数据注入后，修复前仅 5 种概率模式且极端值遍布全场；修复后 42 种概率模式，分布正常。
 
 ### 运行
 
@@ -154,122 +119,39 @@ python3 server.py
 # 打开 http://localhost:9090
 ```
 
-### 操作说明
+### 功能
 
 - **🔄 Sync Polymarket** — 一键同步赛果 + 赔率 + 重新评估
 - **🔁 Re-evaluate** — 用最新模型参数重算所有比赛（不联网）
-- **EV 分析** — Radar 标签页显示正期望投注机会
-- **回测** — Model 标签页显示 Log Loss、Brier Score、准确率
+- **💰 EV 分析** — 模型概率 vs 市场赔率，正期望高亮
+- **📊 回测** — Log Loss、Brier Score、准确率（2022 WC 数据）
+- **🔮 What-If** — 条件蒙特卡洛（锁定比赛结果）
+- **📈 雷达** — 模型 vs Polymarket 真金白银价格对比
 
-### 全面检查清单（供下一位 AI 参考）
+### 安全措施
 
-以下为已知需要验证的模块和潜在风险点：
+- `esc()` HTML 转义防止 XSS（所有 innerHTML 路径）
+- API Key 仅通过 header 传输（无 query param fallback）
+- API Key 存储时显示安全警告
+- 自动数据获取需用户确认
+- 错误信息脱敏（仅 console.error 记录详情）
+- importResults 校验队名必须在 TEAMS 字典中
 
-| 模块 | 检查项 | 风险等级 |
-|------|--------|----------|
-| `calibrateProbs()` | 退化校准表防护（已修）+ 不再修改全局状态（已修） | 🟢 已修 |
-| `queryWhatIf()` | 平局过滤 + simulationHistory 填充 + rounds 依赖（已修） | 🟢 已修 |
-| `runSimulation` rankings sort | ExpPts→Pts 排序统一（已修） | 🟢 已修 |
-| `buildKOBracket` thirdPlaceGroups | 原地 sort 污染参数（已修） | 🟢 已修 |
-| API Key innerHTML XSS | getApiKey 值已用 esc() 转义（已修） | 🟢 已修 |
-| e.message innerHTML XSS | catch 块已用 esc() 转义（已修） | 🟢 已修 |
-| renderEVSection NaN | 空 filter 时显示 '-'（已修） | 🟢 已修 |
-| `fetchPolymarketResults` endDate | 使用市场结算日期而非比赛日期 | 🟡 待审 |
-| `fetchPolymarketResults` 伪造比分 | 无精确比分时 fallback 1-0/0-1 | 🟡 待审 |
-| `dynamicElo` 异步竞态 | 多个 async 函数并发操作全局状态 | 🟡 待审 |
-| localStorage lost-update | 读-改-写模式无锁 | 🟡 待审 |
-| 浏览器直接调用外部 API | fallback 路径暴露 API key | 🟡 待审 |
-| Edge 兼容性 | 用户报告 Edge 不显示概率 | 🔴 待查 |
+### 性能优化
 
----
+- `loadState()` 内存缓存，避免重复 JSON.parse
+- `calculateEV()` 按市场赔率缓存
+- `renderMatches()` 使用哈希查找替代线性搜索
+- `getGroupStatus()` O(1) 团队→小组映射
+- `withPreTournamentElo()` try/finally 异常安全的 Elo 状态管理
+- Monte Carlo simulationHistory 仅存储轻量摘要（省 ~50MB）
 
-## English
+### 平局预测策略
 
-### Architecture
+传统 "最高概率即结果" 方法会导致零平局（即使平局概率 27% 也从未被选中）。采用两项改进：
 
-Dixon-Coles Poisson model + Isotonic Regression Calibration + GBDT Ensemble + Polymarket 3 API Integration
-
-### Data Sources
-
-| Data | Source | Coverage | Method |
-|------|--------|----------|--------|
-| Elo ratings | worldfootballrankings.com | 48/48 teams | WebFetch |
-| WCQ qualifying xG | FootyStats.com | 43/48 teams | Exa search |
-| Club xG | Understat | Top 5 leagues, 3 seasons, 119 teams | Playwright |
-| Match results | Polymarket gamma-api | Auto-sync | API |
-| Pre-match odds | Polymarket gamma-api + clob-api | 65 matches | gamma live + clob price history |
-| Trading volume | Polymarket gamma-api | Per-match | API |
-
-### Polymarket Odds Lifecycle
-
-```
-Pre-match sync  →  Fetch current odds from gamma-api (active=true, closed=false)
-       │
-       ▼
-Price validation →  Filter placeholders (0.9995/0.0005)
-       │          Filter in-play odds (0-4h after kickoff)
-       ▼
-Resolved matches →  Fetch last pre-match price from clob-api prices-history
-       │           Cutoff at gameStartTime
-       ▼
-Merge storage    →  New data merges with existing (never overwrite frozen odds)
-       │
-       ▼
-Frozen prediction →  After kickoff, prediction stays fixed at last pre-match odds
-```
-
-### Draw Prediction Strategy
-
-Traditional "highest probability wins" produces zero draws (even with ~27% draw probability). Two fixes:
-
-1. **Probability-weighted W/D/L** — Standings show `W += pWin, D += pDraw, L += pLoss` (decimals), reflecting true probability distribution
-2. **5% threshold** — Draw predicted when draw probability is within 5% of the highest (e.g., Brazil vs Morocco: W=33.4% D=32.7%)
-
-### Five Frontier Improvements (2021-2026 Research)
-
-1. **Isotonic Regression (PAVA)** — replaces temperature scaling with data-driven calibration
-2. **Log Loss + Brier Score** — gold standard evaluation metrics
-3. **Polymarket Volume Sentiment** — high volume → market more confident → increase blend weight
-4. **EV Analysis Panel** — model probability vs market odds, highlight positive expected value
-5. **GBDT Auxiliary Model** — 15 decision trees, gradient boosting, 80% DC + 20% GBDT
-
-### Odds & Prediction Strategy Improvements
-
-6. **CLOB Price History** — Resolved matches fetch last pre-match odds from clob-api prices-history, solving the problem of post-match settlement overwriting pre-match odds
-7. **Pre-match Odds Freeze** — Predictions freeze after kickoff; merge storage prevents odds loss
-8. **Probability-weighted Standings** — W/D/L shows weighted decimals, reflecting true uncertainty
-9. **Draw Threshold** — 5% threshold solves the Poisson model property where draw probability is never the single highest
-
-### Fix: Isotonic Calibration Degeneracy
-
-**Bug**: When `reevaluateResults()` is called during init, `fitAndCacheCalibration()` fits isotonic regression on stored results. With accumulated Polymarket sync data where probs are concentrated (same model produces similar outputs), PAVA merges all bins into 1-2 degenerate values (calP=0 or calP=1), causing `calibrateProbs()` to map ALL match probabilities to extreme values like W80%/D20%/L0%.
-
-**Fix**: Added dual safety checks in `calibrateProbs()`:
-1. Require at least 3 bins per category; discard calibration if fewer
-2. Discard calibration if any output prob >95% or <5%, falling back to raw probs
-3. Sets `isotonicCalibration = null` on discard to prevent repeated triggering
-
-### Full Audit Checklist (for next AI)
-
-| Module | Check Item | Risk |
-|--------|-----------|------|
-| `calibrateProbs()` | Degenerate calibration guard (fixed) | 🟢 Fixed |
-| `reevaluateResults()` | Added to init sequence — runs on every page load | 🟡 Review |
-| `matchProbs()` → Polymarket blend | Extreme odds may over-blend lambda | 🟡 Medium |
-| `simulateOneTournament()` | 10k MC loops × 72 `matchProbs` calls — perf bottleneck | 🟡 Medium |
-| `fetchPolymarketResults()` | gamma-api format may change | 🟡 Medium |
-| `fitIsotonicCalibration()` | PAVA degeneracy with 20-50 samples | 🟡 Medium |
-| `dynamicElo` global state | Sync functions use `withPreTournamentElo` (try/finally); async keep manual save/restore | 🟢 Fixed |
-| `simulationHistory` memory | Removed `rounds` from 10k stored sims (~50MB saved) | 🟢 Fixed |
-| `_proxy_match_odds` quota | Added sport key cache to avoid repeat 404 calls | 🟢 Fixed |
-| Edge browser compat | User reports predictions not displayed | 🔴 Investigate |
-
-### Run
-
-```bash
-python3 server.py
-# Open http://localhost:9090
-```
+1. **概率加权 W/D/L** — 积分榜显示 `W += pWin, D += pDraw, L += pLoss`（小数）
+2. **5% 阈值判定** — 当平局概率与最高概率差距 < 5% 时判定为平局
 
 ---
 
