@@ -1878,7 +1878,37 @@ function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
   // Group winners that face third-place teams (8 slots from Annex C)
   const W_SLOTS = ['A','B','D','E','G','I','K','L'];
   const bracket = [];
-  const usedGroups = new Set(); // Track which groups' teams are already in bracket
+  const usedGroups = new Set(); // Track which runners-up are already in bracket
+
+  function assignThirdGroupsToWinners() {
+    if (matrixEntry && matrixEntry.length >= 8) {
+      const mapped = matrixEntry.slice(0, 8).split('');
+      if (mapped.every((tg, i) => thirdMap[tg] && tg !== W_SLOTS[i]) && new Set(mapped).size === 8) {
+        return mapped;
+      }
+    }
+
+    const qualified = (thirdPlaceGroups || []).filter(g => thirdMap[g]);
+    const assigned = Array(W_SLOTS.length).fill(null);
+    const used = new Set();
+
+    function backtrack(slot) {
+      if (slot === W_SLOTS.length) return true;
+      const wg = W_SLOTS[slot];
+      for (const tg of qualified) {
+        if (tg === wg || used.has(tg)) continue;
+        assigned[slot] = tg;
+        used.add(tg);
+        if (backtrack(slot + 1)) return true;
+        used.delete(tg);
+        assigned[slot] = null;
+      }
+      return false;
+    }
+
+    return backtrack(0) ? assigned : [];
+  }
+  const thirdAssignments = assignThirdGroupsToWinners();
 
   // 8 matches: group winners vs third-place teams
   for (let i = 0; i < 8; i++) {
@@ -1886,18 +1916,12 @@ function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
     bracket.push(rankings[wg][0]);
     usedGroups.add(wg + 'W'); // Mark winner as used
 
-    if (matrixEntry && i < matrixEntry.length) {
-      const tg = matrixEntry[i];
-      const thirdTeam = thirdMap[tg];
-      if (thirdTeam && tg !== wg) {
-        bracket.push(thirdTeam);
-        usedGroups.add(tg + 'T');
-      } else {
-        // Fallback: runner-up from a different group
-        bracket.push(rankings[wg][1]);
-        usedGroups.add(wg + 'R');
-      }
+    const tg = thirdAssignments[i];
+    const thirdTeam = tg ? thirdMap[tg] : null;
+    if (thirdTeam && tg !== wg) {
+      bracket.push(thirdTeam);
     } else {
+      // Last-resort fallback should be rare; keep bracket size valid.
       bracket.push(rankings[wg][1]);
       usedGroups.add(wg + 'R');
     }
@@ -1936,6 +1960,9 @@ function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
     bracket.push(rankings[ruLeft[i]][1], rankings[ruLeft[i+1]][1]);
   }
 
+  if (bracket.length !== 32 || new Set(bracket).size !== 32) {
+    console.warn('Invalid KO bracket generated', { length: bracket.length, unique: new Set(bracket).size, comboKey });
+  }
   return bracket; // 32 teams = 16 R32 matches
 }
 
@@ -2284,9 +2311,7 @@ function calculateEV() {
 
     for (const m of (typeof MATCHES !== 'undefined' ? MATCHES : [])) {
       const [date, , ta, tb] = m;
-      const key1 = `${ta}|${tb}|`;
-      const key2 = `${ta}|${tb}|${date}`;
-      const mktOdds = marketOdds[key1] || marketOdds[key2] || null;
+      const mktOdds = getStoredMarketOdds(marketOdds, ta, tb, date);
       if (!mktOdds) continue;
 
       const resultKey = `${ta}|${tb}`;
@@ -2895,12 +2920,31 @@ function getMomentum(team) {
 let _cachedActualMap = null;
 let _cachedActualResultsHash = '';
 
+function getStoredMarketOdds(marketOddsMap, home, away, matchDate) {
+  if (!marketOddsMap) return null;
+  const date = matchDate ? String(matchDate).substring(0, 10) : '';
+  const direct = marketOddsMap[`${home}|${away}|${matchDate}`] ||
+                 marketOddsMap[`${home}|${away}|${date}`] ||
+                 marketOddsMap[`${home}|${away}|`] ||
+                 marketOddsMap[`${home}|${away}`] ||
+                 Object.entries(marketOddsMap).find(([k]) => k.startsWith(`${home}|${away}|${date}`))?.[1];
+  if (direct) return direct;
+
+  const reverse = marketOddsMap[`${away}|${home}|${matchDate}`] ||
+                  marketOddsMap[`${away}|${home}|${date}`] ||
+                  marketOddsMap[`${away}|${home}|`] ||
+                  marketOddsMap[`${away}|${home}`] ||
+                  Object.entries(marketOddsMap).find(([k]) => k.startsWith(`${away}|${home}|${date}`))?.[1];
+  if (!reverse) return null;
+  return { ...reverse, win: reverse.loss, loss: reverse.win };
+}
+
 /** Build lookup map from actual results array, with caching.
  *  Cache invalidated by content hash (team pairs + scores) to detect any data change. */
 function buildActualResultsMap(actualResults) {
   const results = actualResults || [];
   // Build a lightweight hash from results content for cache invalidation
-  const hash = results.map(r => `${r.team1}|${r.score1}-${r.score2}|${r.team2}`).join(';');
+  const hash = results.map(r => `${r.team1}|${r.score1}-${r.score2}|${r.team2}|${r.date||''}`).join(';');
   if (_cachedActualResultsHash === hash && _cachedActualMap) return _cachedActualMap;
 
   const map = {};
@@ -3232,8 +3276,7 @@ function runSimulation(){
       a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;a.ExpPts=a.Pts;b.ExpPts=b.Pts;
       matchResults.push({date:utcDate,ta,sa,sb,tb,grp,actual:true,probs:null});
     }else{
-      const matchKey=`${ta}|${tb}|${utcDate}`;
-      const mktProbs=marketOddsMap[matchKey]||null;
+      const mktProbs=getStoredMarketOdds(marketOddsMap,ta,tb,utcDate);
       const probs=matchProbs(ta,tb,preFormMap,utcDate,mktProbs);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=getFormAdjustedLambdas(ta,tb,preFormMap,utcDate,mktProbs);
@@ -4394,7 +4437,7 @@ async function fetchPolymarketResults() {
         if (scoreProbs.length > 0) {
           const top = scoreProbs[0];
           const second = scoreProbs.length > 1 ? scoreProbs[1].prob : 0;
-          if (top.prob > 0.95 || (top.prob > 0.40 && top.prob - second > 0.10)) {
+          if (top.prob > 0.95) {
             scores[base] = top.score;
             console.log('[Poly] Exact Score:', base, top.score[0]+'-'+top.score[1], 'prob='+top.prob);
             // Also add/update result directly from Exact Score (for closed-but-not-settled main markets)
@@ -4520,8 +4563,9 @@ function reevaluateResults() {
     trainAndBlendGBDT(state.actualResults);
 
     let changed = 0;
+    const marketOddsMap = state.polymarketMatchOdds || {};
     for (const r of state.actualResults) {
-      const mktOdds = r.preMatchOdds || null;
+      const mktOdds = r.preMatchOdds || getStoredMarketOdds(marketOddsMap, r.team1, r.team2, r.date);
       const probs = matchProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
       const pred = predictOutcome(probs,r.team1,r.team2);
       const [lh, la] = getFormAdjustedLambdas(r.team1, r.team2, preFormMap, r.date, mktOdds);
@@ -4680,7 +4724,7 @@ function validateData() {
     if (!groupedTeams.has(t)) errors.push(`${t} in TEAMS but not in any group`);
   }
   // 4. Opening match is Mexico vs South Africa on Jun 11
-  if (MATCHES[0][2] !== 'Mexico' || MATCHES[0][3] !== 'South Africa' || MATCHES[0][0] !== '2026-06-12') {
+  if (MATCHES[0][2] !== 'Mexico' || MATCHES[0][3] !== 'South Africa' || MATCHES[0][0] !== '2026-06-11') {
     errors.push(`Opening match should be Mexico vs South Africa on 2026-06-11`);
   }
   // 5. England flag should be gb-eng, not gb

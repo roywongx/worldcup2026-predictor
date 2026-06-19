@@ -48,6 +48,15 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         """Extract API key from X-API-Key header only."""
         return self.headers.get('X-API-Key', '')
 
+    def _odds_request(self, path, params=None):
+        """Build the-odds-api request using header auth so keys stay out of URLs."""
+        api_key = self._get_api_key()
+        query = urllib.parse.urlencode(params or {})
+        url = f'https://api.the-odds-api.com/v4/{path}'
+        if query:
+            url += '?' + query
+        return urllib.request.Request(url, headers={'x-api-key': api_key})
+
     def _test_key(self):
         """Test if a football-data.org API key is valid."""
         api_key = self._get_api_key()
@@ -75,8 +84,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': 'Pass X-API-Key header or ?key=YOUR_KEY'}, 400)
             return
 
-        url = f'https://api.the-odds-api.com/v4/sports?apiKey={api_key}'
-        req = urllib.request.Request(url)
+        req = self._odds_request('sports')
         # SEC-1: don't log key
         self._log('test-odds →')
         try:
@@ -129,8 +137,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
             return
 
-        url = f'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?apiKey={api_key}&regions=us&markets=outrights&oddsFormat=american'
-        req = urllib.request.Request(url)
+        req = self._odds_request('sports/soccer_fifa_world_cup_winner/odds/', {
+            'regions': 'us',
+            'markets': 'outrights',
+            'oddsFormat': 'american',
+        })
         # SEC-1: don't log key
         self._log('the-odds-api.com →')
         try:
@@ -168,8 +179,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             if sport in seen or not sport:
                 continue
             seen.add(sport)
-            url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={api_key}&regions=us,eu&markets=h2h&oddsFormat=decimal'
-            req = urllib.request.Request(url)
+            req = self._odds_request(f'sports/{sport}/odds/', {
+                'regions': 'us,eu',
+                'markets': 'h2h',
+                'oddsFormat': 'decimal',
+            })
             self._log(f'the-odds-api.com match-odds → {sport}')
             try:
                 with urllib.request.urlopen(req, timeout=15) as resp:
@@ -193,10 +207,27 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
-        # Allow localhost and local network origins
-        self.send_header('Access-Control-Allow-Origin', '*')
+        origin = self.headers.get('Origin')
+        if self._is_allowed_origin(origin):
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Vary', 'Origin')
         self.end_headers()
         self.wfile.write(body)
+
+    def _is_allowed_origin(self, origin):
+        if not origin:
+            return False
+        try:
+            parsed = urllib.parse.urlparse(origin)
+        except Exception:
+            return False
+        host = parsed.hostname or ''
+        return (
+            host in {'localhost', '127.0.0.1', '::1'} or
+            host.startswith('192.168.') or
+            host.startswith('10.') or
+            (host.startswith('172.') and host.split('.')[1].isdigit() and 16 <= int(host.split('.')[1]) <= 31)
+        )
 
 # SEC-3: use ThreadingHTTPServer for concurrent requests
 class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
