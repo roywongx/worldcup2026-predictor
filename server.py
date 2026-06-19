@@ -34,6 +34,12 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+    def end_headers(self):
+        # Prevent browser caching of HTML/JS files
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        super().end_headers()
+
     def _log(self, msg):
         ts = datetime.now().strftime('%H:%M:%S')
         print(f'  [{ts}] {msg}')

@@ -132,6 +132,21 @@
 8. **概率加权积分榜** — W/D/L 显示概率加权小数，真实反映不确定性
 9. **平局阈值判定** — 5% 阈值解决 Poisson 模型中平局概率从未成为最高概率的数学特性
 
+### 已知修复记录
+
+#### Fix: Isotonic Calibration 退化导致所有比赛概率趋同
+
+**问题**：`reevaluateResults()` 在页面初始化时被调用，内部 `fitAndCacheCalibration()` 会拟合等保回归校准表。当 localStorage 中积累了大量 Polymarket 同步数据后，PAVA 算法因输入 probs 分布过于集中而退化——所有 win/draw/loss bin 被合并为 1-2 个极端值（calP=0 或 calP=1），导致 `calibrateProbs()` 将所有比赛概率映射为 W80%/D20%/L0% 或类似极端值。
+
+**根因**：`fitIsotonicCalibration()` 对退化数据缺少防护，`calibrateProbs()` 对退化校准结果缺少检测。
+
+**修复**：在 `calibrateProbs()` 中增加双重安全检查：
+1. 校准表每类别至少需要 3 个 bin，否则丢弃校准
+2. 校准后任一概率 >95% 或 <5% 时丢弃校准，回退原始概率
+3. 丢弃时自动将 `isotonicCalibration` 置 null，防止后续重复触发
+
+**验证**：25 条模拟 Polymarket 同步数据注入后，修复前仅 5 种概率模式且极端值遍布全场；修复后 42 种概率模式，分布正常。
+
 ### 运行
 
 ```bash
@@ -145,6 +160,24 @@ python3 server.py
 - **🔁 Re-evaluate** — 用最新模型参数重算所有比赛（不联网）
 - **EV 分析** — Radar 标签页显示正期望投注机会
 - **回测** — Model 标签页显示 Log Loss、Brier Score、准确率
+
+### 全面检查清单（供下一位 AI 参考）
+
+以下为已知需要验证的模块和潜在风险点：
+
+| 模块 | 检查项 | 风险等级 |
+|------|--------|----------|
+| `calibrateProbs()` | 退化校准表防护是否完备（已修） | 🟢 已修 |
+| `reevaluateResults()` | 被加入 init 序列，每次页面加载都触发，可能反复拟合校准表 | 🟡 待审 |
+| `matchProbs()` → `getFormAdjustedLambdas()` | Polymarket blend 在极端赔率下可能过度推高 lambda | 🟡 中 |
+| `simulateOneTournament()` | Monte Carlo 循环 10000 次，每次调用 `matchProbs`×72，性能瓶颈 | 🟡 中 |
+| `fetchPolymarketResults()` | gamma-api 返回格式可能变化（outcomePrices JSON 解析） | 🟡 中 |
+| `fitIsotonicCalibration()` | PAVA 算法对小样本（<20）直接返回 null，但 20-50 条时仍可能退化 | 🟡 中 |
+| `getCalibrationStats()` | 使用 `preFormMap` 而非动态 form，可能低估模型实际表现 | 🟡 低 |
+| `addResult()` / `importResults()` | 手动录入后不触发 `reevaluateResults()`，数据可能不同步 | 🟡 低 |
+| `dynamicElo` 全局状态 | 多处 `initDynamicElo()` → `Object.assign(dynamicElo,savedElo)` 模式，若中途抛异常会丢失 Elo 状态 | 🟡 低 |
+| localStorage 版本兼容 | `dataVersion` 从旧版升级时可能触发种子数据重复写入 | 🟢 低 |
+| Edge 兼容性 | 用户报告 Edge 不显示概率，可能与 CSS 或 JS 执行环境有关 | 🔴 待查 |
 
 ---
 
@@ -204,6 +237,28 @@ Traditional "highest probability wins" produces zero draws (even with ~27% draw 
 7. **Pre-match Odds Freeze** — Predictions freeze after kickoff; merge storage prevents odds loss
 8. **Probability-weighted Standings** — W/D/L shows weighted decimals, reflecting true uncertainty
 9. **Draw Threshold** — 5% threshold solves the Poisson model property where draw probability is never the single highest
+
+### Fix: Isotonic Calibration Degeneracy
+
+**Bug**: When `reevaluateResults()` is called during init, `fitAndCacheCalibration()` fits isotonic regression on stored results. With accumulated Polymarket sync data where probs are concentrated (same model produces similar outputs), PAVA merges all bins into 1-2 degenerate values (calP=0 or calP=1), causing `calibrateProbs()` to map ALL match probabilities to extreme values like W80%/D20%/L0%.
+
+**Fix**: Added dual safety checks in `calibrateProbs()`:
+1. Require at least 3 bins per category; discard calibration if fewer
+2. Discard calibration if any output prob >95% or <5%, falling back to raw probs
+3. Sets `isotonicCalibration = null` on discard to prevent repeated triggering
+
+### Full Audit Checklist (for next AI)
+
+| Module | Check Item | Risk |
+|--------|-----------|------|
+| `calibrateProbs()` | Degenerate calibration guard (fixed) | 🟢 Fixed |
+| `reevaluateResults()` | Added to init sequence — runs on every page load | 🟡 Review |
+| `matchProbs()` → Polymarket blend | Extreme odds may over-blend lambda | 🟡 Medium |
+| `simulateOneTournament()` | 10k MC loops × 72 `matchProbs` calls — perf bottleneck | 🟡 Medium |
+| `fetchPolymarketResults()` | gamma-api format may change | 🟡 Medium |
+| `fitIsotonicCalibration()` | PAVA degeneracy with 20-50 samples | 🟡 Medium |
+| `dynamicElo` global state | `initDynamicElo`/restore pattern — exception unsafe | 🟡 Low |
+| Edge browser compat | User reports predictions not displayed | 🔴 Investigate |
 
 ### Run
 
