@@ -1747,7 +1747,7 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
  *  Returns flat array of 32 team names for 16 R32 matches.
  *  Validates: no same-group matchups in R32. */
 function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
-  const comboKey = thirdPlaceGroups ? thirdPlaceGroups.sort().join("") : "";
+  const comboKey = thirdPlaceGroups ? thirdPlaceGroups.slice().sort().join("") : "";
   const matrixEntry = TPM[comboKey];
 
   // Third-place teams by source group
@@ -3094,9 +3094,11 @@ function runSimulation(){
     }
   });
   const rankings={};
-  GROUPS.forEach(g=>{rankings[g]=GROUP_TEAMS[g].slice().sort((a,b)=>{const sa=standings[g][a],sb=standings[g][b];return sb.ExpPts-sa.ExpPts||sb.Pts-sa.Pts||sb.GD-sa.GD||sb.GF-sa.GF;});});
+  // Sort by Pts (probability-weighted actual points) for bracket construction,
+  // consistent with MC's integer pts sort. ExpPts is display-only (expected value per match).
+  GROUPS.forEach(g=>{rankings[g]=GROUP_TEAMS[g].slice().sort((a,b)=>{const sa=standings[g][a],sb=standings[g][b];return sb.Pts-sa.Pts||sb.GD-sa.GD||sb.GF-sa.GF||sb.ExpPts-sa.ExpPts;});});
   const thirds=[];GROUPS.forEach(g=>thirds.push({team:rankings[g][2],group:g,...standings[g][rankings[g][2]]}));
-  thirds.sort((a,b)=>b.ExpPts-a.ExpPts||b.GD-a.GD||b.GF-a.GF);
+  thirds.sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF);
   const bestThirds=thirds.slice(0,8).map(t=>t.team);
   const thirdPlaceGroups=thirds.slice(0,8).map(t=>t.group).sort();
   const koBracket=buildKOBracket(rankings,bestThirds,thirdPlaceGroups);
@@ -3435,6 +3437,7 @@ function queryWhatIf(lockedMatches) {
         const expected = lockedMatches[key];
         const actual = run.matchResults[key];
         if (!actual) return false;
+        if (expected === 'draw') return actual.ga === actual.gb;
         return actual.winner === expected;
       });
     });

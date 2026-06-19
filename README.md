@@ -168,6 +168,9 @@ python3 server.py
 | 模块 | 检查项 | 风险等级 |
 |------|--------|----------|
 | `calibrateProbs()` | 退化校准表防护是否完备（已修） | 🟢 已修 |
+| `queryWhatIf()` | 平局过滤逻辑错误（已修） | 🟢 已修 |
+| `runSimulation` rankings sort | ExpPts→Pts 排序统一（已修） | 🟢 已修 |
+| `buildKOBracket` thirdPlaceGroups | 原地 sort 污染参数（已修） | 🟢 已修 |
 | `reevaluateResults()` | 被加入 init 序列，每次页面加载都触发，可能反复拟合校准表 | 🟡 待审 |
 | `matchProbs()` → `getFormAdjustedLambdas()` | Polymarket blend 在极端赔率下可能过度推高 lambda | 🟡 中 |
 | `simulateOneTournament()` | Monte Carlo 循环 10000 次，每次调用 `matchProbs`×72，性能瓶颈 | 🟡 中 |
