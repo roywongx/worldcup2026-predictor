@@ -1169,6 +1169,9 @@ const GROUP_TEAMS = {
   L:["England","Croatia","Ghana","Panama"]
 };
 
+const teamToGroup = {};
+for (const g of GROUPS) for (const t of GROUP_TEAMS[g]) teamToGroup[t] = g;
+
 /** Match schedule: [date, home, away, group]
  *  Source: FIFA official schedule via kickoffadventures.com (cross-verified with NDTV/ESPN)
  *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
@@ -2150,9 +2153,12 @@ function applyIsotonicCalibration(probs, iso) {
 /** Calculate Expected Value (EV) for all upcoming matches
  *  EV = (model_probability × market_payout) - 1
  *  Positive EV = profitable bet opportunity */
+let _evCache=null,_evCacheKey='';
 function calculateEV() {
   return withPreTournamentElo(() => {
     const state = loadState();
+    const oddsKey=JSON.stringify(state.polymarketMatchOdds||{});
+    if(_evCache&&_evCacheKey===oddsKey)return _evCache;
     const marketOdds = state.polymarketMatchOdds || {};
     const results = [];
 
@@ -2198,6 +2204,7 @@ function calculateEV() {
     }
 
     results.sort((a, b) => b.ev - a.ev);
+    _evCache=results;_evCacheKey=oddsKey;
     return results;
   });
 }
@@ -2660,6 +2667,7 @@ function eloGoalIndex(gd) {
  *  K factor varies by match importance (FIFA standard):
  *  WC knockout: K=80, WC group: K=60, Qualifier: K=50, Friendly: K=30 */
 function updateElo(team1, team2, score1, score2, matchDate) {
+  if (score1 == null || score2 == null) return; // skip results without exact scores
   const ra = dynamicElo[team1], rb = dynamicElo[team2];
   const gd = Math.abs(score1 - score2);
   const G = eloGoalIndex(gd);
@@ -2808,11 +2816,10 @@ function getGroupStatus(actualResults) {
   }
 
   for (const r of actualResults || []) {
-    for (const g of GROUPS) {
-      if (GROUP_TEAMS[g].includes(r.team1) && GROUP_TEAMS[g].includes(r.team2)) {
-        applyGroupResult(status, g, r.team1, r.team2, r.score1, r.score2);
-        break;
-      }
+    const g1 = teamToGroup[r.team1];
+    const g2 = teamToGroup[r.team2];
+    if (g1 && g1 === g2) {
+      applyGroupResult(status, g1, r.team1, r.team2, r.score1, r.score2);
     }
   }
   return status;
@@ -2913,7 +2920,7 @@ const I18N = {
     'radar.fetch':'🔄 同步 Polymarket (赛果+赔率)','radar.champion':'冠军概率：模型 vs 市场',
     'radar.brierTracker':'打脸榜','radar.brierBetter':'预测更准',
     'radar.trend':'概率走势','radar.trendDesc':'过去 24h 概率变化',
-    'radar.snapshots':'快照','radar.fetchMatchOdds':'获取单场赔率',
+    'radar.snapshots':'快照','radar.fetchMatchOdds':'获取单场赔率','radar.model':'模型','radar.market':'市场',
     // Toast messages
     'toast.fetchErr':'获取失败','toast.fetchOk':'数据已刷新','toast.added':'已添加','toast.cleared':'已清空',
     'toast.imported':'已导入','toast.exported':'已导出','toast.updated':'已更新','toast.reset':'已重置',
@@ -2989,7 +2996,7 @@ const I18N = {
     'radar.fetch':'🔄 Sync Polymarket (Results + Odds)','radar.champion':'Champion: Model vs Market',
     'radar.brierTracker':'Brier Tracker','radar.brierBetter':'more accurate',
     'radar.trend':'Probability Trend','radar.trendDesc':'Probability changes over past 24h',
-    'radar.snapshots':'snapshots','radar.fetchMatchOdds':'Fetch Match Odds',
+    'radar.snapshots':'snapshots','radar.fetchMatchOdds':'Fetch Match Odds','radar.model':'Model','radar.market':'Market',
     // Toast messages
     'toast.fetchErr':'Fetch failed','toast.fetchOk':'Data refreshed','toast.added':'Added','toast.cleared':'Cleared',
     'toast.imported':'Imported','toast.exported':'Exported','toast.updated':'Updated','toast.reset':'Reset',
@@ -3031,19 +3038,48 @@ function getVenue(ta, tb, date) { return VENUE_MAP[`${date}|${ta}|${tb}`] || '';
 
 // ── Data Persistence ─────────────────────────────────────────────────────
 const STORAGE_KEY='wc2026_data';
+let _stateVer=0;
+let _stateCache=null,_stateCacheKey='';
 function loadState(){
-  try{if(typeof localStorage!=='undefined'){const r=localStorage.getItem(STORAGE_KEY);if(r){const s=JSON.parse(r);
-    if(!s.actualResults)s.actualResults=[];if(!s.customOdds)s.customOdds={};if(!s.apiKeys)s.apiKeys={};if(!s.fetchLog)s.fetchLog=[];return s;}}}catch(e){}
-  return{customOdds:{},actualResults:[],apiKeys:{},lastUpdate:null,fetchLog:[]};
+  try{
+    if(typeof localStorage==='undefined')return _stateCache||{customOdds:{},actualResults:[],apiKeys:{},lastUpdate:null,fetchLog:[],_ver:0};
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw===_stateCacheKey&&_stateCache)return _stateCache;
+    if(raw){const s=JSON.parse(raw);
+      if(!s.actualResults)s.actualResults=[];if(!s.customOdds)s.customOdds={};if(!s.apiKeys)s.apiKeys={};if(!s.fetchLog)s.fetchLog=[];
+      _stateVer=s._ver||0;_stateCache=s;_stateCacheKey=raw;return s;}
+  }catch(e){}
+  return _stateCache||{customOdds:{},actualResults:[],apiKeys:{},lastUpdate:null,fetchLog:[],_ver:0};
 }
-function saveState(s){try{if(typeof localStorage!=='undefined')localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch(e){}}
+function saveState(s){
+  try{if(typeof localStorage!=='undefined'){
+    const cur=localStorage.getItem(STORAGE_KEY);
+    if(cur){const parsed=JSON.parse(cur);if(parsed._ver&&parsed._ver>_stateVer){
+      // Another tab wrote a newer version — merge
+      const remote=parsed;
+      if(!s.actualResults)s.actualResults=[];
+      const existing=new Set(s.actualResults.map(r=>`${r.team1}|${r.team2}`));
+      for(const r of(remote.actualResults||[])){if(!existing.has(`${r.team1}|${r.team2}`))s.actualResults.push(r);}
+      if(remote.customOdds)Object.assign(s.customOdds||={},remote.customOdds);
+      if(remote.apiKeys)Object.assign(s.apiKeys||={},remote.apiKeys);
+      if(remote.fetchLog)s.fetchLog=[...(remote.fetchLog||[]),...(s.fetchLog||[])].sort((a,b)=>b.time>a.time?1:-1).slice(0,50);
+      _stateVer=remote._ver;
+    }}
+    s._ver=(_stateVer||0)+1;_stateVer=s._ver;
+    const raw=JSON.stringify(s);
+    localStorage.setItem(STORAGE_KEY,raw);
+    _stateCache=s;_stateCacheKey=raw;
+  }}catch(e){}
+}
 function getApiKey(s){return loadState().apiKeys[s]||'';}
-function saveApiKey(s,k){const st=loadState();st.apiKeys[s]=k;saveState(st);showToast(s+' key saved');}
+function saveApiKey(s,k){if(k.length>100){showToast('Key too long');return;}const st=loadState();st.apiKeys[s]=k;saveState(st);showToast(s+' key saved');}
 
 // ── Tab navigation ───────────────────────────────────────────────────────
 let currentResults=null,mcResults=null,marketData={matches:{},champion:{},lastFetch:null};
 let whatIfLocks={}; // Conditional MC locked match results
 let polymarketAutoTimer=null; // Auto-refresh timer for Polymarket data
+let _syncBusy=false; // Prevent concurrent sync operations
+let _fetchBusy=false; // Prevent concurrent fetchResults calls
 function showSection(id,btn){
   try{document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.segment button').forEach(b=>b.classList.remove('active'));
@@ -3063,6 +3099,7 @@ function runSimulation(){
   const marketOddsMap=state.polymarketMatchOdds||{};
   const standings={},matchResults=[];
   GROUPS.forEach(g=>{standings[g]={};GROUP_TEAMS[g].forEach(t=>{standings[g][t]={P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,ExpPts:0};});});
+  let rankings={}, bestThirds=[], ko={};
   withPreTournamentElo(() => {
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
   MATCHES.forEach(([date,ta,tb,grp])=>{
@@ -3098,16 +3135,15 @@ function runSimulation(){
       matchResults.push({date,ta,sa:lh2,sb:la2,tb,grp,actual:false,probs,homeExpPts:expH,awayExpPts:expA});
     }
   });
-  const rankings={};
   // Sort by Pts (probability-weighted actual points) for bracket construction,
   // consistent with MC's integer pts sort. ExpPts is display-only (expected value per match).
   GROUPS.forEach(g=>{rankings[g]=GROUP_TEAMS[g].slice().sort((a,b)=>{const sa=standings[g][a],sb=standings[g][b];return sb.Pts-sa.Pts||sb.GD-sa.GD||sb.GF-sa.GF||sb.ExpPts-sa.ExpPts;});});
   const thirds=[];GROUPS.forEach(g=>thirds.push({team:rankings[g][2],group:g,...standings[g][rankings[g][2]]}));
   thirds.sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF);
-  const bestThirds=thirds.slice(0,8).map(t=>t.team);
+  bestThirds=thirds.slice(0,8).map(t=>t.team);
   const thirdPlaceGroups=thirds.slice(0,8).map(t=>t.group).sort();
   const koBracket=buildKOBracket(rankings,bestThirds,thirdPlaceGroups);
-  const ko={};
+  ko={};
   function runKORound(teams){const res=[],winners=[];
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
@@ -3165,6 +3201,7 @@ function renderStandings(){
 function renderMatches(){
   const{matchResults,ko}=currentResults;
   const state=loadState();const actualResults=state.actualResults||[];
+  const actualLookup={};if(state.actualResults)for(const r of state.actualResults)actualLookup[`${r.team1}|${r.team2}`]=r;
   const played=actualResults.filter(r=>r.score1!==undefined);
   const correct=played.filter(r=>r.correct).length;
 
@@ -3238,7 +3275,7 @@ function renderMatches(){
 
     if(m.actual){
       // Actual match: show result + prediction comparison
-      const stored=actualResults.find(r=>r.team1===m.ta&&r.team2===m.tb);
+      const stored=actualLookup[`${m.ta}|${m.tb}`];
       let predLine='';
       if(stored&&stored.predGoals){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
@@ -3683,7 +3720,7 @@ function renderData(){
   let h='<div class="data-grid">';
   if(!hasO&&!hasR){h+=`<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))"><h4>🚀 ${t('data.setup')}</h4><p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem">${t('data.setup.desc')}</p><div style="display:flex;flex-direction:column;gap:0.8rem"><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">⚽</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">Football-Data.org</div><div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div></div><a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">💰</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">The-Odds-API</div><div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div></div><a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div></div></div>`;}
   h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData()">⟳ ${t('data.fetchAll')}</button></div></div>`;
-  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${esc(getApiKey('football-data'))}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${esc(getApiKey('oddsapi'))}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
+  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="font-size:0.65rem;color:var(--orange);margin-bottom:0.4rem">⚠️ API keys stored in browser localStorage. Do not use on shared computers.</div><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${esc(getApiKey('football-data'))}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${esc(getApiKey('oddsapi'))}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
   h+=`<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   if(stats&&stats.total>=3){
     const ac=stats.accuracy>=0.6?'metric-good':(stats.accuracy>=0.45?'metric-warn':'metric-bad');
@@ -3867,7 +3904,7 @@ async function testApiKey(){
     }else{
       if(el){el.style.color='var(--red)';el.textContent=`✗ ${j.error||'Invalid key'}`;}
     }
-  }catch(e){if(el){el.style.color='var(--red)';el.textContent=`✗ Network error: ${e.message}`;}}
+  }catch(e){console.error('testApiKey:',e);if(el){el.style.color='var(--red)';el.textContent='✗ Request failed';}}
 }
 
 async function testOddsKey(){
@@ -3883,10 +3920,12 @@ async function testOddsKey(){
     }else{
       if(el){el.style.color='var(--red)';el.textContent=`✗ ${j.error||'Invalid key'}`;}
     }
-  }catch(e){if(el){el.style.color='var(--red)';el.textContent=`✗ Error: ${e.message}`;}}
+  }catch(e){console.error('testOddsKey:',e);if(el){el.style.color='var(--red)';el.textContent='✗ Request failed';}}
 }
 
 async function fetchResults(){
+  if(_fetchBusy)return;_fetchBusy=true;
+  try{
   const apiKey=getApiKey('football-data');const se=document.getElementById('fetch-status');
   if(!apiKey){if(se)se.textContent='Need API key';showToast('Set Football-Data.org API key first');return false;}
   if(se)se.textContent=t('prob.fetchingResults');
@@ -3898,11 +3937,7 @@ async function fetchResults(){
       const j=await r.json();
       if(j.error){logFetch('results',false,j.error);}
       else if(j.matches){data=j;logFetch('results',true,'via proxy');}
-    }catch(e){logFetch('results',false,'proxy: '+e.message);}
-    // Fallback: direct fetch (works if served from localhost)
-    if(!data){
-      try{const r=await fetch(`https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED`,{headers:{'X-Auth-Token':apiKey}});if(r.ok){data=await r.json();logFetch('results',true,'direct');}}catch(e){logFetch('results',false,'direct: '+e.message);}
-    }
+    }catch(e){logFetch('results',false,'proxy: Request failed');}
     if(!data){showToast('Could not fetch — check API key and server');if(se)se.textContent='Fetch failed';return false;}
     let matches=[];let source='football-data.org';
     if(Array.isArray(data)){matches=data;source='worldcupjson.net';}else if(data.matches){matches=data.matches;}
@@ -3929,7 +3964,8 @@ async function fetchResults(){
   mcResults=null;runSimulation();showToast(`Fetched ${nc} new results`);if(se)se.textContent=`+${nc} · ${new Date().toLocaleTimeString()}`;}
     else{showToast('No new results');if(se)se.textContent=`No new · ${new Date().toLocaleTimeString()}`;}
     return true;
-  }catch(e){if(se)se.textContent=`Error: ${e.message}`;showToast(`Error: ${e.message}`);return false;}
+  }catch(e){console.error('fetchResults:',e);if(se)se.textContent='Error: Request failed';showToast('Error: Request failed');return false;}
+  }finally{_fetchBusy=false;}
 }
 
 async function fetchOdds(){
@@ -3946,7 +3982,7 @@ async function fetchOdds(){
       const state=loadState();for(const[team,odds]of Object.entries(oddsMap)){if(TEAMS[team]&&typeof odds==='number'){TEAMS[team].odds=odds;state.customOdds[team]=odds;}}
       state.lastUpdate=new Date().toISOString();saveState(state);showToast(`Updated ${Object.keys(oddsMap).length} odds`);return true;
     }return false;
-  }catch(e){showToast(`Error: ${e.message}`);return false;}
+  }catch(e){console.error('fetchOdds:',e);showToast('Error: Request failed');return false;}
 }
 
 /** Fetch match-level h2h odds from the-odds-api.com → W/D/L probabilities */
@@ -4012,7 +4048,7 @@ async function fetchPolymarketData(){
     marketData={matches:{},champion:nc,lastFetch:new Date().toISOString()};
     state.marketData=marketData;saveState(state);
     if(se)se.textContent=`Updated ${fc} · ${new Date().toLocaleTimeString()}`;showToast(`Polymarket: ${fc} teams`);return true;
-  }catch(e){if(se)se.textContent=`Error: ${e.message}`;showToast(`Error: ${e.message}`);return false;}
+  }catch(e){console.error('fetchPolymarketData:',e);if(se)se.textContent='Error: Request failed';showToast('Error: Request failed');return false;}
 }
 /** Fetch match-level moneyline odds from Polymarket FIFA WC series.
  *  Each event has 3 moneyline markets: Team A win, Team B win, Draw.
@@ -4155,6 +4191,23 @@ async function fetchPolymarketMatchOdds() {
 
 function mapPolymarketTeam(q){const pats=[/Will (.+?) win the/i,/Will (.+?) win/i,/(.+?) to win/i];for(const p of pats){const m=q.match(p);if(m)return mapTeamName(m[1].trim());}return null;}
 
+/** Resolve match date: prefer startDate/eventDate, fallback to MATCHES lookup by team names */
+function resolveMatchDate(ev, t1, t2) {
+  // Prefer startDate or eventDate (actual match date) over endDate (market settlement date)
+  const raw = ev.startDate || ev.eventDate || null;
+  if (raw) return raw.substring(0, 10) + 'T00:00:00Z';
+  // Fallback: look up from MATCHES array by team name
+  if (typeof MATCHES !== 'undefined') {
+    for (const m of MATCHES) {
+      if ((m[1] === t1 && m[2] === t2) || (m[1] === t2 && m[2] === t1)) {
+        return m[0] + 'T00:00:00Z';
+      }
+    }
+  }
+  // Last resort: use endDate (still better than nothing)
+  return (ev.endDate || new Date().toISOString()).substring(0, 10) + 'T00:00:00Z';
+}
+
 /** 从 gamma-api 获取已完成 WC 比赛结果，自动录入并更新 Elo */
 async function fetchPolymarketResults() {
   try {
@@ -4204,7 +4257,7 @@ async function fetchPolymarketResults() {
               if (t1 && t2 && TEAMS[t1] && TEAMS[t2]) {
                 const key = `${t1}|${t2}`;
                 const result = top.score[0] > top.score[1] ? t1 : (top.score[0] < top.score[1] ? t2 : 'draw');
-                const dateStr = (ev.endDate || new Date().toISOString()).substring(0, 10) + 'T00:00:00Z';
+                const dateStr = resolveMatchDate(ev, t1, t2);
                 const probs = matchProbs(t1, t2, preFormMap, dateStr);
                 const [lh, la] = getFormAdjustedLambdas(t1, t2, preFormMap, dateStr);
                 const pred = predictOutcome(probs, t1, t2);
@@ -4272,18 +4325,19 @@ async function fetchPolymarketResults() {
         }
         if (!result) continue;
         const score = scores[title];
-        const s1 = score ? score[0] : (result === team1 ? 1 : 0);
-        const s2 = score ? score[1] : (result === team2 ? 1 : 0);
+        const s1 = score ? score[0] : null;
+        const s2 = score ? score[1] : null;
         const preOdds = { win: pWin1/(pWin1+pDraw+pWin2), draw: pDraw/(pWin1+pDraw+pWin2), loss: pWin2/(pWin1+pDraw+pWin2) };
-        const dateStr = (ev.endDate || new Date().toISOString()).substring(0, 10) + 'T00:00:00Z';
+        const dateStr = resolveMatchDate(ev, team1, team2);
         const probs = matchProbs(team1, team2, preFormMap, dateStr, preOdds);
         const pred = predictOutcome(probs,team1,team2);
         const [lh, la] = getFormAdjustedLambdas(team1, team2, preFormMap, dateStr, preOdds);
         const newResult = {team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds};
         if (key in existingMap) {
-          // Update existing result (e.g., fix wrong score from earlier fetch)
+          // Skip if Exact Score already provided a better result
           const idx = existingMap[key];
           const old = state.actualResults[idx];
+          if (old.source === 'polymarket-exact') continue;
           if (old.score1 !== s1 || old.score2 !== s2 || old.actual !== result) {
             state.actualResults[idx] = newResult;
             added++;
@@ -4307,7 +4361,7 @@ async function fetchPolymarketResults() {
       Object.assign(dynamicElo,savedElo);
     }
     return added;
-  } catch (e) { Object.assign(dynamicElo,savedElo);console.error('[Poly] Error:', e); showToast('Polymarket results error: ' + e.message); return 0; }
+  } catch (e) { Object.assign(dynamicElo,savedElo);console.error('[Poly] Error:', e); showToast('Polymarket results error: Request failed'); return 0; }
 }
 
 /** 用当前模型参数 + 赛前 Polymarket 赔率重新评估所有已完成比赛 */
@@ -4340,6 +4394,7 @@ function reevaluateResults() {
 
 /** 完整同步: football-data.org(赛果) + Polymarket(赔率+冠军) */
 async function syncPolymarketData() {
+  if(_syncBusy)return;_syncBusy=true;
   const btn = document.querySelector('[onclick="syncPolymarketData()"]');
   if (btn) { btn.textContent = '⏳ Syncing...'; btn.disabled = true; }
   try {
@@ -4366,8 +4421,8 @@ async function syncPolymarketData() {
     runSimulation();
     const total = (state.actualResults || []).length;
     showToast(`Sync: ${total} results, ${Object.keys(merged).length} odds`);
-  } catch (e) { showToast('Sync error: ' + e.message); }
-  if (btn) { btn.textContent = '🔄 Sync Polymarket'; btn.disabled = false; }
+  } catch (e) { console.error('syncPolymarketData:',e); showToast('Sync error: Request failed'); }
+  finally { _syncBusy=false; if (btn) { btn.textContent = '🔄 Sync Polymarket'; btn.disabled = false; } }
 }
 
 /** Toggle Polymarket auto-refresh (every 5 minutes).
@@ -4547,12 +4602,16 @@ function validateData() {
   initDynamicElo();
   validateData(); // Check data integrity on every page load
 })();
-// Fit isotonic calibration from historical data on load
-fitAndCacheCalibration(loadState().actualResults || []);
-trainAndBlendGBDT(loadState().actualResults || []);
 reevaluateResults();
 runSimulation();applyLang();
-(async()=>{try{if(getApiKey('football-data'))await fetchResults();}catch(e){}})();
+(async()=>{try{
+  if(getApiKey('football-data')){
+    if(!localStorage.getItem('skipAutoFetch')){
+      if(confirm('自动获取比赛数据？(可在设置中关闭)')){localStorage.setItem('skipAutoFetch','1');await fetchResults();}
+      else{localStorage.setItem('skipAutoFetch','1');}
+    }else{await fetchResults();}
+  }
+}catch(e){}})();
 </script>
 </body>
 </html>
