@@ -1238,96 +1238,77 @@ for (const g of GROUPS) for (const t of GROUP_TEAMS[g]) teamToGroup[t] = g;
  *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
  *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 24-27 */
 const MATCHES = [
-  // ── MD1: 北京时间 (来源: Wikipedia + worldcupwiki.com) ──
-  // Jun 12
-  ["2026-06-12","03:00","Mexico","South Africa","A"],
-  ["2026-06-12","10:00","South Korea","Czech Republic","A"],
-  // Jun 13
-  ["2026-06-13","03:00","Canada","Bosnia Herzegovina","B"],
+  // [UTC日期, 北京时间, 主队, 客队, 小组]
+  ["2026-06-11","03:00","Mexico","South Africa","A"],
+  ["2026-06-12","08:00","South Korea","Czech Republic","A"],
+  ["2026-06-12","03:00","Canada","Bosnia Herzegovina","B"],
   ["2026-06-13","09:00","United States","Paraguay","D"],
-  // Jun 14
-  ["2026-06-14","03:00","Qatar","Switzerland","B"],
-  ["2026-06-14","06:00","Brazil","Morocco","C"],
+  ["2026-06-13","00:00","Qatar","Switzerland","B"],
+  ["2026-06-13","06:00","Brazil","Morocco","C"],
   ["2026-06-14","09:00","Haiti","Scotland","C"],
-  ["2026-06-14","12:00","Australia","Turkey","D"],
-  // Jun 15
-  ["2026-06-15","01:00","Germany","Curaçao","E"],
-  ["2026-06-15","04:00","Netherlands","Japan","F"],
-  ["2026-06-15","07:00","Ivory Coast","Ecuador","E"],
-  ["2026-06-15","10:00","Sweden","Tunisia","F"],
-  // Jun 16
-  ["2026-06-16","00:00","Spain","Cape Verde","H"],
-  ["2026-06-16","03:00","Belgium","Egypt","G"],
-  ["2026-06-16","06:00","Saudi Arabia","Uruguay","H"],
-  ["2026-06-16","09:00","Iran","New Zealand","G"],
-  // Jun 17
-  ["2026-06-17","03:00","France","Senegal","I"],
-  ["2026-06-17","06:00","Iraq","Norway","I"],
-  ["2026-06-17","09:00","Argentina","Algeria","J"],
-  ["2026-06-17","12:00","Austria","Jordan","J"],
-  // Jun 18
-  ["2026-06-18","01:00","Portugal","DR Congo","K"],
-  ["2026-06-18","04:00","England","Croatia","L"],
-  ["2026-06-18","07:00","Ghana","Panama","L"],
+  ["2026-06-14","09:00","Australia","Turkey","D"],
+  ["2026-06-14","00:00","Germany","Curaçao","E"],
+  ["2026-06-14","03:00","Netherlands","Japan","F"],
+  ["2026-06-14","07:00","Ivory Coast","Ecuador","E"],
+  ["2026-06-15","08:00","Sweden","Tunisia","F"],
+  ["2026-06-15","00:00","Spain","Cape Verde","H"],
+  ["2026-06-15","00:00","Belgium","Egypt","G"],
+  ["2026-06-15","06:00","Saudi Arabia","Uruguay","H"],
+  ["2026-06-15","06:00","Iran","New Zealand","G"],
+  ["2026-06-16","03:00","France","Senegal","I"],
+  ["2026-06-16","06:00","Iraq","Norway","I"],
+  ["2026-06-17","08:00","Argentina","Algeria","J"],
+  ["2026-06-17","09:00","Austria","Jordan","J"],
+  ["2026-06-17","00:00","Portugal","DR Congo","K"],
+  ["2026-06-17","03:00","England","Croatia","L"],
+  ["2026-06-17","07:00","Ghana","Panama","L"],
   ["2026-06-18","10:00","Uzbekistan","Colombia","K"],
-  // ── MD2 ──
-  // Jun 19
-  ["2026-06-19","00:00","Czech Republic","South Africa","A"],
-  ["2026-06-19","03:00","Switzerland","Bosnia Herzegovina","B"],
-  ["2026-06-19","06:00","Canada","Qatar","B"],
+  ["2026-06-18","00:00","Czech Republic","South Africa","A"],
+  ["2026-06-18","00:00","Switzerland","Bosnia Herzegovina","B"],
+  ["2026-06-18","03:00","Canada","Qatar","B"],
   ["2026-06-19","09:00","Mexico","South Korea","A"],
-  // Jun 20
-  ["2026-06-20","03:00","United States","Australia","D"],
-  ["2026-06-20","06:00","Scotland","Morocco","C"],
+  ["2026-06-19","03:00","United States","Australia","D"],
+  ["2026-06-19","06:00","Scotland","Morocco","C"],
   ["2026-06-20","08:30","Brazil","Haiti","C"],
   ["2026-06-20","11:00","Turkey","Paraguay","D"],
-  // Jun 21
-  ["2026-06-21","01:00","Netherlands","Sweden","F"],
-  ["2026-06-21","04:00","Germany","Ivory Coast","E"],
+  ["2026-06-20","01:00","Netherlands","Sweden","F"],
+  ["2026-06-20","04:00","Germany","Ivory Coast","E"],
   ["2026-06-21","08:00","Ecuador","Curaçao","E"],
-  ["2026-06-21","12:00","Tunisia","Japan","F"],
-  // Jun 22
-  ["2026-06-22","00:00","Spain","Saudi Arabia","H"],
-  ["2026-06-22","03:00","Belgium","Iran","G"],
-  ["2026-06-22","06:00","Uruguay","Cape Verde","H"],
-  ["2026-06-22","09:00","New Zealand","Egypt","G"],
-  // Jun 23
-  ["2026-06-23","01:00","Argentina","Austria","J"],
-  ["2026-06-23","05:00","France","Iraq","I"],
+  ["2026-06-21","10:00","Tunisia","Japan","F"],
+  ["2026-06-21","00:00","Spain","Saudi Arabia","H"],
+  ["2026-06-21","00:00","Belgium","Iran","G"],
+  ["2026-06-21","06:00","Uruguay","Cape Verde","H"],
+  ["2026-06-21","06:00","New Zealand","Egypt","G"],
+  ["2026-06-22","01:00","Argentina","Austria","J"],
+  ["2026-06-22","05:00","France","Iraq","I"],
   ["2026-06-23","08:00","Norway","Senegal","I"],
-  ["2026-06-23","11:00","Jordan","Algeria","J"],
-  // Jun 24
-  ["2026-06-24","01:00","Portugal","Uzbekistan","K"],
-  ["2026-06-24","04:00","England","Ghana","L"],
-  ["2026-06-24","07:00","Panama","Croatia","L"],
+  ["2026-06-23","08:00","Jordan","Algeria","J"],
+  ["2026-06-23","01:00","Portugal","Uzbekistan","K"],
+  ["2026-06-23","04:00","England","Ghana","L"],
+  ["2026-06-23","07:00","Panama","Croatia","L"],
   ["2026-06-24","10:00","Colombia","DR Congo","K"],
-  // ── MD3: 同时开球 ──
-  // Jun 25
-  ["2026-06-25","03:00","Switzerland","Canada","B"],
-  ["2026-06-25","03:00","Bosnia Herzegovina","Qatar","B"],
-  ["2026-06-25","06:00","Scotland","Brazil","C"],
-  ["2026-06-25","06:00","Morocco","Haiti","C"],
+  ["2026-06-24","03:00","Switzerland","Canada","B"],
+  ["2026-06-24","03:00","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-24","06:00","Scotland","Brazil","C"],
+  ["2026-06-24","06:00","Morocco","Haiti","C"],
   ["2026-06-25","09:00","Czech Republic","Mexico","A"],
   ["2026-06-25","09:00","South Africa","South Korea","A"],
-  // Jun 26
-  ["2026-06-26","04:00","Curaçao","Ivory Coast","E"],
-  ["2026-06-26","04:00","Ecuador","Germany","E"],
-  ["2026-06-26","07:00","Japan","Sweden","F"],
-  ["2026-06-26","07:00","Tunisia","Netherlands","F"],
+  ["2026-06-25","04:00","Curaçao","Ivory Coast","E"],
+  ["2026-06-25","04:00","Ecuador","Germany","E"],
+  ["2026-06-25","07:00","Japan","Sweden","F"],
+  ["2026-06-25","07:00","Tunisia","Netherlands","F"],
   ["2026-06-26","10:00","Turkey","United States","D"],
   ["2026-06-26","10:00","Paraguay","Australia","D"],
-  // Jun 27
-  ["2026-06-27","03:00","Norway","France","I"],
-  ["2026-06-27","03:00","Senegal","Iraq","I"],
+  ["2026-06-26","03:00","Norway","France","I"],
+  ["2026-06-26","03:00","Senegal","Iraq","I"],
   ["2026-06-27","08:00","Cape Verde","Saudi Arabia","H"],
-  ["2026-06-27","07:00","Uruguay","Spain","H"],
+  ["2026-06-27","08:00","Uruguay","Spain","H"],
   ["2026-06-27","11:00","Egypt","Iran","G"],
   ["2026-06-27","11:00","New Zealand","Belgium","G"],
-  // Jun 28
-  ["2026-06-28","05:00","Panama","England","L"],
-  ["2026-06-28","05:00","Croatia","Ghana","L"],
-  ["2026-06-28","07:30","Colombia","Portugal","K"],
-  ["2026-06-28","07:30","DR Congo","Uzbekistan","K"],
+  ["2026-06-27","05:00","Panama","England","L"],
+  ["2026-06-27","05:00","Croatia","Ghana","L"],
+  ["2026-06-27","07:30","Colombia","Portugal","K"],
+  ["2026-06-27","07:30","DR Congo","Uzbekistan","K"],
   ["2026-06-28","10:00","Algeria","Austria","J"],
   ["2026-06-28","10:00","Jordan","Argentina","J"]
 ];
@@ -1372,12 +1353,58 @@ const VENUES = [
 
 /** 比赛数据: [当地日期, 北京时间, 主队, 客队, 小组] */
 const MATCH_TIMES = {};
-MATCHES.forEach(m => {
-  MATCH_TIMES[`${m[2]}|${m[3]}|${m[0]}`] = m[1];
-});
+  MATCHES.forEach(([utcDate,bjTime,home,away,grp]) => {
+    MATCH_TIMES[`${home}|${away}|${utcDate}`] = bjTime;
+  });
 
 // ---- FIFA Annex C: 495 third-place combination matrix ----
 const TPM={"ABCDEFGH":"HGBCAFDE","ABCDEFGI":"CGBDAFEI","ABCDEFGJ":"CGBDAFEJ","ABCDEFGK":"CGBDAFEK","ABCDEFGL":"CGBDAFLE","ABCDEFHI":"HEBCAFDI","ABCDEFHJ":"HJBCAFDE","ABCDEFHK":"HEBCAFDK","ABCDEFHL":"HFBCADLE","ABCDEFIJ":"CJBDAFEI","ABCDEFIK":"CEBDAFIK","ABCDEFIL":"CEBDAFLI","ABCDEFJK":"CJBDAFEK","ABCDEFJL":"CJBDAFLE","ABCDEFKL":"CEBDAFLK","ABCDEGHI":"HGBCADEI","ABCDEGHJ":"HGBCADEJ","ABCDEGHK":"HGBCADEK","ABCDEGHL":"HGBCADLE","ABCDEGIJ":"EGBCADIJ","ABCDEGIK":"EGBCADIK","ABCDEGIL":"EGBCADLI","ABCDEGJK":"EGBCADJK","ABCDEGJL":"EGBCADLJ","ABCDEGKL":"EGBCADLK","ABCDEHIJ":"HJBCADEI","ABCDEHIK":"HEBCADIK","ABCDEHIL":"HEBCADLI","ABCDEHJK":"HJBCADEK","ABCDEHJL":"HJBCADLE","ABCDEHKL":"HEBCADLK","ABCDEIJK":"EJBCADIK","ABCDEIJL":"EJBCADLI","ABCDEIKL":"EIBCADLK","ABCDEJKL":"EJBCADLK"};
+
+// ---- 2022 World Cup Results (for backtesting) ----
+const WC2022_RESULTS = [
+  // Group A
+  {t1:'Qatar',t2:'Ecuador',s1:0,s2:2},{t1:'Senegal',t2:'Netherlands',s1:0,s2:2},
+  {t1:'Qatar',t2:'Senegal',s1:1,s2:3},{t1:'Netherlands',t2:'Ecuador',s1:1,s2:1},
+  {t1:'Ecuador',t2:'Senegal',s1:1,s2:2},{t1:'Netherlands',t2:'Qatar',s1:2,s2:0},
+  // Group B
+  {t1:'England',t2:'Iran',s1:6,s2:2},{t1:'United States',t2:'Wales',s1:1,s2:1},
+  {t1:'Wales',t2:'Iran',s1:0,s2:2},{t1:'England',t2:'United States',s1:0,s2:0},
+  {t1:'Wales',t2:'England',s1:0,s2:3},{t1:'Iran',t2:'United States',s1:0,s2:1},
+  // Group C
+  {t1:'Argentina',t2:'Saudi Arabia',s1:1,s2:2},{t1:'Mexico',t2:'Poland',s1:0,s2:0},
+  {t1:'Poland',t2:'Saudi Arabia',s1:2,s2:0},{t1:'Argentina',t2:'Mexico',s1:2,s2:0},
+  {t1:'Poland',t2:'Argentina',s1:0,s2:2},{t1:'Saudi Arabia',t2:'Mexico',s1:1,s2:2},
+  // Group D
+  {t1:'France',t2:'Australia',s1:4,s2:1},{t1:'Denmark',t2:'Tunisia',s1:0,s2:0},
+  {t1:'Tunisia',t2:'Australia',s1:0,s2:1},{t1:'France',t2:'Denmark',s1:2,s2:1},
+  {t1:'Tunisia',t2:'France',s1:1,s2:0},{t1:'Australia',t2:'Denmark',s1:1,s2:0},
+  // Group E
+  {t1:'Germany',t2:'Japan',s1:1,s2:2},{t1:'Spain',t2:'Costa Rica',s1:7,s2:0},
+  {t1:'Japan',t2:'Costa Rica',s1:0,s2:1},{t1:'Spain',t2:'Germany',s1:1,s2:1},
+  {t1:'Japan',t2:'Spain',s1:2,s2:1},{t1:'Costa Rica',t2:'Germany',s1:2,s2:4},
+  // Group F
+  {t1:'Morocco',t2:'Croatia',s1:0,s2:0},{t1:'Belgium',t2:'Canada',s1:1,s2:0},
+  {t1:'Belgium',t2:'Morocco',s1:0,s2:2},{t1:'Croatia',t2:'Canada',s1:4,s2:1},
+  {t1:'Croatia',t2:'Belgium',s1:0,s2:0},{t1:'Canada',t2:'Morocco',s1:2,s2:1},
+  // Group G
+  {t1:'Switzerland',t2:'Cameroon',s1:1,s2:0},{t1:'Brazil',t2:'Serbia',s1:2,s2:0},
+  {t1:'Cameroon',t2:'Serbia',s1:3,s2:3},{t1:'Brazil',t2:'Switzerland',s1:1,s2:0},
+  {t1:'Cameroon',t2:'Brazil',s1:1,s2:0},{t1:'Serbia',t2:'Switzerland',s1:2,s2:3},
+  // Group H
+  {t1:'Uruguay',t2:'South Korea',s1:0,s2:0},{t1:'Portugal',t2:'Ghana',s1:3,s2:2},
+  {t1:'South Korea',t2:'Ghana',s1:2,s2:3},{t1:'Portugal',t2:'Uruguay',s1:2,s2:0},
+  {t1:'South Korea',t2:'Portugal',s1:2,s2:1},{t1:'Ghana',t2:'Uruguay',s1:0,s2:2},
+];
+
+/** 2022-era Elo ratings for teams not in 2026 TEAMS (eloratings.net, Nov 2022) */
+const WC2022_TEAMS = {
+  'Wales': {elo:1771,fifa:1570,mv:160,wc:2,form:0.50,host:0,odds:15000,atk:0.92,def:0.95},
+  'Costa Rica': {elo:1584,fifa:1500,mv:45,wc:6,form:0.45,host:0,odds:25000,atk:0.85,def:0.90},
+  'Cameroon': {elo:1554,fifa:1485,mv:90,wc:8,form:0.45,host:0,odds:25000,atk:0.90,def:0.85},
+  'Serbia': {elo:1726,fifa:1550,mv:200,wc:4,form:0.50,host:0,odds:15000,atk:0.95,def:0.92},
+  'Denmark': {elo:1832,fifa:1670,mv:310,wc:6,form:0.55,host:0,odds:8000,atk:1.00,def:1.05},
+  'Poland': {elo:1722,fifa:1548,mv:180,wc:9,form:0.50,host:0,odds:15000,atk:0.92,def:0.95},
+};
 
 // ---- Poisson with Dixon-Coles correction ----
 
@@ -1966,7 +1993,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
   }
 
   // Group stage
-  for (const [date, time, home, away, grp] of MATCHES) {
+  for (const [utcDate, bjTime, home, away, grp] of MATCHES) {
     let sa, sb;
     const actual = actualMap[`${home}|${away}|`] || actualMap[`${home}|${away}|${date}`];
     if (actual) {
@@ -3195,7 +3222,7 @@ function runSimulation(){
   let rankings={}, bestThirds=[], ko={};
   withPreTournamentElo(() => {
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-  MATCHES.forEach(([date,time,ta,tb,grp])=>{
+  MATCHES.forEach(([utcDate,bjTime,ta,tb,grp])=>{
     let actual=actualMap[`${ta}|${tb}|`]||actualMap[`${ta}|${tb}|${date}`];
     const a=standings[grp][ta],b=standings[grp][tb];
     if(actual){
@@ -3357,9 +3384,12 @@ function renderMatches(){
   // Pre-compute Beijing time for each match from MATCHES array
   const matchBJTime = {};
   const matchBJDate = {};
-  MATCHES.forEach(([date,time,home,away,grp]) => {
-    matchBJTime[`${home}|${away}|${date}`] = time;
-    matchBJDate[`${home}|${away}|${date}`] = date;
+  MATCHES.forEach(([utcDate,bjTime,home,away,grp]) => {
+    matchBJTime[`${home}|${away}|${utcDate}`] = bjTime;
+    // Convert UTC date to Beijing date for display
+    const d = new Date(utcDate + 'T00:00:00Z');
+    d.setHours(d.getHours() + 8);
+    matchBJDate[`${home}|${away}|${utcDate}`] = `${d.getUTCMonth()+1}/${d.getUTCDate()}`;
   });
   // Sort matches by Beijing date + time
   matchResults.sort((a, b) => {
@@ -4640,7 +4670,7 @@ function validateData() {
   if (typeof VENUES !== 'undefined' && VENUES.length !== 72) errors.push(`VENUES has ${VENUES.length} entries, expected 72`);
   // 2. Each team plays exactly 3 matches
   const teamMatchCount = {};
-  for (const [,time,h,a,] of MATCHES) {
+  for (const [utcDate,bjTime,h,a,] of MATCHES) {
     teamMatchCount[h] = (teamMatchCount[h]||0) + 1;
     teamMatchCount[a] = (teamMatchCount[a]||0) + 1;
   }
