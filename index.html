@@ -1922,7 +1922,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
   // Group stage
   for (const [date, time, home, away, grp] of MATCHES) {
     let sa, sb;
-    const actual = actualMap[`${home}|${away}|${date}`] || actualMap[`${home}|${away}|`];
+    const actual = actualMap[`${home}|${away}|`] || actualMap[`${home}|${away}|${date}`];
     if (actual) {
       sa = actual.score1; sb = actual.score2;
     } else {
@@ -3150,7 +3150,7 @@ function runSimulation(){
   withPreTournamentElo(() => {
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
   MATCHES.forEach(([date,time,ta,tb,grp])=>{
-    let actual=actualMap[`${ta}|${tb}|${date}`]||actualMap[`${ta}|${tb}|`];
+    let actual=actualMap[`${ta}|${tb}|`]||actualMap[`${ta}|${tb}|${date}`];
     const a=standings[grp][ta],b=standings[grp][tb];
     if(actual){
       const sa=actual.score1,sb=actual.score2;
