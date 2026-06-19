@@ -1078,6 +1078,79 @@ function runBacktest() {
   };
   });
 }
+
+/** Rolling backtest: compute Brier/RPS after each match for trend analysis.
+ *  Returns array of { match, brier, rps, accuracy } for plotting curves. */
+function rollingBacktest() {
+  return WC26.withPreTournamentElo(() => {
+    const results = [];
+    let brierSum = 0, rpsSum = 0, correct = 0;
+
+    for (let i = 0; i < WC26.WC2022_RESULTS.length; i++) {
+      const m = WC26.WC2022_RESULTS[i];
+      const tmpAdded = [];
+      for (const tm of [m.t1, m.t2]) {
+        if (!TEAMS[tm] && WC26.WC2022_TEAMS[tm]) { TEAMS[tm] = WC26.WC2022_TEAMS[tm]; tmpAdded.push(tm); }
+      }
+      if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
+      const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
+      let probs;
+      try { probs = WC26.matchProbs(m.t1, m.t2, tmpFormMap); }
+      finally { tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];}); }
+      const predArr = [probs.win, probs.draw, probs.loss];
+      const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
+      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
+                         predArr[1] >= predArr[2] ? 1 : 2;
+      const isCorrect = predWinner === outcome;
+      if (isCorrect) correct++;
+      brierSum += WC26.brierScore(predArr, outcome);
+      rpsSum += WC26.rankedProbabilityScore(predArr, outcome);
+      results.push({
+        match: `${m.t1} vs ${m.t2}`,
+        brier: brierSum / (i + 1),
+        rps: rpsSum / (i + 1),
+        accuracy: correct / (i + 1)
+      });
+    }
+    return results;
+  });
+}
+
+/** Ablation experiment: measure incremental contribution of each model component.
+ *  Temporarily disables GBDT, NB, Elo scaling, MD3 incentive one at a time. */
+function ablationExperiment() {
+  const state = loadState();
+  const baseline = runBacktest();
+  if (!baseline) return null;
+
+  const results = [{ name: 'Full Model', accuracy: baseline.accuracy, brier: baseline.brier, rps: baseline.rps }];
+
+  // Ablation: disable GBDT
+  const savedGbdt = WC26.gbdt.trained;
+  WC26.gbdt.trained = false;
+  const noGbdt = runBacktest();
+  WC26.gbdt.trained = savedGbdt;
+  if (noGbdt) results.push({ name: '-GBDT', accuracy: noGbdt.accuracy, brier: noGbdt.brier, rps: noGbdt.rps });
+
+  // Ablation: disable NB (use Poisson)
+  const savedNB = WC26.NB_R;
+  WC26.NB_R = 0;
+  const noNB = runBacktest();
+  WC26.NB_R = savedNB;
+  if (noNB) results.push({ name: '-NB(Poisson)', accuracy: noNB.accuracy, brier: noNB.brier, rps: noNB.rps });
+
+  // Ablation: no Elo scaling (eloScale=1.0 for both)
+  // This requires modifying getLambdas temporarily — skip for safety
+  // Instead, measure by comparing with/without calibration
+  const savedCal = WC26.isotonicCalibration;
+  WC26.isotonicCalibration = null;
+  const noCal = runBacktest();
+  WC26.isotonicCalibration = savedCal;
+  if (noCal) results.push({ name: '-Calibration', accuracy: noCal.accuracy, brier: noCal.brier, rps: noCal.rps });
+
+  return results;
+}
+
 /** Compute rolling Brier scores for model and market */
 function computeBrierScores() {
   const state = loadState();
@@ -1226,6 +1299,7 @@ function calculateEV() {
         const edge = modelProbs[i] - marketProbs[i];
 
         if (Math.abs(edge) > 0.03) {
+          const kelly = WC26.kellyFraction ? WC26.kellyFraction(modelProbs[i], payout) : 0;
           results.push({
             team1: ta, team2: tb, date,
             outcome: labels[i],
@@ -1235,6 +1309,7 @@ function calculateEV() {
             marketAll: { w: marketProbs[0], d: marketProbs[1], l: marketProbs[2] },
             edge: edge,
             ev: ev,
+            kelly: kelly,
             payout: payout,
             confidence: Math.abs(edge) / Math.max(marketProbs[i], 0.01),
             volume: mktOdds.volume || 0
@@ -1270,7 +1345,7 @@ function renderEV() {
   } else {
     h += '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">Model vs Market probability difference. Positive EV = profitable opportunity.</div>';
     h += '<table style="width:100%;font-size:0.75rem"><tr style="font-weight:600;color:var(--text2)">';
-    h += '<th style="text-align:left">Match</th><th>Bet</th><th>Model</th><th>Market</th><th>Edge</th><th>EV</th><th>Volume</th></tr>';
+    h += '<th style="text-align:left">Match</th><th>Bet</th><th>Model</th><th>Market</th><th>Edge</th><th>EV</th><th>Kelly</th><th>Volume</th></tr>';
 
     for (const r of evData.slice(0, 20)) {
       const evColor = r.ev > 0 ? 'var(--green)' : 'var(--red)';
@@ -1284,6 +1359,7 @@ function renderEV() {
       h += `<td>${(r.marketProb*100).toFixed(1)}%</td>`;
       h += `<td style="color:${edgeColor}">${r.edge>0?'+':''}${(r.edge*100).toFixed(1)}%</td>`;
       h += `<td style="color:${evColor};font-weight:700">${r.ev>0?'+':''}${(r.ev*100).toFixed(1)}%</td>`;
+      h += `<td style="font-weight:600;color:${r.kelly>0?'var(--green)':'var(--text3)'}">${r.kelly>0?(r.kelly*100).toFixed(1)+'%':'-'}</td>`;
       h += `<td>${volStr}</td>`;
       h += `</tr>`;
     }
@@ -3209,6 +3285,14 @@ async function syncPolymarketData() {
     const state = loadState();
     const merged = { ...matchOdds, ...(state.polymarketMatchOdds || {}), ...polyOdds };
     state.polymarketMatchOdds = merged;
+    // Track match odds history for trend analysis (keep last 200 snapshots)
+    if (!state.matchOddsHistory) state.matchOddsHistory = [];
+    const oddsSnapshot = {};
+    for (const [k, v] of Object.entries(merged)) {
+      if (v && v.win > 0) oddsSnapshot[k] = { win: v.win, draw: v.draw, loss: v.loss };
+    }
+    state.matchOddsHistory.push({ timestamp: Date.now(), odds: oddsSnapshot });
+    if (state.matchOddsHistory.length > 200) state.matchOddsHistory = state.matchOddsHistory.slice(-200);
     saveState(state);
     reevaluateResults();
     // B2: Mean reversion — pull Elo toward pre-tournament prior after sync

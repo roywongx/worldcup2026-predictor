@@ -159,6 +159,51 @@ WC26.oddsToProb = function(usOdds) {
   return Math.abs(usOdds) / (Math.abs(usOdds) + 100);
 };
 
+/** Hedge calculator: given one bet placed, compute hedge amounts for other outcomes.
+ *  Input: { outcome: 'W'|'D'|'L', odds: decimal, stake: $ }
+ *  Other outcomes' odds: { W: decimal, D: decimal, L: decimal }
+ *  Returns: { hedgeBets: [{ outcome, odds, amount }], guaranteedProfit: number } */
+WC26.calculateHedge = function(myBet, otherOdds) {
+  // myBet: { outcome: 'W', odds: 2.5, stake: 100 }
+  // otherOdds: { W: 2.5, D: 3.2, L: 3.0 }
+  const myPayout = myBet.stake * myBet.odds;
+  const results = ['W', 'D', 'L'];
+  const otherOutcomes = results.filter(o => o !== myBet.outcome);
+
+  // For each other outcome, compute hedge amount to guarantee profit
+  // Profit if my bet wins: myPayout - totalStaked
+  // Profit if other wins: otherOdds[o] * hedgeAmount - totalStaked
+  // Set equal: myPayout = otherOdds[o] * hedgeAmount → hedgeAmount = myPayout / otherOdds[o]
+  // But this ignores the draw hedge. Proper approach: solve system of equations.
+
+  // Simple approach: for each other outcome, bet enough to cover myPayout
+  const hedgeBets = [];
+  let totalStaked = myBet.stake;
+
+  for (const o of otherOutcomes) {
+    const odds = otherOdds[o];
+    if (!odds || odds <= 1) continue;
+    const amount = Math.ceil(myPayout / odds * 100) / 100;  // round up to cents
+    hedgeBets.push({ outcome: o, odds, amount });
+    totalStaked += amount;
+  }
+
+  const guaranteedProfit = myPayout - totalStaked;
+  return { hedgeBets, totalStaked, guaranteedProfit };
+};
+
+/** Kelly criterion: optimal bet fraction for +EV bets.
+ *  f = (b*p - q) / b where b = decimal odds - 1, p = model prob, q = 1-p.
+ *  Returns fraction of bankroll (0 = don't bet, negative = don't bet).
+ *  Uses fractional Kelly (half-Kelly) for safety. */
+WC26.kellyFraction = function(pModel, decimalOdds) {
+  if (!pModel || !decimalOdds || decimalOdds <= 1) return 0;
+  const b = decimalOdds - 1;  // net payout per $1
+  const q = 1 - pModel;
+  const f = (b * pModel - q) / b;
+  return Math.max(0, f * 0.5);  // Half-Kelly for safety
+};
+
 /** 交易量排名百分位 */
 WC26.getVolumePercentile = function(volume, allVolumes) {
   if (!volume || !allVolumes || allVolumes.length === 0) return 0.5;
