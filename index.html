@@ -1995,11 +1995,11 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
   // Group stage
   for (const [utcDate, bjTime, home, away, grp] of MATCHES) {
     let sa, sb;
-    const actual = actualMap[`${home}|${away}|`] || actualMap[`${home}|${away}|${date}`];
+    const actual = actualMap[`${home}|${away}|`] || actualMap[`${home}|${away}|${utcDate}`];
     if (actual) {
       sa = actual.score1; sb = actual.score2;
     } else {
-      [sa, sb] = simMatch(home, away, formMap, date, marketOddsMap);
+      [sa, sb] = simMatch(home, away, formMap, utcDate, marketOddsMap);
     }
     applyGroupResult(st, grp, home, away, sa, sb);
   }
@@ -3223,7 +3223,7 @@ function runSimulation(){
   withPreTournamentElo(() => {
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
   MATCHES.forEach(([utcDate,bjTime,ta,tb,grp])=>{
-    let actual=actualMap[`${ta}|${tb}|`]||actualMap[`${ta}|${tb}|${date}`];
+    let actual=actualMap[`${ta}|${tb}|`]||actualMap[`${ta}|${tb}|${utcDate}`];
     const a=standings[grp][ta],b=standings[grp][tb];
     if(actual){
       const sa=actual.score1,sb=actual.score2;
@@ -3232,18 +3232,18 @@ function runSimulation(){
       a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;a.ExpPts=a.Pts;b.ExpPts=b.Pts;
       matchResults.push({date,ta,sa,sb,tb,grp,actual:true,probs:null});
     }else{
-      const matchKey=`${ta}|${tb}|${date}`;
+      const matchKey=`${ta}|${tb}|${utcDate}`;
       const mktProbs=marketOddsMap[matchKey]||null;
-      const probs=matchProbs(ta,tb,preFormMap,date,mktProbs);
+      const probs=matchProbs(ta,tb,preFormMap,utcDate,mktProbs);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
-      const[lh,la]=getFormAdjustedLambdas(ta,tb,preFormMap,date,mktProbs);
+      const[lh,la]=getFormAdjustedLambdas(ta,tb,preFormMap,utcDate,mktProbs);
       // Find most probable score consistent with predicted outcome
       const predOutcome = probs.draw>=probs.win && probs.draw>=probs.loss?'D':(probs.win>=probs.loss?'W':'L');
       let bp=0,lh2=1,la2=0;
       for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
         const outcome=x>y?'W':(x<y?'L':'D');
         if(outcome!==predOutcome) continue;
-        const rho=date?getRho(date):RHO_GROUP;
+        const rho=utcDate?getRho(utcDate):RHO_GROUP;
         const p=poissonPMF(x,lh)*poissonPMF(y,la)*dixonColesTau(x,y,lh,la,rho);
         if(p>bp){bp=p;lh2=x;la2=y;}
       }
