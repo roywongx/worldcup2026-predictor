@@ -167,22 +167,19 @@ python3 server.py
 
 | 模块 | 检查项 | 风险等级 |
 |------|--------|----------|
-| `calibrateProbs()` | 退化校准表防护是否完备（已修） | 🟢 已修 |
-| `queryWhatIf()` | 平局过滤逻辑错误（已修） | 🟢 已修 |
+| `calibrateProbs()` | 退化校准表防护（已修）+ 不再修改全局状态（已修） | 🟢 已修 |
+| `queryWhatIf()` | 平局过滤 + simulationHistory 填充 + rounds 依赖（已修） | 🟢 已修 |
 | `runSimulation` rankings sort | ExpPts→Pts 排序统一（已修） | 🟢 已修 |
 | `buildKOBracket` thirdPlaceGroups | 原地 sort 污染参数（已修） | 🟢 已修 |
-| `reevaluateResults()` | 被加入 init 序列，每次页面加载都触发，可能反复拟合校准表 | 🟡 待审 |
-| `matchProbs()` → `getFormAdjustedLambdas()` | Polymarket blend 在极端赔率下可能过度推高 lambda | 🟡 中 |
-| `simulateOneTournament()` | Monte Carlo 循环 10000 次，每次调用 `matchProbs`×72，性能瓶颈 | 🟡 中 |
-| `fetchPolymarketResults()` | gamma-api 返回格式可能变化（outcomePrices JSON 解析） | 🟡 中 |
-| `fitIsotonicCalibration()` | PAVA 算法对小样本（<20）直接返回 null，但 20-50 条时仍可能退化 | 🟡 中 |
-| `getCalibrationStats()` | 使用 `preFormMap` 而非动态 form，可能低估模型实际表现 | 🟡 低 |
-| `addResult()` / `importResults()` | 手动录入后不触发 `reevaluateResults()`，数据可能不同步 | 🟡 低 |
-| `dynamicElo` 全局状态 | 同步函数已统一用 `withPreTournamentElo`（try/finally 异常安全）；async 函数（MC/Polymarket）保留手动 save/restore | 🟢 已修 |
-| `simulationHistory` 内存 | 10k 次模拟移除 `rounds` 存储（节省 ~50MB） | 🟢 已修 |
-| `_proxy_match_odds` 配额 | 加 sport key 缓存，避免重复 404 浪费配额 | 🟢 已修 |
-| localStorage 版本兼容 | `dataVersion` 从旧版升级时可能触发种子数据重复写入 | 🟢 低 |
-| Edge 兼容性 | 用户报告 Edge 不显示概率，可能与 CSS 或 JS 执行环境有关 | 🔴 待查 |
+| API Key innerHTML XSS | getApiKey 值已用 esc() 转义（已修） | 🟢 已修 |
+| e.message innerHTML XSS | catch 块已用 esc() 转义（已修） | 🟢 已修 |
+| renderEVSection NaN | 空 filter 时显示 '-'（已修） | 🟢 已修 |
+| `fetchPolymarketResults` endDate | 使用市场结算日期而非比赛日期 | 🟡 待审 |
+| `fetchPolymarketResults` 伪造比分 | 无精确比分时 fallback 1-0/0-1 | 🟡 待审 |
+| `dynamicElo` 异步竞态 | 多个 async 函数并发操作全局状态 | 🟡 待审 |
+| localStorage lost-update | 读-改-写模式无锁 | 🟡 待审 |
+| 浏览器直接调用外部 API | fallback 路径暴露 API key | 🟡 待审 |
+| Edge 兼容性 | 用户报告 Edge 不显示概率 | 🔴 待查 |
 
 ---
 

@@ -2292,7 +2292,7 @@ function renderEVSection() {
   h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--text3)">Total Bets</div><div style="font-size:1.2rem;font-weight:700">${filtered.length}</div></div>`;
   h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--green)">Positive EV</div><div style="font-size:1.2rem;font-weight:700;color:var(--green)">${posEV.length}</div></div>`;
   h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--red)">Negative EV</div><div style="font-size:1.2rem;font-weight:700;color:var(--red)">${negEV.length}</div></div>`;
-  h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--text3)">Avg Edge</div><div style="font-size:1.2rem;font-weight:700">${(filtered.reduce((s,r)=>s+Math.abs(r.edge),0)/filtered.length*100).toFixed(1)}%</div></div>`;
+  h += `<div class="data-card" style="padding:0.6rem;text-align:center"><div style="font-size:0.65rem;color:var(--text3)">Avg Edge</div><div style="font-size:1.2rem;font-weight:700">${filtered.length > 0 ? (filtered.reduce((s,r)=>s+Math.abs(r.edge),0)/filtered.length*100).toFixed(1)+'%' : '-'}</div></div>`;
   h += `</div>`;
 
   // Cards
@@ -2606,7 +2606,6 @@ function calibrateProbs(pW, pD, pL) {
   const dBins = isotonicCalibration.draw?.length || 0;
   const lBins = isotonicCalibration.loss?.length || 0;
   if (wBins < 3 || dBins < 3 || lBins < 3) {
-    isotonicCalibration = null;
     return { win: pW, draw: pD, loss: pL };
   }
   const cal = applyIsotonicCalibration({ win: pW, draw: pD, loss: pL }, isotonicCalibration);
@@ -2616,7 +2615,6 @@ function calibrateProbs(pW, pD, pL) {
   const rW = cal.win / total, rD = cal.draw / total, rL = cal.loss / total;
   // Reject if output is too extreme (any prob >95% or <5%) — likely degenerate calibration
   if (rW > 0.95 || rD > 0.95 || rL > 0.95 || rW < 0.05 || rD < 0.05 || rL < 0.05) {
-    isotonicCalibration = null;
     return { win: pW, draw: pD, loss: pL };
   }
   return { win: rW, draw: rD, loss: rL };
@@ -3403,6 +3401,7 @@ function runMonteCarloUI(){
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
   const marketOddsMap=state.polymarketMatchOdds||{};
   const N=MC_DEFAULT,chunkSize=500;
+  simulationHistory = [];
   const champ={},finalist={},semi={},quarter={},r16={};
   let done=0;
   function processChunk(){
@@ -3414,6 +3413,12 @@ function runMonteCarloUI(){
       if(result.rounds.length>=3)for(const m of result.rounds[2]){semi[m.a]=(semi[m.a]||0)+1;semi[m.b]=(semi[m.b]||0)+1;}
       if(result.rounds.length>=2)for(const m of result.rounds[1]){quarter[m.a]=(quarter[m.a]||0)+1;quarter[m.b]=(quarter[m.b]||0)+1;}
       if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
+      // Store lightweight history for What-If filtering (rounds 1-3 only, ~14MB for 10k)
+      const mr = {};
+      result.rounds.slice(1,4).forEach((round, ri) => {
+        for(const m of round) mr[`${m.a}|${m.b}`] = {ga:m.ga,gb:m.gb,round:ri+1};
+      });
+      simulationHistory.push({ champion: result.champion, matchResults: mr });
     }
     done=end;
     if(btn)btn.textContent=`${t('prob.simulating')} ${(done/N*100).toFixed(0)}%`;
@@ -3443,22 +3448,25 @@ function queryWhatIf(lockedMatches) {
         const expected = lockedMatches[key];
         const actual = run.matchResults[key];
         if (!actual) return false;
+        const winner = actual.ga > actual.gb ? key.split('|')[0] : (actual.gb > actual.ga ? key.split('|')[1] : 'draw');
         if (expected === 'draw') return actual.ga === actual.gb;
-        return actual.winner === expected;
+        return winner === expected;
       });
     });
   }
 
   if (filtered.length === 0) return { error: t('prob.noMatch'), sampleSize: 0 };
 
-  // Recompute probabilities from filtered subset
+  // Recompute probabilities from filtered subset using matchResults round tags
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
   for (const run of filtered) {
-    champ[run.champion] = (champ[run.champion] || 0) + 1;
-    if (run.rounds.length >= 4) for (const m of run.rounds[3]) { finalist[m.a]=(finalist[m.a]||0)+1; finalist[m.b]=(finalist[m.b]||0)+1; }
-    if (run.rounds.length >= 3) for (const m of run.rounds[2]) { semi[m.a]=(semi[m.a]||0)+1; semi[m.b]=(semi[m.b]||0)+1; }
-    if (run.rounds.length >= 2) for (const m of run.rounds[1]) { quarter[m.a]=(quarter[m.a]||0)+1; quarter[m.b]=(quarter[m.b]||0)+1; }
-    if (run.rounds.length >= 1) for (const m of run.rounds[0]) { r16[m.a]=(r16[m.a]||0)+1; r16[m.b]=(r16[m.b]||0)+1; }
+    if (run.champion) champ[run.champion] = (champ[run.champion] || 0) + 1;
+    for (const [key, mr] of Object.entries(run.matchResults)) {
+      const [a, b] = key.split('|');
+      if (mr.round === 3) { finalist[a]=(finalist[a]||0)+1; finalist[b]=(finalist[b]||0)+1; }
+      if (mr.round === 2) { semi[a]=(semi[a]||0)+1; semi[b]=(semi[b]||0)+1; }
+      if (mr.round === 1) { quarter[a]=(quarter[a]||0)+1; quarter[b]=(quarter[b]||0)+1; r16[a]=(r16[a]||0)+1; r16[b]=(r16[b]||0)+1; }
+    }
   }
 
   return { champ, finalist, semi, quarter, r16, N: filtered.length, sampleSize: filtered.length };
@@ -3508,7 +3516,7 @@ function displayWhatIfResults() {
   h += `<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">`;
   for (const [key, winner] of Object.entries(whatIfLocks)) {
     const [t1, t2] = key.split('|');
-    h += `${t1} vs ${t2} → ${winner === 'draw' ? 'Draw' : winner} · `;
+    h += `${esc(t1)} vs ${esc(t2)} → ${winner === 'draw' ? 'Draw' : esc(winner)} · `;
   }
   h += `</div>`;
 
@@ -3616,7 +3624,7 @@ function renderProbabilities(){
   document.getElementById('section-probabilities').innerHTML=h;
   // Show existing What-If results if any
   if(Object.keys(whatIfLocks).length > 0) displayWhatIfResults();
-  }catch(e){document.getElementById('section-probabilities').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+e.message+'</p></div>';}
+  }catch(e){document.getElementById('section-probabilities').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+esc(e.message)+'</p></div>';}
 }
 
 // ── Model Analysis ───────────────────────────────────────────────────────
@@ -3664,7 +3672,7 @@ function renderModel(){
     h+=`</div></div>`;
   });h+='</div></div>';
   document.getElementById('section-model').innerHTML=h;
-  }catch(e){document.getElementById('section-model').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+e.message+'</p></div>';}
+  }catch(e){document.getElementById('section-model').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+esc(e.message)+'</p></div>';}
 }
 
 // ── Data Section ─────────────────────────────────────────────────────────
@@ -3675,7 +3683,7 @@ function renderData(){
   let h='<div class="data-grid">';
   if(!hasO&&!hasR){h+=`<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))"><h4>🚀 ${t('data.setup')}</h4><p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem">${t('data.setup.desc')}</p><div style="display:flex;flex-direction:column;gap:0.8rem"><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">⚽</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">Football-Data.org</div><div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div></div><a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">💰</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">The-Odds-API</div><div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div></div><a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div></div></div>`;}
   h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData()">⟳ ${t('data.fetchAll')}</button></div></div>`;
-  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${getApiKey('football-data')}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${getApiKey('oddsapi')}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
+  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${esc(getApiKey('football-data'))}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${esc(getApiKey('oddsapi'))}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
   h+=`<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   if(stats&&stats.total>=3){
     const ac=stats.accuracy>=0.6?'metric-good':(stats.accuracy>=0.45?'metric-warn':'metric-bad');
@@ -3764,7 +3772,7 @@ function renderData(){
     h+=`<span>${fl(t)}</span><input type="number" value="${TEAMS[t].odds}" min="100" step="50" onchange="quickOddsUpdate('${t}',this.value)">`;});
   h+='</div></div>';
   document.getElementById('section-data').innerHTML=h;
-  }catch(e){document.getElementById('section-data').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+e.message+'</p></div>';}
+  }catch(e){document.getElementById('section-data').innerHTML='<div class="data-card"><h4>⚠️ Error</h4><p style="color:var(--red)">'+esc(e.message)+'</p></div>';}
 }
 
 // ── Radar ────────────────────────────────────────────────────────────────
