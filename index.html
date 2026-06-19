@@ -3403,12 +3403,9 @@ function renderMatches(){
     // Get Beijing time display from MATCHES array
     const bjKey = `${m.ta}|${m.tb}|${m.date}`;
     const bjTimeStr = matchBJTime[bjKey] || '';
-    const bjDateStr = matchBJDate[bjKey] || m.date;
-    // Format date for display (YYYY-MM-DD → M/D)
-    const dateParts = bjDateStr.split('-');
-    const displayDate = `${parseInt(dateParts[1])}/${parseInt(dateParts[2])}`;
+    const displayDate = matchBJDate[bjKey] || '';
     
-    if(displayDate!==ld){ld=displayDate;h+=`<div class="match-date">📅 ${displayDate} (北京时间)</div>`;}
+    if(displayDate && displayDate!==ld){ld=displayDate;h+=`<div class="match-date">📅 ${displayDate} (北京时间)</div>`;}
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
 
     const venue=getVenue(m.ta,m.tb,m.date);
