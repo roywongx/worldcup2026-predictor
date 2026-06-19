@@ -85,3 +85,15 @@ WC26.getEffectiveElo = function(team) {
   if (WC26.dynamicElo && WC26.dynamicElo[team]) return WC26.dynamicElo[team];
   return WC26.TEAMS[team] ? WC26.TEAMS[team].elo : 1500;
 };
+
+/** Mean reversion (B2): pull dynamic Elo toward pre-tournament prior.
+ *  Called once per daily sync to prevent Elo drift from small sample bias.
+ *  rate=0.001 means 0.1% toward prior per day (slow, conservative). */
+WC26.regressElo = function(rate) {
+  rate = rate || 0.001;
+  if (!WC26.dynamicElo) return;
+  for (const t of Object.keys(WC26.dynamicElo)) {
+    const prior = WC26.TEAMS[t] ? WC26.TEAMS[t].elo : 1500;
+    WC26.dynamicElo[t] = WC26.dynamicElo[t] * (1 - rate) + prior * rate;
+  }
+};

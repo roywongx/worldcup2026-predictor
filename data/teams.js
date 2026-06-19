@@ -268,3 +268,60 @@ WC26.saveSquadData = function() {
 
 // Initialize on load
 WC26.loadSquadData();
+
+// ── Tilt system (B1): offensive/defensive tendency ─────────────────────────
+
+/**
+ * Tilt (-1 to +1): positive = attack-minded, negative = defensive.
+ * Two components:
+ * 1. Squad Tilt: positional distribution of squad (FWD-heavy → positive)
+ * 2. Tactical Tilt: goals scored vs xG residual (requires match history)
+ *
+ * Applied in getFormAdjustedLambdas:
+ *   lh *= (1 + 0.10 * tilt)   — attack-minded teams score more
+ *   la *= (1 - 0.05 * tilt)   — but also concede slightly more
+ */
+WC26.getTilt = function(team) {
+  const squad = WC26.SQUADS[team];
+  if (!squad || squad.length < 11) {
+    // Fallback: estimate from atk/def ratio
+    const t = WC26.TEAMS[team];
+    if (!t) return 0;
+    return Math.max(-1, Math.min(1, (t.atk - t.def) * 2));
+  }
+
+  // Squad tilt: FWD-heavy = positive
+  let fwdCount = 0, defCount = 0;
+  for (let i = 0; i < Math.min(squad.length, 11); i++) {
+    if (squad[i].pos === 'FWD') fwdCount++;
+    if (squad[i].pos === 'DEF' || squad[i].pos === 'GK') defCount++;
+  }
+  const squadTilt = Math.max(-1, Math.min(1, (fwdCount - defCount) / 5));
+
+  // Tactical tilt: would need xG history — for now, use form as proxy
+  const form = WC26.TEAMS[team] ? WC26.TEAMS[team].form : 0.5;
+  const tacticalTilt = (form - 0.5) * 0.5; // slight positive correlation
+
+  // Weighted blend: 60% squad composition, 40% tactical tendency
+  return squadTilt * 0.6 + tacticalTilt * 0.4;
+};
+
+// ── Altitude effect (B3) ──────────────────────────────────────────────────
+
+/** Altitude penalties:客队 lambda reduction at high-altitude venues.
+ *  Mexico City (2240m) and Toluca (2680m) significantly affect performance.
+ *  Values represent客队 lambda multiplier deficit (e.g., 0.15 = 15% reduction). */
+WC26.ALTITUDE_EFFECT = {
+  'Mexico City': 0.15,
+  'Guadalajara': 0.08,
+  'Toluca': 0.20,
+};
+
+/** Get altitude penalty for a venue. Returns客队 lambda multiplier (0.80-1.0). */
+WC26.getAltitudePenalty = function(venue) {
+  if (!venue) return 1.0;
+  for (const [city, penalty] of Object.entries(WC26.ALTITUDE_EFFECT)) {
+    if (venue.includes(city)) return 1 - penalty;
+  }
+  return 1.0;
+};

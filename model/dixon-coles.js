@@ -79,6 +79,26 @@ WC26.getFormAdjustedLambdas = function(home, away, formMap, matchDate, marketPro
     finalH = Math.max(0.05, mktAdjH);
     finalA = Math.max(0.05, mktAdjA);
   }
+
+  // Tilt adjustment (B1): attack-minded teams score more but concede more
+  if (WC26.getTilt) {
+    const tiltH = WC26.getTilt(home);
+    const tiltA = WC26.getTilt(away);
+    const netTilt = tiltH - tiltA; // positive = home more attack-minded
+    finalH *= (1 + 0.10 * netTilt);
+    finalA *= (1 - 0.05 * netTilt);
+    finalH = Math.max(0.05, finalH);
+    finalA = Math.max(0.05, finalA);
+  }
+
+  // Altitude adjustment (B3): high-altitude venues penalize away team
+  if (WC26.getAltitudePenalty) {
+    const venue = matchDate ? WC26.getVenue ? WC26.getVenue(home, away, matchDate) : '' : '';
+    const altPenalty = WC26.getAltitudePenalty(venue || '');
+    finalA *= altPenalty;
+    finalA = Math.max(0.05, finalA);
+  }
+
   return [finalH, finalA];
 };
 
