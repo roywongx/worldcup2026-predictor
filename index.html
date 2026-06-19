@@ -1884,7 +1884,7 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
   for(let i=0;i<=5;i++)for(let j=0;j<=5;j++){
     const pi = useNB ? negBinPMF(i, lhET, NB_R) : poissonPMF(i, lhET);
     const pj = useNB ? negBinPMF(j, laET, NB_R) : poissonPMF(j, laET);
-    const p=pi*pj;
+    const p=pi*pj*dixonColesTau(i,j,lhET,laET,rho);
     if(i>j)pW_ET+=p;else if(i===j)pD_ET+=p;else pL_ET+=p;
   }
   const tET=pW_ET+pD_ET+pL_ET; pW_ET/=tET; pD_ET/=tET; pL_ET/=tET;
