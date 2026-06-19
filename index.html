@@ -1235,45 +1235,45 @@ for (const g of GROUPS) for (const t of GROUP_TEAMS[g]) teamToGroup[t] = g;
 
 /** Match schedule: [date, home, away, group]
  *  Source: FIFA official schedule via kickoffadventures.com (cross-verified with NDTV/ESPN)
- *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
+ *  Dates are EDT dates (UTC-4, official schedule dates)
  *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 24-27 */
 const MATCHES = [
-  // [UTC日期, 北京时间, 主队, 客队, 小组]
+  // [EDT日期, 北京时间, 主队, 客队, 小组]
   ["2026-06-11","03:00","Mexico","South Africa","A"],
-  ["2026-06-12","08:00","South Korea","Czech Republic","A"],
+  ["2026-06-11","08:00","South Korea","Czech Republic","A"],
   ["2026-06-12","03:00","Canada","Bosnia Herzegovina","B"],
-  ["2026-06-13","09:00","United States","Paraguay","D"],
+  ["2026-06-12","09:00","United States","Paraguay","D"],
   ["2026-06-13","00:00","Qatar","Switzerland","B"],
   ["2026-06-13","06:00","Brazil","Morocco","C"],
-  ["2026-06-14","09:00","Haiti","Scotland","C"],
-  ["2026-06-14","09:00","Australia","Turkey","D"],
+  ["2026-06-13","09:00","Haiti","Scotland","C"],
+  ["2026-06-12","09:00","Australia","Turkey","D"],
   ["2026-06-14","00:00","Germany","Curaçao","E"],
   ["2026-06-14","03:00","Netherlands","Japan","F"],
   ["2026-06-14","07:00","Ivory Coast","Ecuador","E"],
-  ["2026-06-15","08:00","Sweden","Tunisia","F"],
+  ["2026-06-14","08:00","Sweden","Tunisia","F"],
   ["2026-06-15","00:00","Spain","Cape Verde","H"],
   ["2026-06-15","00:00","Belgium","Egypt","G"],
   ["2026-06-15","06:00","Saudi Arabia","Uruguay","H"],
   ["2026-06-15","06:00","Iran","New Zealand","G"],
   ["2026-06-16","03:00","France","Senegal","I"],
   ["2026-06-16","06:00","Iraq","Norway","I"],
-  ["2026-06-17","08:00","Argentina","Algeria","J"],
+  ["2026-06-16","08:00","Argentina","Algeria","J"],
   ["2026-06-17","09:00","Austria","Jordan","J"],
   ["2026-06-17","00:00","Portugal","DR Congo","K"],
   ["2026-06-17","03:00","England","Croatia","L"],
   ["2026-06-17","07:00","Ghana","Panama","L"],
-  ["2026-06-18","10:00","Uzbekistan","Colombia","K"],
+  ["2026-06-17","10:00","Uzbekistan","Colombia","K"],
   ["2026-06-18","00:00","Czech Republic","South Africa","A"],
   ["2026-06-18","00:00","Switzerland","Bosnia Herzegovina","B"],
   ["2026-06-18","03:00","Canada","Qatar","B"],
-  ["2026-06-19","09:00","Mexico","South Korea","A"],
+  ["2026-06-18","09:00","Mexico","South Korea","A"],
   ["2026-06-19","03:00","United States","Australia","D"],
   ["2026-06-19","06:00","Scotland","Morocco","C"],
-  ["2026-06-20","08:30","Brazil","Haiti","C"],
-  ["2026-06-20","11:00","Turkey","Paraguay","D"],
+  ["2026-06-19","08:30","Brazil","Haiti","C"],
+  ["2026-06-19","11:00","Turkey","Paraguay","D"],
   ["2026-06-20","01:00","Netherlands","Sweden","F"],
   ["2026-06-20","04:00","Germany","Ivory Coast","E"],
-  ["2026-06-21","08:00","Ecuador","Curaçao","E"],
+  ["2026-06-20","08:00","Ecuador","Curaçao","E"],
   ["2026-06-21","10:00","Tunisia","Japan","F"],
   ["2026-06-21","00:00","Spain","Saudi Arabia","H"],
   ["2026-06-21","00:00","Belgium","Iran","G"],
@@ -1281,36 +1281,36 @@ const MATCHES = [
   ["2026-06-21","06:00","New Zealand","Egypt","G"],
   ["2026-06-22","01:00","Argentina","Austria","J"],
   ["2026-06-22","05:00","France","Iraq","I"],
-  ["2026-06-23","08:00","Norway","Senegal","I"],
-  ["2026-06-23","08:00","Jordan","Algeria","J"],
+  ["2026-06-22","08:00","Norway","Senegal","I"],
+  ["2026-06-22","08:00","Jordan","Algeria","J"],
   ["2026-06-23","01:00","Portugal","Uzbekistan","K"],
   ["2026-06-23","04:00","England","Ghana","L"],
   ["2026-06-23","07:00","Panama","Croatia","L"],
-  ["2026-06-24","10:00","Colombia","DR Congo","K"],
+  ["2026-06-23","10:00","Colombia","DR Congo","K"],
   ["2026-06-24","03:00","Switzerland","Canada","B"],
   ["2026-06-24","03:00","Bosnia Herzegovina","Qatar","B"],
   ["2026-06-24","06:00","Scotland","Brazil","C"],
   ["2026-06-24","06:00","Morocco","Haiti","C"],
-  ["2026-06-25","09:00","Czech Republic","Mexico","A"],
-  ["2026-06-25","09:00","South Africa","South Korea","A"],
+  ["2026-06-24","09:00","Czech Republic","Mexico","A"],
+  ["2026-06-24","09:00","South Africa","South Korea","A"],
   ["2026-06-25","04:00","Curaçao","Ivory Coast","E"],
   ["2026-06-25","04:00","Ecuador","Germany","E"],
   ["2026-06-25","07:00","Japan","Sweden","F"],
   ["2026-06-25","07:00","Tunisia","Netherlands","F"],
-  ["2026-06-26","10:00","Turkey","United States","D"],
-  ["2026-06-26","10:00","Paraguay","Australia","D"],
+  ["2026-06-25","10:00","Turkey","United States","D"],
+  ["2026-06-25","10:00","Paraguay","Australia","D"],
   ["2026-06-26","03:00","Norway","France","I"],
   ["2026-06-26","03:00","Senegal","Iraq","I"],
-  ["2026-06-27","08:00","Cape Verde","Saudi Arabia","H"],
-  ["2026-06-27","08:00","Uruguay","Spain","H"],
-  ["2026-06-27","11:00","Egypt","Iran","G"],
-  ["2026-06-27","11:00","New Zealand","Belgium","G"],
+  ["2026-06-26","08:00","Cape Verde","Saudi Arabia","H"],
+  ["2026-06-26","08:00","Uruguay","Spain","H"],
+  ["2026-06-26","11:00","Egypt","Iran","G"],
+  ["2026-06-26","11:00","New Zealand","Belgium","G"],
   ["2026-06-27","05:00","Panama","England","L"],
   ["2026-06-27","05:00","Croatia","Ghana","L"],
   ["2026-06-27","07:30","Colombia","Portugal","K"],
   ["2026-06-27","07:30","DR Congo","Uzbekistan","K"],
-  ["2026-06-28","10:00","Algeria","Austria","J"],
-  ["2026-06-28","10:00","Jordan","Argentina","J"]
+  ["2026-06-27","10:00","Algeria","Austria","J"],
+  ["2026-06-27","10:00","Jordan","Argentina","J"]
 ];
 
 /** 比赛场地（按MATCHES顺序） */
@@ -1351,7 +1351,7 @@ const VENUES = [
   "New York 🇺🇸","Philadelphia 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","Kansas City 🇺🇸","Dallas 🇺🇸"
 ];
 
-/** 比赛数据: [当地日期, 北京时间, 主队, 客队, 小组] */
+/** 比赛数据: [EDT日期, 北京时间, 主队, 客队, 小组] */
 const MATCH_TIMES = {};
   MATCHES.forEach(([utcDate,bjTime,home,away,grp]) => {
     MATCH_TIMES[`${home}|${away}|${utcDate}`] = bjTime;
