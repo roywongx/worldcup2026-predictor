@@ -154,18 +154,35 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
     } else {
       let incentive = 1.0;
       if (utcDate >= MD3_DATE) {
+        // MD3 incentive: analyze each team's qualification scenario
         const sH = st[grp][home], sA = st[grp][away];
-        const maxPtsLeft = 3;
-        const hCanQualify = sH.pts + maxPtsLeft >= 3;
-        const aCanQualify = sA.pts + maxPtsLeft >= 3;
-        const hEliminated = sH.pts + maxPtsLeft < 3;
-        const aEliminated = sA.pts + maxPtsLeft < 3;
-        if (hEliminated && aEliminated) {
-          incentive = 0.85;
-        } else if ((sH.pts >= 4 && sA.pts >= 4) || (sH.pts <= 1 && sA.pts <= 1)) {
-          incentive = 0.90;
-        } else if ((sH.pts <= 3 && sA.pts <= 3) && hCanQualify && aCanQualify) {
-          incentive = 1.15;
+        const grpTeams = WC26.GROUP_TEAMS[grp];
+        // Find other teams' current points in this group
+        const otherPts = grpTeams.filter(t => t !== home && t !== away).map(t => st[grp][t].pts);
+        // For each team, compute: pts if win / pts if draw / pts if loss
+        // Then check how many OTHER teams could finish above them
+        function teamScenarios(pts) {
+          const winPts = pts + 3, drawPts = pts + 1, lossPts = pts;
+          // Top 2 advance; 3rd may advance as best third (need >=4 pts typically)
+          const canAdvanceWithWin = (() => {
+            // Simulate: this team gets winPts, other match (not involving us) has some result
+            // Simplified: check if winPts would be top-2 or strong 3rd
+            const maxOther = Math.max(...otherPts, 0); // other team's MD3 result unknown, assume best case
+            return winPts > maxOther || (winPts >= 4 && otherPts.filter(p => p >= winPts).length < 2);
+          })();
+          const eliminated = !canAdvanceWithWin;
+          const needsWin = !eliminated && drawPts <= Math.max(...otherPts, 0) && lossPts <= Math.max(...otherPts, 0);
+          return { eliminated, needsWin };
+        }
+        const hSc = teamScenarios(sH.pts);
+        const aSc = teamScenarios(sA.pts);
+
+        if (hSc.eliminated && aSc.eliminated) {
+          incentive = 0.85;  // Dead rubber
+        } else if (hSc.needsWin && aSc.needsWin) {
+          incentive = 1.15;  // Both must win
+        } else if (hSc.eliminated || aSc.eliminated) {
+          incentive = 0.90;  // One team has nothing to play for
         }
       }
       [sa, sb] = WC26.simMatch(home, away, formMap, utcDate, marketOddsMap, incentive);
