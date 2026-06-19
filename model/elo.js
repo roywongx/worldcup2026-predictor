@@ -73,10 +73,18 @@ WC26.withPreTournamentElo = function(fn) {
 };
 
 /** Rebuild dynamic Elo from scratch by replaying all results */
-WC26.rebuildDynamicElo = function(results) {
+WC26.rebuildDynamicElo = function(results, regressRate) {
   WC26.initDynamicElo();
   for (const r of (results || [])) {
     WC26.updateElo(r.team1, r.team2, r.score1, r.score2, r.date);
+  }
+  // Mean reversion: pull toward pre-tournament prior after replay
+  // Applied per-replay so it's not overwritten by the replay itself
+  if (regressRate && regressRate > 0) {
+    for (const t of Object.keys(WC26.dynamicElo)) {
+      const prior = WC26.TEAMS[t] ? WC26.TEAMS[t].elo : 1500;
+      WC26.dynamicElo[t] = WC26.dynamicElo[t] * (1 - regressRate) + prior * regressRate;
+    }
   }
 };
 

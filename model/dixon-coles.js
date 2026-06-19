@@ -80,23 +80,31 @@ WC26.getFormAdjustedLambdas = function(home, away, formMap, matchDate, marketPro
     finalA = Math.max(0.05, mktAdjA);
   }
 
-  // Tilt adjustment (B1): attack-minded teams score more but concede more
+  // Tilt adjustment (B1): attack-minded teams score more BUT concede more
+  // Each team's tilt independently: +tilt → more goals for AND more goals against
   if (WC26.getTilt) {
     const tiltH = WC26.getTilt(home);
     const tiltA = WC26.getTilt(away);
-    const netTilt = tiltH - tiltA; // positive = home more attack-minded
-    finalH *= (1 + 0.10 * netTilt);
-    finalA *= (1 - 0.05 * netTilt);
+    finalH *= (1 + 0.10 * tiltH - 0.05 * tiltA);  // home scores more if attack-minded, concedes more if away is attack-minded
+    finalA *= (1 + 0.10 * tiltA - 0.05 * tiltH);  // symmetric
     finalH = Math.max(0.05, finalH);
     finalA = Math.max(0.05, finalA);
   }
 
-  // Altitude adjustment (B3): high-altitude venues penalize away team
+  // Altitude adjustment (B3): high-altitude venues penalize non-adapted teams
+  // Host teams (Mexico/USA/Canada) are adapted; others are penalized
   if (WC26.getAltitudePenalty) {
-    const venue = matchDate ? WC26.getVenue ? WC26.getVenue(home, away, matchDate) : '' : '';
+    const venue = matchDate ? (WC26.getVenue ? WC26.getVenue(home, away, matchDate) : '') : '';
     const altPenalty = WC26.getAltitudePenalty(venue || '');
-    finalA *= altPenalty;
-    finalA = Math.max(0.05, finalA);
+    if (altPenalty < 1) {
+      const homeIsHost = WC26.TEAMS[home] && WC26.TEAMS[home].host >= 0.10;
+      const awayIsHost = WC26.TEAMS[away] && WC26.TEAMS[away].host >= 0.10;
+      // Home team adapted → only penalize away; both neutral → penalize both
+      if (!homeIsHost) finalH *= altPenalty;
+      if (!awayIsHost) finalA *= altPenalty;
+      finalH = Math.max(0.05, finalH);
+      finalA = Math.max(0.05, finalA);
+    }
   }
 
   return [finalH, finalA];
@@ -160,9 +168,11 @@ WC26.oddsToProb = function(usOdds) {
 };
 
 /** Hedge calculator: given one bet placed, compute hedge amounts for other outcomes.
+ *  Ensures equal payout regardless of outcome (does NOT guarantee profit when
+ *  bookmaker margin > 0 — guaranteedProfit may be negative).
  *  Input: { outcome: 'W'|'D'|'L', odds: decimal, stake: $ }
  *  Other outcomes' odds: { W: decimal, D: decimal, L: decimal }
- *  Returns: { hedgeBets: [{ outcome, odds, amount }], guaranteedProfit: number } */
+ *  Returns: { hedgeBets, totalStaked, guaranteedProfit } */
 WC26.calculateHedge = function(myBet, otherOdds) {
   // myBet: { outcome: 'W', odds: 2.5, stake: 100 }
   // otherOdds: { W: 2.5, D: 3.2, L: 3.0 }

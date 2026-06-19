@@ -163,15 +163,25 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
         // Then check how many OTHER teams could finish above them
         function teamScenarios(pts) {
           const winPts = pts + 3, drawPts = pts + 1, lossPts = pts;
-          // Top 2 advance; 3rd may advance as best third (need >=4 pts typically)
+          // 2026 WC: top 2 advance + 8 best 3rd-place teams
+          // 3rd place qualification thresholds: 3pts ~30%, 4pts ~80%, 5pts ~99%
           const canAdvanceWithWin = (() => {
-            // Simulate: this team gets winPts, other match (not involving us) has some result
-            // Simplified: check if winPts would be top-2 or strong 3rd
-            const maxOther = Math.max(...otherPts, 0); // other team's MD3 result unknown, assume best case
-            return winPts > maxOther || (winPts >= 4 && otherPts.filter(p => p >= winPts).length < 2);
+            const maxOther = Math.max(...otherPts, 0);
+            // Top 2: winPts beats or ties the max other
+            if (winPts > maxOther) return true;
+            // Best 3rd: 4+ pts has ~80% chance, 5+ pts ~99%
+            if (winPts >= 5) return true;
+            if (winPts === 4 && otherPts.filter(p => p >= 4).length < 3) return true;
+            return false;
           })();
           const eliminated = !canAdvanceWithWin;
-          const needsWin = !eliminated && drawPts <= Math.max(...otherPts, 0) && lossPts <= Math.max(...otherPts, 0);
+          const canAdvanceWithDraw = (() => {
+            if (drawPts >= 5) return true;
+            if (drawPts === 4 && otherPts.filter(p => p >= 4).length < 3) return true;
+            const maxOther = Math.max(...otherPts, 0);
+            return drawPts > maxOther;
+          })();
+          const needsWin = !canAdvanceWithDraw && !eliminated;
           return { eliminated, needsWin };
         }
         const hSc = teamScenarios(sH.pts);

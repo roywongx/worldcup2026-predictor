@@ -1139,14 +1139,29 @@ function ablationExperiment() {
   WC26.NB_R = savedNB;
   if (noNB) results.push({ name: '-NB(Poisson)', accuracy: noNB.accuracy, brier: noNB.brier, rps: noNB.rps });
 
-  // Ablation: no Elo scaling (eloScale=1.0 for both)
-  // This requires modifying getLambdas temporarily — skip for safety
-  // Instead, measure by comparing with/without calibration
+  // Ablation: no calibration
   const savedCal = WC26.isotonicCalibration;
   WC26.isotonicCalibration = null;
   const noCal = runBacktest();
   WC26.isotonicCalibration = savedCal;
   if (noCal) results.push({ name: '-Calibration', accuracy: noCal.accuracy, brier: noCal.brier, rps: noCal.rps });
+
+  // Ablation: no Elo scaling (neutral eloScale=1.0)
+  const savedGetLambdas = WC26.getLambdas;
+  WC26.getLambdas = function(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) {
+    const eloDiff = eloH - eloA;
+    const expectedWinH = 1 / (1 + Math.pow(10, -eloDiff / 400));  // no eloScale
+    const eloModH = 0.3 + 1.4 * expectedWinH;
+    const eloModA = 0.3 + 1.4 * (1 - expectedWinH);
+    const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), 0.35);
+    const atkModA = Math.pow((atkA || 1.0) / (defH || 1.0), 0.35);
+    const lh = Math.max(0.18, 1.25 * atkModH * eloModH * (1 + hostBonusH));
+    const la = Math.max(0.18, 1.25 * atkModA * eloModA * (1 + hostBonusA));
+    return [lh, la];
+  };
+  const noEloScale = runBacktest();
+  WC26.getLambdas = savedGetLambdas;
+  if (noEloScale) results.push({ name: '-EloScale', accuracy: noEloScale.accuracy, brier: noEloScale.brier, rps: noEloScale.rps });
 
   return results;
 }
@@ -1684,7 +1699,7 @@ const I18N = {
     'ko.third':'三四名决赛 — 7月18日','ko.final':'决赛 — 7月19日 · MetLife 体育场',
     'ko.finals':'决赛阶段','ko.champion':'2026 世界杯冠军',
     // Probabilities
-    'prob.click':'点击运行 10,000 次锦标赛模拟','prob.btn':'🎲 蒙特卡洛 (10,000x)',
+    'prob.click':'点击运行蒙特卡洛模拟','prob.btn':'🎲 蒙特卡洛 (50,000x)',
     'prob.desc':'生成冠军、决赛、四强、八强、十六强的概率分布',
     'prob.rerun':'🎲 重新模拟','prob.sims':'模拟次数','prob.champs':'不同冠军','prob.fav':'头号热门','prob.winrate':'夺冠率',
     'prob.whatif':'条件蒙特卡洛 (What-If)','prob.whatifDesc':'锁定某场比赛结果，即时查看概率变化',
@@ -1760,7 +1775,7 @@ const I18N = {
     'ko.third':'Third Place — Jul 18','ko.final':'FINAL — Jul 19 · MetLife Stadium',
     'ko.finals':'Finals','ko.champion':'2026 World Cup Champion',
     // Probabilities
-    'prob.click':'Click to run 10,000 tournament simulations','prob.btn':'🎲 Monte Carlo (10,000x)',
+    'prob.click':'Click to run Monte Carlo simulations','prob.btn':'🎲 Monte Carlo (50,000x)',
     'prob.desc':'Generates probability distributions for champion, finalist, semi, quarter, and R16',
     'prob.rerun':'🎲 Re-run','prob.sims':'Simulations','prob.champs':'Unique Champions','prob.fav':'Top Favorite','prob.winrate':'Win Rate',
     'prob.whatif':'Conditional Monte Carlo (What-If)','prob.whatifDesc':'Lock a match result, see probability changes instantly',
@@ -2283,14 +2298,14 @@ function runMonteCarloUI(){
           mcResults={champ:d.champ,finalist:d.finalist,semi:d.semi,quarter:d.quarter,r16:d.r16,N:d.N};
           WC26.simulationHistory=d.history;
           renderProbabilities();
-          if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}
+          if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
           worker.terminate();
         }
       };
       worker.onerror=function(err){
         console.error('MC Worker error:',err);
         Object.assign(WC26.dynamicElo,savedElo);
-        if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}
+        if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
         worker.terminate();
       };
       return;
@@ -2327,7 +2342,7 @@ function runMonteCarloUI(){
       Object.assign(WC26.dynamicElo,savedElo);
       mcResults={champ,finalist,semi,quarter,r16,N};
       renderProbabilities();
-      if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}
+      if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
     }
   }
   setTimeout(processChunk,50);
@@ -3221,7 +3236,7 @@ async function fetchPolymarketResults() {
     }
     console.log('[Poly] Done, added:', added, 'total results:', state.actualResults.length);
     if (added > 0) {
-      WC26.rebuildDynamicElo(state.actualResults);
+      WC26.rebuildDynamicElo(state.actualResults, 0.005);  // 0.5% mean reversion per sync
       state.lastUpdate = new Date().toISOString();
       saveState(state);
       mcResults = null;
@@ -3295,8 +3310,6 @@ async function syncPolymarketData() {
     if (state.matchOddsHistory.length > 200) state.matchOddsHistory = state.matchOddsHistory.slice(-200);
     saveState(state);
     reevaluateResults();
-    // B2: Mean reversion — pull Elo toward pre-tournament prior after sync
-    if (WC26.regressElo) WC26.regressElo(0.001);
     mcResults = null;
     runSimulation();
     const total = (state.actualResults || []).length;

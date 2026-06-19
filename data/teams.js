@@ -281,29 +281,33 @@ WC26.loadSquadData();
  *   lh *= (1 + 0.10 * tilt)   — attack-minded teams score more
  *   la *= (1 - 0.05 * tilt)   — but also concede slightly more
  */
+/** Tilt (-1 to +1): offensive/defensive tendency.
+ *  Uses form as proxy for tactical tendency (attack-minded = high form).
+ *  NOT derived from atk/def to avoid double-counting (atk/def already
+ *  used in getLambdas via atkMod). When squad data is available, blends
+ *  with positional distribution. */
 WC26.getTilt = function(team) {
+  const t = WC26.TEAMS[team];
+  if (!t) return 0;
+
+  // Tactical tilt: form correlates with attack-minded play
+  // High form → positive tilt (team is playing attacking football)
+  const tacticalTilt = (t.form - 0.5) * 0.8; // range: -0.4 to +0.4
+
+  // Squad tilt: if squad data available, blend with positional distribution
   const squad = WC26.SQUADS[team];
-  if (!squad || squad.length < 11) {
-    // Fallback: estimate from atk/def ratio
-    const t = WC26.TEAMS[team];
-    if (!t) return 0;
-    return Math.max(-1, Math.min(1, (t.atk - t.def) * 2));
+  if (squad && squad.length >= 11) {
+    let fwdCount = 0, defCount = 0;
+    for (let i = 0; i < Math.min(squad.length, 11); i++) {
+      if (squad[i].pos === 'FWD') fwdCount++;
+      if (squad[i].pos === 'DEF' || squad[i].pos === 'GK') defCount++;
+    }
+    const squadTilt = Math.max(-1, Math.min(1, (fwdCount - defCount) / 5));
+    return squadTilt * 0.5 + tacticalTilt * 0.5;
   }
 
-  // Squad tilt: FWD-heavy = positive
-  let fwdCount = 0, defCount = 0;
-  for (let i = 0; i < Math.min(squad.length, 11); i++) {
-    if (squad[i].pos === 'FWD') fwdCount++;
-    if (squad[i].pos === 'DEF' || squad[i].pos === 'GK') defCount++;
-  }
-  const squadTilt = Math.max(-1, Math.min(1, (fwdCount - defCount) / 5));
-
-  // Tactical tilt: would need xG history — for now, use form as proxy
-  const form = WC26.TEAMS[team] ? WC26.TEAMS[team].form : 0.5;
-  const tacticalTilt = (form - 0.5) * 0.5; // slight positive correlation
-
-  // Weighted blend: 60% squad composition, 40% tactical tendency
-  return squadTilt * 0.6 + tacticalTilt * 0.4;
+  // No squad data: use only tactical tilt (form-based)
+  return Math.max(-1, Math.min(1, tacticalTilt));
 };
 
 // ── Altitude effect (B3) ──────────────────────────────────────────────────
