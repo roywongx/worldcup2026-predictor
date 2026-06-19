@@ -1238,260 +1238,146 @@ for (const g of GROUPS) for (const t of GROUP_TEAMS[g]) teamToGroup[t] = g;
  *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
  *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 24-27 */
 const MATCHES = [
-  // ── MD1: Jun 12-18 (北京时间) ──
+  // ── MD1: 北京时间 (来源: Wikipedia + worldcupwiki.com) ──
   // Jun 12
-  ["2026-06-11","Mexico","South Africa","A"],
-  ["2026-06-11","South Korea","Czech Republic","A"],
+  ["2026-06-12","03:00","Mexico","South Africa","A"],
+  ["2026-06-12","10:00","South Korea","Czech Republic","A"],
   // Jun 13
-  ["2026-06-12","Canada","Bosnia Herzegovina","B"],
-  ["2026-06-12","United States","Paraguay","D"],
+  ["2026-06-13","03:00","Canada","Bosnia Herzegovina","B"],
+  ["2026-06-13","09:00","United States","Paraguay","D"],
   // Jun 14
-  ["2026-06-13","Qatar","Switzerland","B"],
-  ["2026-06-13","Brazil","Morocco","C"],
-  ["2026-06-13","Haiti","Scotland","C"],
-  ["2026-06-13","Australia","Turkey","D"],
+  ["2026-06-14","03:00","Qatar","Switzerland","B"],
+  ["2026-06-14","06:00","Brazil","Morocco","C"],
+  ["2026-06-14","09:00","Haiti","Scotland","C"],
+  ["2026-06-14","12:00","Australia","Turkey","D"],
   // Jun 15
-  ["2026-06-14","Germany","Curaçao","E"],
-  ["2026-06-14","Netherlands","Japan","F"],
-  ["2026-06-14","Ivory Coast","Ecuador","E"],
-  ["2026-06-14","Sweden","Tunisia","F"],
+  ["2026-06-15","01:00","Germany","Curaçao","E"],
+  ["2026-06-15","04:00","Netherlands","Japan","F"],
+  ["2026-06-15","07:00","Ivory Coast","Ecuador","E"],
+  ["2026-06-15","10:00","Sweden","Tunisia","F"],
   // Jun 16
-  ["2026-06-15","Spain","Cape Verde","H"],
-  ["2026-06-15","Belgium","Egypt","G"],
-  ["2026-06-15","Saudi Arabia","Uruguay","H"],
-  ["2026-06-15","Iran","New Zealand","G"],
+  ["2026-06-16","00:00","Spain","Cape Verde","H"],
+  ["2026-06-16","03:00","Belgium","Egypt","G"],
+  ["2026-06-16","06:00","Saudi Arabia","Uruguay","H"],
+  ["2026-06-16","09:00","Iran","New Zealand","G"],
   // Jun 17
-  ["2026-06-16","France","Senegal","I"],
-  ["2026-06-16","Iraq","Norway","I"],
-  ["2026-06-16","Argentina","Algeria","J"],
-  ["2026-06-16","Austria","Jordan","J"],
+  ["2026-06-17","03:00","France","Senegal","I"],
+  ["2026-06-17","06:00","Iraq","Norway","I"],
+  ["2026-06-17","09:00","Argentina","Algeria","J"],
+  ["2026-06-17","12:00","Austria","Jordan","J"],
   // Jun 18
-  ["2026-06-17","Portugal","DR Congo","K"],
-  ["2026-06-17","England","Croatia","L"],
-  ["2026-06-17","Ghana","Panama","L"],
-  ["2026-06-17","Uzbekistan","Colombia","K"],
-  // ── MD2: Jun 19-24 (北京时间) ──
+  ["2026-06-18","01:00","Portugal","DR Congo","K"],
+  ["2026-06-18","04:00","England","Croatia","L"],
+  ["2026-06-18","07:00","Ghana","Panama","L"],
+  ["2026-06-18","10:00","Uzbekistan","Colombia","K"],
+  // ── MD2 ──
   // Jun 19
-  ["2026-06-18","Czech Republic","South Africa","A"],
-  ["2026-06-18","Switzerland","Bosnia Herzegovina","B"],
-  ["2026-06-18","Canada","Qatar","B"],
-  ["2026-06-18","Mexico","South Korea","A"],
+  ["2026-06-19","00:00","Czech Republic","South Africa","A"],
+  ["2026-06-19","03:00","Switzerland","Bosnia Herzegovina","B"],
+  ["2026-06-19","06:00","Canada","Qatar","B"],
+  ["2026-06-19","09:00","Mexico","South Korea","A"],
   // Jun 20
-  ["2026-06-19","United States","Australia","D"],
-  ["2026-06-19","Scotland","Morocco","C"],
-  ["2026-06-19","Brazil","Haiti","C"],
-  ["2026-06-19","Turkey","Paraguay","D"],
+  ["2026-06-20","03:00","United States","Australia","D"],
+  ["2026-06-20","06:00","Scotland","Morocco","C"],
+  ["2026-06-20","08:30","Brazil","Haiti","C"],
+  ["2026-06-20","11:00","Turkey","Paraguay","D"],
   // Jun 21
-  ["2026-06-20","Netherlands","Sweden","F"],
-  ["2026-06-20","Germany","Ivory Coast","E"],
-  ["2026-06-20","Ecuador","Curaçao","E"],
-  ["2026-06-20","Tunisia","Japan","F"],
+  ["2026-06-21","01:00","Netherlands","Sweden","F"],
+  ["2026-06-21","04:00","Germany","Ivory Coast","E"],
+  ["2026-06-21","08:00","Ecuador","Curaçao","E"],
+  ["2026-06-21","12:00","Tunisia","Japan","F"],
   // Jun 22
-  ["2026-06-21","Spain","Saudi Arabia","H"],
-  ["2026-06-21","Belgium","Iran","G"],
-  ["2026-06-21","Uruguay","Cape Verde","H"],
-  ["2026-06-21","New Zealand","Egypt","G"],
+  ["2026-06-22","00:00","Spain","Saudi Arabia","H"],
+  ["2026-06-22","03:00","Belgium","Iran","G"],
+  ["2026-06-22","06:00","Uruguay","Cape Verde","H"],
+  ["2026-06-22","09:00","New Zealand","Egypt","G"],
   // Jun 23
-  ["2026-06-22","Argentina","Austria","J"],
-  ["2026-06-22","France","Iraq","I"],
-  ["2026-06-22","Norway","Senegal","I"],
-  ["2026-06-22","Jordan","Algeria","J"],
+  ["2026-06-23","01:00","Argentina","Austria","J"],
+  ["2026-06-23","05:00","France","Iraq","I"],
+  ["2026-06-23","08:00","Norway","Senegal","I"],
+  ["2026-06-23","11:00","Jordan","Algeria","J"],
   // Jun 24
-  ["2026-06-23","Portugal","Uzbekistan","K"],
-  ["2026-06-23","England","Ghana","L"],
-  ["2026-06-23","Panama","Croatia","L"],
-  ["2026-06-23","Colombia","DR Congo","K"],
-  // ── MD3: Jun 25-28 (北京时间, 同时开球) ──
+  ["2026-06-24","01:00","Portugal","Uzbekistan","K"],
+  ["2026-06-24","04:00","England","Ghana","L"],
+  ["2026-06-24","07:00","Panama","Croatia","L"],
+  ["2026-06-24","10:00","Colombia","DR Congo","K"],
+  // ── MD3: 同时开球 ──
   // Jun 25
-  ["2026-06-24","Switzerland","Canada","B"],
-  ["2026-06-24","Bosnia Herzegovina","Qatar","B"],
-  ["2026-06-24","Scotland","Brazil","C"],
-  ["2026-06-24","Morocco","Haiti","C"],
-  ["2026-06-24","Czech Republic","Mexico","A"],
-  ["2026-06-24","South Africa","South Korea","A"],
+  ["2026-06-25","03:00","Switzerland","Canada","B"],
+  ["2026-06-25","03:00","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-25","06:00","Scotland","Brazil","C"],
+  ["2026-06-25","06:00","Morocco","Haiti","C"],
+  ["2026-06-25","09:00","Czech Republic","Mexico","A"],
+  ["2026-06-25","09:00","South Africa","South Korea","A"],
   // Jun 26
-  ["2026-06-25","Curaçao","Ivory Coast","E"],
-  ["2026-06-25","Ecuador","Germany","E"],
-  ["2026-06-25","Japan","Sweden","F"],
-  ["2026-06-25","Tunisia","Netherlands","F"],
-  ["2026-06-25","Turkey","United States","D"],
-  ["2026-06-25","Paraguay","Australia","D"],
+  ["2026-06-26","04:00","Curaçao","Ivory Coast","E"],
+  ["2026-06-26","04:00","Ecuador","Germany","E"],
+  ["2026-06-26","07:00","Japan","Sweden","F"],
+  ["2026-06-26","07:00","Tunisia","Netherlands","F"],
+  ["2026-06-26","10:00","Turkey","United States","D"],
+  ["2026-06-26","10:00","Paraguay","Australia","D"],
   // Jun 27
-  ["2026-06-26","Norway","France","I"],
-  ["2026-06-26","Senegal","Iraq","I"],
-  ["2026-06-26","Cape Verde","Saudi Arabia","H"],
-  ["2026-06-26","Uruguay","Spain","H"],
-  ["2026-06-26","Egypt","Iran","G"],
-  ["2026-06-26","New Zealand","Belgium","G"],
+  ["2026-06-27","03:00","Norway","France","I"],
+  ["2026-06-27","03:00","Senegal","Iraq","I"],
+  ["2026-06-27","08:00","Cape Verde","Saudi Arabia","H"],
+  ["2026-06-27","07:00","Uruguay","Spain","H"],
+  ["2026-06-27","11:00","Egypt","Iran","G"],
+  ["2026-06-27","11:00","New Zealand","Belgium","G"],
   // Jun 28
-  ["2026-06-27","Panama","England","L"],
-  ["2026-06-27","Croatia","Ghana","L"],
-  ["2026-06-27","Colombia","Portugal","K"],
-  ["2026-06-27","DR Congo","Uzbekistan","K"],
-  ["2026-06-27","Algeria","Austria","J"],
-  ["2026-06-27","Jordan","Argentina","J"]
+  ["2026-06-28","05:00","Panama","England","L"],
+  ["2026-06-28","05:00","Croatia","Ghana","L"],
+  ["2026-06-28","07:30","Colombia","Portugal","K"],
+  ["2026-06-28","07:30","DR Congo","Uzbekistan","K"],
+  ["2026-06-28","10:00","Algeria","Austria","J"],
+  ["2026-06-28","10:00","Jordan","Argentina","J"]
 ];
 
-/** Venue/city for each match (order matches MATCHES array).
- *  Source: FIFA official via kickoffadventures.com
- *  Short city names for compact display. */
+/** 比赛场地（按MATCHES顺序） */
 const VENUES = [
-  // MD1: Jun 12 (Beijing) — Groups A
+  // MD1: Jun 12
   "Mexico City 🇲🇽","Guadalajara 🇲🇽",
-  // Jun 13 — Groups B, D
+  // Jun 13
   "Toronto 🇨🇦","Los Angeles 🇺🇸",
-  // Jun 14 — Groups B, C, D
+  // Jun 14
   "San Francisco 🇺🇸","New York 🇺🇸","Boston 🇺🇸","Vancouver 🇨🇦",
-  // Jun 15 — Groups E, F
-  "Houston 🇺🇸","Dallas 🇺🇸","Philadelphia 🇺🇸","Guadalajara 🇲🇽",
-  // Jun 16 — Groups G, H
+  // Jun 15
+  "Houston 🇺🇸","Dallas 🇺🇸","Philadelphia 🇺🇸","Monterrey 🇲🇽",
+  // Jun 16
   "Atlanta 🇺🇸","Seattle 🇺🇸","Miami 🇺🇸","Los Angeles 🇺🇸",
-  // Jun 17 — Groups I, J
+  // Jun 17
   "New York 🇺🇸","Boston 🇺🇸","Kansas City 🇺🇸","San Francisco 🇺🇸",
-  // Jun 18 — Groups K, L
+  // Jun 18
   "Houston 🇺🇸","Dallas 🇺🇸","Toronto 🇨🇦","Mexico City 🇲🇽",
-  // MD2: Jun 19 — Groups A, B
+  // MD2: Jun 19
   "Atlanta 🇺🇸","Los Angeles 🇺🇸","Vancouver 🇨🇦","Guadalajara 🇲🇽",
-  // Jun 20 — Groups C, D
+  // Jun 20
   "Seattle 🇺🇸","Boston 🇺🇸","Philadelphia 🇺🇸","San Francisco 🇺🇸",
-  // Jun 21 — Groups E, F
+  // Jun 21
   "Houston 🇺🇸","Toronto 🇨🇦","Kansas City 🇺🇸","Guadalajara 🇲🇽",
-  // Jun 22 — Groups G, H
+  // Jun 22
   "Atlanta 🇺🇸","Los Angeles 🇺🇸","Miami 🇺🇸","Vancouver 🇨🇦",
-  // Jun 23 — Groups I, J
+  // Jun 23
   "Dallas 🇺🇸","Philadelphia 🇺🇸","New York 🇺🇸","San Francisco 🇺🇸",
-  // Jun 24 — Groups K, L
+  // Jun 24
   "Houston 🇺🇸","Boston 🇺🇸","Toronto 🇨🇦","Guadalajara 🇲🇽",
-  // MD3: Jun 25 — Groups B, C, A
-  "Vancouver 🇨🇦","Seattle 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","Mexico City 🇲🇽","Guadalajara 🇲🇽",
-  // Jun 26 — Groups E, F, D
+  // MD3: Jun 25
+  "Vancouver 🇨🇦","Seattle 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","Mexico City 🇲🇽","Monterrey 🇲🇽",
+  // Jun 26
   "Philadelphia 🇺🇸","New York 🇺🇸","Dallas 🇺🇸","Kansas City 🇺🇸","Los Angeles 🇺🇸","San Francisco 🇺🇸",
-  // Jun 27 — Groups I, H, G
+  // Jun 27
   "Boston 🇺🇸","Toronto 🇨🇦","Houston 🇺🇸","Guadalajara 🇲🇽","Seattle 🇺🇸","Vancouver 🇨🇦",
-  // Jun 28 — Groups L, K, J
+  // Jun 28
   "New York 🇺🇸","Philadelphia 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","Kansas City 🇺🇸","Dallas 🇺🇸"
 ];
 
-/** 北京时间转换：将 UTC 日期+偏移转为北京时间字符串 */
-function toBeijingTime(dateStr, utcOffset) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return '';
-  const utc = d.getTime() + d.getTimezoneOffset() * 60000;
-  const bj = new Date(utc + 8 * 3600000);
-  const h = bj.getHours().toString().padStart(2, '0');
-  const m = bj.getMinutes().toString().padStart(2, '0');
-  return `${bj.getMonth()+1}/${bj.getDate()} ${h}:${m}`;
-}
-
-/** 比赛的 UTC 偏移量（按场地城市） */
-const VENUE_UTC = {
-  "Mexico City 🇲🇽": -6, "Guadalajara 🇲🇽": -6, "Monterrey 🇲🇽": -6,
-  "Toronto 🇨🇦": -4, "Vancouver 🇨🇦": -7,
-  "New York 🇺🇸": -4, "Boston 🇺🇸": -4, "Philadelphia 🇺🇸": -4,
-  "Miami 🇺🇸": -4, "Atlanta 🇺🇸": -4,
-  "Los Angeles 🇺🇸": -7, "San Francisco 🇺🇸": -7, "Seattle 🇺🇸": -7,
-  "Houston 🇺🇸": -5, "Dallas 🇺🇸": -5, "Kansas City 🇺🇸": -5
-};
+/** 比赛数据: [当地日期, 北京时间, 主队, 客队, 小组] */
+const MATCH_TIMES = {};
+MATCHES.forEach(m => {
+  MATCH_TIMES[`${m[2]}|${m[3]}|${m[0]}`] = m[1];
+});
 
 // ---- FIFA Annex C: 495 third-place combination matrix ----
-// Maps which 8 groups' third-place teams qualify → R32 assignments
-// Source: FIFA Regulations Annex C, cross-checked with Wikipedia
-// Key = sorted group letters of qualifying third-place teams
-// Value = {groupWinnerSlot: thirdPlaceTeamGroup}
-const TPM={"ABCDEFGH":"HGBCAFDE","ABCDEFGI":"CGBDAFEI","ABCDEFGJ":"CGBDAFEJ","ABCDEFGK":"CGBDAFEK","ABCDEFGL":"CGBDAFLE","ABCDEFHI":"HEBCAFDI","ABCDEFHJ":"HJBCAFDE","ABCDEFHK":"HEBCAFDK","ABCDEFHL":"HFBCADLE","ABCDEFIJ":"CJBDAFEI","ABCDEFIK":"CEBDAFIK","ABCDEFIL":"CEBDAFLI","ABCDEFJK":"CJBDAFEK","ABCDEFJL":"CJBDAFLE","ABCDEFKL":"CEBDAFLK","ABCDEGHI":"HGBCADEI","ABCDEGHJ":"HGBCADEJ","ABCDEGHK":"HGBCADEK","ABCDEGHL":"HGBCADLE","ABCDEGIJ":"EGBCADIJ","ABCDEGIK":"EGBCADIK","ABCDEGIL":"EGBCADLI","ABCDEGJK":"EGBCADJK","ABCDEGJL":"EGBCADLJ","ABCDEGKL":"EGBCADLK","ABCDEHIJ":"HJBCADEI","ABCDEHIK":"HEBCADIK","ABCDEHIL":"HEBCADLI","ABCDEHJK":"HJBCADEK","ABCDEHJL":"HJBCADLE","ABCDEHKL":"HEBCADLK","ABCDEIJK":"EJBCADIK","ABCDEIJL":"EJBCADLI","ABCDEIKL":"EIBCADLK","ABCDEJKL":"EJBCADLK","ABCDFGHI":"HGBCAFDI","ABCDFGHJ":"HGBCAFDJ","ABCDFGHK":"HGBCAFDK","ABCDFGHL":"CGBDAFLH","ABCDFGIJ":"CGBDAFIJ","ABCDFGIK":"CGBDAFIK","ABCDFGIL":"CGBDAFLI","ABCDFGJK":"CGBDAFJK","ABCDFGJL":"CGBDAFLJ","ABCDFGKL":"CGBDAFLK","ABCDFHIJ":"HJBCAFDI","ABCDFHIK":"HFBCADIK","ABCDFHIL":"HFBCADLI","ABCDFHJK":"HJBCAFDK","ABCDFHJL":"CJBDAFLH","ABCDFHKL":"HFBCADLK","ABCDFIJK":"CJBDAFIK","ABCDFIJL":"CJBDAFLI","ABCDFIKL":"CIBDAFLK","ABCDFJKL":"CJBDAFLK","ABCDGHIJ":"HGBCADIJ","ABCDGHIK":"HGBCADIK","ABCDGHIL":"HGBCADLI","ABCDGHJK":"HGBCADJK","ABCDGHJL":"HGBCADLJ","ABCDGHKL":"HGBCADLK","ABCDGIJK":"CJBDAGIK","ABCDGIJL":"CJBDAGLI","ABCDGIKL":"IGBCADLK","ABCDGJKL":"CJBDAGLK","ABCDHIJK":"HJBCADIK","ABCDHIJL":"HJBCADLI","ABCDHIKL":"HIBCADLK","ABCDHJKL":"HJBCADLK","ABCDIJKL":"IJBCADLK","ABCEFGHI":"HGBCAFEI","ABCEFGHJ":"HGBCAFEJ","ABCEFGHK":"HGBCAFEK","ABCEFGHL":"HGBCAFLE","ABCEFGIJ":"EGBCAFIJ","ABCEFGIK":"EGBCAFIK","ABCEFGIL":"EGBCAFLI","ABCEFGJK":"EGBCAFJK","ABCEFGJL":"EGBCAFLJ","ABCEFGKL":"EGBCAFLK","ABCEFHIJ":"HJBCAFEI","ABCEFHIK":"HEBCAFIK","ABCEFHIL":"HEBCAFLI","ABCEFHJK":"HJBCAFEK","ABCEFHJL":"HJBCAFLE","ABCEFHKL":"HEBCAFLK","ABCEFIJK":"EJBCAFIK","ABCEFIJL":"EJBCAFLI","ABCEFIKL":"EIBCAFLK","ABCEFJKL":"EJBCAFLK","ABCEGHIJ":"HJBCAGEI","ABCEGHIK":"EGBCAHIK","ABCEGHIL":"EGBCAHLI","ABCEGHJK":"HJBCAGEK","ABCEGHJL":"HJBCAGLE","ABCEGHKL":"EGBCAHLK","ABCEGIJK":"EJBCAGIK","ABCEGIJL":"EJBCAGLI","ABCEGIKL":"EGBAICLK","ABCEGJKL":"EJBCAGLK","ABCEHIJK":"EJBCAHIK","ABCEHIJL":"EJBCAHLI","ABCEHIKL":"EIBCAHLK","ABCEHJKL":"EJBCAHLK","ABCEIJKL":"EJBAICLK","ABCFGHIJ":"HGBCAFIJ","ABCFGHIK":"HGBCAFIK","ABCFGHIL":"HGBCAFLI","ABCFGHJK":"HGBCAFJK","ABCFGHJL":"HGBCAFLJ","ABCFGHKL":"HGBCAFLK","ABCFGIJK":"CJBFAGIK","ABCFGIJL":"CJBFAGLI","ABCFGIKL":"IGBCAFLK","ABCFGJKL":"CJBFAGLK","ABCFHIJK":"HJBCAFIK","ABCFHIJL":"HJBCAFLI","ABCFHIKL":"HIBCAFLK","ABCFHJKL":"HJBCAFLK","ABCFIJKL":"IJBCAFLK","ABCGHIJK":"HJBCAGIK","ABCGHIJL":"HJBCAGLI","ABCGHIKL":"IGBCAHLK","ABCGHJKL":"HJBCAGLK","ABCGIJKL":"IJBCAGLK","ABCHIJKL":"IJBCAHLK","ABDEFGHI":"HGBDAFEI","ABDEFGHJ":"HGBDAFEJ","ABDEFGHK":"HGBDAFEK","ABDEFGHL":"HGBDAFLE","ABDEFGIJ":"EGBDAFIJ","ABDEFGIK":"EGBDAFIK","ABDEFGIL":"EGBDAFLI","ABDEFGJK":"EGBDAFJK","ABDEFGJL":"EGBDAFLJ","ABDEFGKL":"EGBDAFLK","ABDEFHIJ":"HJBDAFEI","ABDEFHIK":"HEBDAFIK","ABDEFHIL":"HEBDAFLI","ABDEFHJK":"HJBDAFEK","ABDEFHJL":"HJBDAFLE","ABDEFHKL":"HEBDAFLK","ABDEFIJK":"EJBDAFIK","ABDEFIJL":"EJBDAFLI","ABDEFIKL":"EIBDAFLK","ABDEFJKL":"EJBDAFLK","ABDEGHIJ":"HJBDAGEI","ABDEGHIK":"EGBDAHIK","ABDEGHIL":"EGBDAHLI","ABDEGHJK":"HJBDAGEK","ABDEGHJL":"HJBDAGLE","ABDEGHKL":"EGBDAHLK","ABDEGIJK":"EJBDAGIK","ABDEGIJL":"EJBDAGLI","ABDEGIKL":"EGBAIDLK","ABDEGJKL":"EJBDAGLK","ABDEHIJK":"EJBDAHIK","ABDEHIJL":"EJBDAHLI","ABDEHIKL":"EIBDAHLK","ABDEHJKL":"EJBDAHLK","ABDEIJKL":"EJBAIDLK","ABDFGHIJ":"HGBDAFIJ","ABDFGHIK":"HGBDAFIK","ABDFGHIL":"HGBDAFLI","ABDFGHJK":"HGBDAFJK","ABDFGHJL":"HGBDAFLJ","ABDFGHKL":"HGBDAFLK","ABDFGIJK":"FJBDAGIK","ABDFGIJL":"FJBDAGLI","ABDFGIKL":"IGBDAFLK","ABDFGJKL":"FJBDAGLK","ABDFHIJK":"HJBDAFIK","ABDFHIJL":"HJBDAFLI","ABDFHIKL":"HIBDAFLK","ABDFHJKL":"HJBDAFLK","ABDFIJKL":"IJBDAFLK","ABDGHIJK":"HJBDAGIK","ABDGHIJL":"HJBDAGLI","ABDGHIKL":"IGBDAHLK","ABDGHJKL":"HJBDAGLK","ABDGIJKL":"IJBDAGLK","ABDHIJKL":"IJBDAHLK","ABEFGHIJ":"HJBFAGEI","ABEFGHIK":"EGBFAHIK","ABEFGHIL":"EGBFAHLI","ABEFGHJK":"HJBFAGEK","ABEFGHJL":"HJBFAGLE","ABEFGHKL":"EGBFAHLK","ABEFGIJK":"EJBFAGIK","ABEFGIJL":"EJBFAGLI","ABEFGIKL":"EGBAIFLK","ABEFGJKL":"EJBFAGLK","ABEFHIJK":"EJBFAHIK","ABEFHIJL":"EJBFAHLI","ABEFHIKL":"EIBFAHLK","ABEFHJKL":"EJBFAHLK","ABEFIJKL":"EJBAIFLK","ABEGHIJK":"EJBAHGIK","ABEGHIJL":"EJBAHGLI","ABEGHIKL":"EGBAIHLK","ABEGHJKL":"EJBAHGLK","ABEGIJKL":"EJBAIGLK","ABEHIJKL":"EJBAIHLK","ABFGHIJK":"HJBFAGIK","ABFGHIJL":"HJBFAGLI","ABFGHIKL":"HGBAIFLK","ABFGHJKL":"HJBFAGLK","ABFGIJKL":"IJBFAGLK","ABFHIJKL":"HJBAIFLK","ABGHIJKL":"HJBAIGLK","ACDEFGHI":"HGECAFDI","ACDEFGHJ":"HGJCAFDE","ACDEFGHK":"HGECAFDK","ACDEFGHL":"HGFCADLE","ACDEFGIJ":"CGJDAFEI","ACDEFGIK":"CGEDAFIK","ACDEFGIL":"CGEDAFLI","ACDEFGJK":"CGJDAFEK","ACDEFGJL":"CGJDAFLE","ACDEFGKL":"CGEDAFLK","ACDEFHIJ":"HJECAFDI","ACDEFHIK":"HEFCADIK","ACDEFHIL":"HEFCADLI","ACDEFHJK":"HJECAFDK","ACDEFHJL":"HJFCADLE","ACDEFHKL":"HEFCADLK","ACDEFIJK":"CJEDAFIK","ACDEFIJL":"CJEDAFLI","ACDEFIKL":"CEIDAFLK","ACDEFJKL":"CJEDAFLK","ACDEGHIJ":"HGJCADEI","ACDEGHIK":"HGECADIK","ACDEGHIL":"HGECADLI","ACDEGHJK":"HGJCADEK","ACDEGHJL":"HGJCADLE","ACDEGHKL":"HGECADLK","ACDEGIJK":"EGJCADIK","ACDEGIJL":"EGJCADLI","ACDEGIKL":"EGICADLK","ACDEGJKL":"EGJCADLK","ACDEHIJK":"HJECADIK","ACDEHIJL":"HJECADLI","ACDEHIKL":"HEICADLK","ACDEHJKL":"HJECADLK","ACDEIJKL":"EJICADLK","ACDFGHIJ":"HGJCAFDI","ACDFGHIK":"HGFCADIK","ACDFGHIL":"HGFCADLI","ACDFGHJK":"HGJCAFDK","ACDFGHJL":"CGJDAFLH","ACDFGHKL":"HGFCADLK","ACDFGIJK":"CGJDAFIK","ACDFGIJL":"CGJDAFLI","ACDFGIKL":"CGIDAFLK","ACDFGJKL":"CGJDAFLK","ACDFHIJK":"HJFCADIK","ACDFHIJL":"HJFCADLI","ACDFHIKL":"HFICADLK","ACDFHJKL":"HJFCADLK","ACDFIJKL":"CJIDAFLK","ACDGHIJK":"HGJCADIK","ACDGHIJL":"HGJCADLI","ACDGHIKL":"HGICADLK","ACDGHJKL":"HGJCADLK","ACDGIJKL":"IGJCADLK","ACDHIJKL":"HJICADLK","ACEFGHIJ":"HGJCAFEI","ACEFGHIK":"HGECAFIK","ACEFGHIL":"HGECAFLI","ACEFGHJK":"HGJCAFEK","ACEFGHJL":"HGJCAFLE","ACEFGHKL":"HGECAFLK","ACEFGIJK":"EGJCAFIK","ACEFGIJL":"EGJCAFLI","ACEFGIKL":"EGICAFLK","ACEFGJKL":"EGJCAFLK","ACEFHIJK":"HJECAFIK","ACEFHIJL":"HJECAFLI","ACEFHIKL":"HEICAFLK","ACEFHJKL":"HJECAFLK","ACEFIJKL":"EJICAFLK","ACEGHIJK":"EGJCAHIK","ACEGHIJL":"EGJCAHLI","ACEGHIKL":"EGICAHLK","ACEGHJKL":"EGJCAHLK","ACEGIJKL":"EJICAGLK","ACEHIJKL":"EJICAHLK","ACFGHIJK":"HGJCAFIK","ACFGHIJL":"HGJCAFLI","ACFGHIKL":"HGICAFLK","ACFGHJKL":"HGJCAFLK","ACFGIJKL":"IGJCAFLK","ACFHIJKL":"HJICAFLK","ACGHIJKL":"HJICAGLK","ADEFGHIJ":"HGJDAFEI","ADEFGHIK":"HGEDAFIK","ADEFGHIL":"HGEDAFLI","ADEFGHJK":"HGJDAFEK","ADEFGHJL":"HGJDAFLE","ADEFGHKL":"HGEDAFLK","ADEFGIJK":"EGJDAFIK","ADEFGIJL":"EGJDAFLI","ADEFGIKL":"EGIDAFLK","ADEFGJKL":"EGJDAFLK","ADEFHIJK":"HJEDAFIK","ADEFHIJL":"HJEDAFLI","ADEFHIKL":"HEIDAFLK","ADEFHJKL":"HJEDAFLK","ADEFIJKL":"EJIDAFLK","ADEGHIJK":"EGJDAHIK","ADEGHIJL":"EGJDAHLI","ADEGHIKL":"EGIDAHLK","ADEGHJKL":"EGJDAHLK","ADEGIJKL":"EJIDAGLK","ADEHIJKL":"EJIDAHLK","ADFGHIJK":"HGJDAFIK","ADFGHIJL":"HGJDAFLI","ADFGHIKL":"HGIDAFLK","ADFGHJKL":"HGJDAFLK","ADFGIJKL":"IGJDAFLK","ADFHIJKL":"HJIDAFLK","ADGHIJKL":"HJIDAGLK","AEFGHIJK":"EGJFAHIK","AEFGHIJL":"EGJFAHLI","AEFGHIKL":"EGIFAHLK","AEFGHJKL":"EGJFAHLK","AEFGIJKL":"EJIFAGLK","AEFHIJKL":"EJIFAHLK","AEGHIJKL":"EJIAHGLK","AFGHIJKL":"HJIFAGLK","BCDEFGHI":"CGBDHFEI","BCDEFGHJ":"HGBCJFDE","BCDEFGHK":"CGBDHFEK","BCDEFGHL":"CGBDHFLE","BCDEFGIJ":"CGBDJFEI","BCDEFGIK":"CGBDEFIK","BCDEFGIL":"CGBDEFLI","BCDEFGJK":"CGBDJFEK","BCDEFGJL":"CGBDJFLE","BCDEFGKL":"CGBDEFLK","BCDEFHIJ":"CJBDHFEI","BCDEFHIK":"CEBDHFIK","BCDEFHIL":"CEBDHFLI","BCDEFHJK":"CJBDHFEK","BCDEFHJL":"CJBDHFLE","BCDEFHKL":"CEBDHFLK","BCDEFIJK":"CJBDEFIK","BCDEFIJL":"CJBDEFLI","BCDEFIKL":"CEBDIFLK","BCDEFJKL":"CJBDEFLK","BCDEGHIJ":"HGBCJDEI","BCDEGHIK":"EGBCHDIK","BCDEGHIL":"EGBCHDLI","BCDEGHJK":"HGBCJDEK","BCDEGHJL":"HGBCJDLE","BCDEGHKL":"EGBCHDLK","BCDEGIJK":"EGBCJDIK","BCDEGIJL":"EGBCJDLI","BCDEGIKL":"EGBCIDLK","BCDEGJKL":"EGBCJDLK","BCDEHIJK":"EJBCHDIK","BCDEHIJL":"EJBCHDLI","BCDEHIKL":"EIBCHDLK","BCDEHJKL":"EJBCHDLK","BCDEIJKL":"EJBCIDLK","BCDFGHIJ":"HGBCJFDI","BCDFGHIK":"CGBDHFIK","BCDFGHIL":"CGBDHFLI","BCDFGHJK":"HGBCJFDK","BCDFGHJL":"CGBDHFLJ","BCDFGHKL":"CGBDHFLK","BCDFGIJK":"CGBDJFIK","BCDFGIJL":"CGBDJFLI","BCDFGIKL":"CGBDIFLK","BCDFGJKL":"CGBDJFLK","BCDFHIJK":"CJBDHFIK","BCDFHIJL":"CJBDHFLI","BCDFHIKL":"CIBDHFLK","BCDFHJKL":"CJBDHFLK","BCDFIJKL":"CJBDIFLK","BCDGHIJK":"HGBCJDIK","BCDGHIJL":"HGBCJDLI","BCDGHIKL":"HGBCIDLK","BCDGHJKL":"HGBCJDLK","BCDGIJKL":"IGBCJDLK","BCDHIJKL":"HJBCIDLK","BCEFGHIJ":"HGBCJFEI","BCEFGHIK":"EGBCHFIK","BCEFGHIL":"EGBCHFLI","BCEFGHJK":"HGBCJFEK","BCEFGHJL":"HGBCJFLE","BCEFGHKL":"EGBCHFLK","BCEFGIJK":"EGBCJFIK","BCEFGIJL":"EGBCJFLI","BCEFGIKL":"EGBCIFLK","BCEFGJKL":"EGBCJFLK","BCEFHIJK":"EJBCHFIK","BCEFHIJL":"EJBCHFLI","BCEFHIKL":"EIBCHFLK","BCEFHJKL":"EJBCHFLK","BCEFIJKL":"EJBCIFLK","BCEGHIJK":"EJBCHGIK","BCEGHIJL":"EJBCHGLI","BCEGHIKL":"EGBCIHLK","BCEGHJKL":"EJBCHGLK","BCEGIJKL":"EJBCIGLK","BCEHIJKL":"EJBCIHLK","BCFGHIJK":"HGBCJFIK","BCFGHIJL":"HGBCJFLI","BCFGHIKL":"HGBCIFLK","BCFGHJKL":"HGBCJFLK","BCFGIJKL":"IGBCJFLK","BCFHIJKL":"HJBCIFLK","BCGHIJKL":"HJBCIGLK","BDEFGHIJ":"HGBDJFEI","BDEFGHIK":"EGBDHFIK","BDEFGHIL":"EGBDHFLI","BDEFGHJK":"HGBDJFEK","BDEFGHJL":"HGBDJFLE","BDEFGHKL":"EGBDHFLK","BDEFGIJK":"EGBDJFIK","BDEFGIJL":"EGBDJFLI","BDEFGIKL":"EGBDIFLK","BDEFGJKL":"EGBDJFLK","BDEFHIJK":"EJBDHFIK","BDEFHIJL":"EJBDHFLI","BDEFHIKL":"EIBDHFLK","BDEFHJKL":"EJBDHFLK","BDEFIJKL":"EJBDIFLK","BDEGHIJK":"EJBDHGIK","BDEGHIJL":"EJBDHGLI","BDEGHIKL":"EGBDIHLK","BDEGHJKL":"EJBDHGLK","BDEGIJKL":"EJBDIGLK","BDEHIJKL":"EJBDIHLK","BDFGHIJK":"HGBDJFIK","BDFGHIJL":"HGBDJFLI","BDFGHIKL":"HGBDIFLK","BDFGHJKL":"HGBDJFLK","BDFGIJKL":"IGBDJFLK","BDFHIJKL":"HJBDIFLK","BDGHIJKL":"HJBDIGLK","BEFGHIJK":"EJBFHGIK","BEFGHIJL":"EJBFHGLI","BEFGHIKL":"EGBFIHLK","BEFGHJKL":"EJBFHGLK","BEFGIJKL":"EJBFIGLK","BEFHIJKL":"EJBFIHLK","BEGHIJKL":"EJIBHGLK","BFGHIJKL":"HJBFIGLK","CDEFGHIJ":"CGJDHFEI","CDEFGHIK":"CGEDHFIK","CDEFGHIL":"CGEDHFLI","CDEFGHJK":"CGJDHFEK","CDEFGHJL":"CGJDHFLE","CDEFGHKL":"CGEDHFLK","CDEFGIJK":"CGEDJFIK","CDEFGIJL":"CGEDJFLI","CDEFGIKL":"CGEDIFLK","CDEFGJKL":"CGEDJFLK","CDEFHIJK":"CJEDHFIK","CDEFHIJL":"CJEDHFLI","CDEFHIKL":"CEIDHFLK","CDEFHJKL":"CJEDHFLK","CDEFIJKL":"CJEDIFLK","CDEGHIJK":"EGJCHDIK","CDEGHIJL":"EGJCHDLI","CDEGHIKL":"EGICHDLK","CDEGHJKL":"EGJCHDLK","CDEGIJKL":"EGICJDLK","CDEHIJKL":"EJICHDLK","CDFGHIJK":"CGJDHFIK","CDFGHIJL":"CGJDHFLI","CDFGHIKL":"CGIDHFLK","CDFGHJKL":"CGJDHFLK","CDFGIJKL":"CGIDJFLK","CDFHIJKL":"CJIDHFLK","CDGHIJKL":"HGICJDLK","CEFGHIJK":"EGJCHFIK","CEFGHIJL":"EGJCHFLI","CEFGHIKL":"EGICHFLK","CEFGHJKL":"EGJCHFLK","CEFGIJKL":"EGICJFLK","CEFHIJKL":"EJICHFLK","CEGHIJKL":"EJICHGLK","CFGHIJKL":"HGICJFLK","DEFGHIJK":"EGJDHFIK","DEFGHIJL":"EGJDHFLI","DEFGHIKL":"EGIDHFLK","DEFGHJKL":"EGJDHFLK","DEFGIJKL":"EGIDJFLK","DEFHIJKL":"EJIDHFLK","DEGHIJKL":"EJIDHGLK","DFGHIJKL":"HGIDJFLK","EFGHIJKL":"EJIFHGLK"};
-
-// ---- 2022 World Cup Results (for backtesting) ----
-const WC2022_RESULTS = [
-  // Group A
-  {t1:'Qatar',t2:'Ecuador',s1:0,s2:2},{t1:'Senegal',t2:'Netherlands',s1:0,s2:2},
-  {t1:'Qatar',t2:'Senegal',s1:1,s2:3},{t1:'Netherlands',t2:'Ecuador',s1:1,s2:1},
-  {t1:'Ecuador',t2:'Senegal',s1:1,s2:2},{t1:'Netherlands',t2:'Qatar',s1:2,s2:0},
-  // Group B
-  {t1:'England',t2:'Iran',s1:6,s2:2},{t1:'United States',t2:'Wales',s1:1,s2:1},
-  {t1:'Wales',t2:'Iran',s1:0,s2:2},{t1:'England',t2:'United States',s1:0,s2:0},
-  {t1:'Wales',t2:'England',s1:0,s2:3},{t1:'Iran',t2:'United States',s1:0,s2:1},
-  // Group C
-  {t1:'Argentina',t2:'Saudi Arabia',s1:1,s2:2},{t1:'Mexico',t2:'Poland',s1:0,s2:0},
-  {t1:'Poland',t2:'Saudi Arabia',s1:2,s2:0},{t1:'Argentina',t2:'Mexico',s1:2,s2:0},
-  {t1:'Poland',t2:'Argentina',s1:0,s2:2},{t1:'Saudi Arabia',t2:'Mexico',s1:1,s2:2},
-  // Group D
-  {t1:'France',t2:'Australia',s1:4,s2:1},{t1:'Denmark',t2:'Tunisia',s1:0,s2:0},
-  {t1:'Tunisia',t2:'Australia',s1:0,s2:1},{t1:'France',t2:'Denmark',s1:2,s2:1},
-  {t1:'Tunisia',t2:'France',s1:1,s2:0},{t1:'Australia',t2:'Denmark',s1:1,s2:0},
-  // Group E
-  {t1:'Germany',t2:'Japan',s1:1,s2:2},{t1:'Spain',t2:'Costa Rica',s1:7,s2:0},
-  {t1:'Japan',t2:'Costa Rica',s1:0,s2:1},{t1:'Spain',t2:'Germany',s1:1,s2:1},
-  {t1:'Japan',t2:'Spain',s1:2,s2:1},{t1:'Costa Rica',t2:'Germany',s1:2,s2:4},
-  // Group F
-  {t1:'Morocco',t2:'Croatia',s1:0,s2:0},{t1:'Belgium',t2:'Canada',s1:1,s2:0},
-  {t1:'Belgium',t2:'Morocco',s1:0,s2:2},{t1:'Croatia',t2:'Canada',s1:4,s2:1},
-  {t1:'Croatia',t2:'Belgium',s1:0,s2:0},{t1:'Canada',t2:'Morocco',s1:2,s2:1},
-  // Group G
-  {t1:'Switzerland',t2:'Cameroon',s1:1,s2:0},{t1:'Brazil',t2:'Serbia',s1:2,s2:0},
-  {t1:'Cameroon',t2:'Serbia',s1:3,s2:3},{t1:'Brazil',t2:'Switzerland',s1:1,s2:0},
-  {t1:'Cameroon',t2:'Brazil',s1:1,s2:0},{t1:'Serbia',t2:'Switzerland',s1:2,s2:3},
-  // Group H
-  {t1:'Uruguay',t2:'South Korea',s1:0,s2:0},{t1:'Portugal',t2:'Ghana',s1:3,s2:2},
-  {t1:'South Korea',t2:'Ghana',s1:2,s2:3},{t1:'Portugal',t2:'Uruguay',s1:2,s2:0},
-  {t1:'South Korea',t2:'Portugal',s1:2,s2:1},{t1:'Ghana',t2:'Uruguay',s1:0,s2:2},
-];
-
-/** 2022-era Elo ratings for teams not in 2026 TEAMS (eloratings.net, Nov 2022) */
-const WC2022_TEAMS = {
-  'Wales': {elo:1771,fifa:1570,mv:160,wc:2,form:0.50,host:0,odds:15000,atk:0.92,def:0.95},
-  'Costa Rica': {elo:1584,fifa:1500,mv:45,wc:6,form:0.45,host:0,odds:25000,atk:0.85,def:0.90},
-  'Cameroon': {elo:1554,fifa:1485,mv:90,wc:8,form:0.45,host:0,odds:25000,atk:0.90,def:0.85},
-  'Serbia': {elo:1726,fifa:1550,mv:200,wc:4,form:0.50,host:0,odds:15000,atk:0.95,def:0.92},
-  'Denmark': {elo:1832,fifa:1670,mv:310,wc:6,form:0.55,host:0,odds:8000,atk:1.00,def:1.05},
-  'Poland': {elo:1722,fifa:1548,mv:180,wc:9,form:0.50,host:0,odds:15000,atk:0.92,def:0.95},
-};
-
-/** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
-function runBacktest() {
-  return withPreTournamentElo(() => {
-    const predictions = [];
-    const outcomes = [];
-    let correct = 0;
-
-    for (const m of WC2022_RESULTS) {
-      const tmpAdded = [];
-      for (const tm of [m.t1, m.t2]) {
-        if (!TEAMS[tm] && WC2022_TEAMS[tm]) { TEAMS[tm] = WC2022_TEAMS[tm]; tmpAdded.push(tm); }
-      }
-      if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
-      const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
-      const probs = matchProbs(m.t1, m.t2, tmpFormMap);
-      tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];});
-      const predArr = [probs.win, probs.draw, probs.loss];
-      const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
-      predictions.push(predArr);
-      outcomes.push(outcome);
-      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
-                         predArr[1] >= predArr[2] ? 1 : 2;
-      if (predWinner === outcome) correct++;
-    }
-
-    if (predictions.length === 0) return null;
-
-    let rpsSum = 0, brierSum = 0, logLossSum = 0;
-    for (let i = 0; i < predictions.length; i++) {
-      rpsSum += rankedProbabilityScore(predictions[i], outcomes[i]);
-      brierSum += brierScore(predictions[i], outcomes[i]);
-      logLossSum += logLoss(predictions[i], outcomes[i]);
-    }
-
-    return {
-    total: predictions.length,
-    correct,
-    accuracy: correct / predictions.length,
-    rps: rpsSum / predictions.length,
-    brier: brierSum / predictions.length,
-    logLoss: logLossSum / predictions.length,
-    ece: expectedCalibrationError(predictions, outcomes)
-  };
-  });
-}
+const TPM={"ABCDEFGH":"HGBCAFDE","ABCDEFGI":"CGBDAFEI","ABCDEFGJ":"CGBDAFEJ","ABCDEFGK":"CGBDAFEK","ABCDEFGL":"CGBDAFLE","ABCDEFHI":"HEBCAFDI","ABCDEFHJ":"HJBCAFDE","ABCDEFHK":"HEBCAFDK","ABCDEFHL":"HFBCADLE","ABCDEFIJ":"CJBDAFEI","ABCDEFIK":"CEBDAFIK","ABCDEFIL":"CEBDAFLI","ABCDEFJK":"CJBDAFEK","ABCDEFJL":"CJBDAFLE","ABCDEFKL":"CEBDAFLK","ABCDEGHI":"HGBCADEI","ABCDEGHJ":"HGBCADEJ","ABCDEGHK":"HGBCADEK","ABCDEGHL":"HGBCADLE","ABCDEGIJ":"EGBCADIJ","ABCDEGIK":"EGBCADIK","ABCDEGIL":"EGBCADLI","ABCDEGJK":"EGBCADJK","ABCDEGJL":"EGBCADLJ","ABCDEGKL":"EGBCADLK","ABCDEHIJ":"HJBCADEI","ABCDEHIK":"HEBCADIK","ABCDEHIL":"HEBCADLI","ABCDEHJK":"HJBCADEK","ABCDEHJL":"HJBCADLE","ABCDEHKL":"HEBCADLK","ABCDEIJK":"EJBCADIK","ABCDEIJL":"EJBCADLI","ABCDEIKL":"EIBCADLK","ABCDEJKL":"EJBCADLK"};
 
 // ---- Poisson with Dixon-Coles correction ----
 
@@ -2034,7 +1920,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
   }
 
   // Group stage
-  for (const [date, home, away, grp] of MATCHES) {
+  for (const [date, time, home, away, grp] of MATCHES) {
     let sa, sb;
     const actual = actualMap[`${home}|${away}|${date}`] || actualMap[`${home}|${away}|`];
     if (actual) {
@@ -3194,7 +3080,7 @@ function showToast(msg){const el=document.createElement('div');el.className='toa
 
 /** Pre-built venue lookup: key="date|home|away" → venue */
 const VENUE_MAP = {};
-MATCHES.forEach((m, i) => { VENUE_MAP[`${m[0]}|${m[1]}|${m[2]}`] = VENUES[i] || ''; });
+MATCHES.forEach((m, i) => { VENUE_MAP[`${m[0]}|${m[2]}|${m[3]}`] = VENUES[i] || ''; });
 function getVenue(ta, tb, date) { return VENUE_MAP[`${date}|${ta}|${tb}`] || ''; }
 
 // ── Data Persistence ─────────────────────────────────────────────────────
@@ -3263,7 +3149,7 @@ function runSimulation(){
   let rankings={}, bestThirds=[], ko={};
   withPreTournamentElo(() => {
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-  MATCHES.forEach(([date,ta,tb,grp])=>{
+  MATCHES.forEach(([date,time,ta,tb,grp])=>{
     let actual=actualMap[`${ta}|${tb}|${date}`]||actualMap[`${ta}|${tb}|`];
     const a=standings[grp][ta],b=standings[grp][tb];
     if(actual){
@@ -3422,32 +3308,31 @@ function renderMatches(){
 
   // Match list — 按北京时间排序
   let ld='';
-  // Pre-compute Beijing time for each match
+  // Pre-compute Beijing time for each match from MATCHES array
   const matchBJTime = {};
-  matchResults.forEach(m => {
-    const venue = getVenue(m.ta, m.tb, m.date);
-    const utcOffset = VENUE_UTC[venue] || -5;
-    // Parse date and add offset to get Beijing time
-    const d = new Date(m.date);
-    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
-    const bj = new Date(utc + (utcOffset + 8) * 3600000);
-    matchBJTime[`${m.ta}|${m.tb}|${m.date}`] = bj;
+  const matchBJDate = {};
+  MATCHES.forEach(([date,time,home,away,grp]) => {
+    matchBJTime[`${home}|${away}|${date}`] = time;
+    matchBJDate[`${home}|${away}|${date}`] = date;
   });
-  // Sort matches by Beijing time
+  // Sort matches by Beijing date + time
   matchResults.sort((a, b) => {
-    const bjA = matchBJTime[`${a.ta}|${a.tb}|${a.date}`] || new Date(a.date);
-    const bjB = matchBJTime[`${b.ta}|${b.tb}|${b.date}`] || new Date(b.date);
-    return bjA - bjB;
+    const da = matchBJDate[`${a.ta}|${a.tb}|${a.date}`] || a.date;
+    const db = matchBJDate[`${b.ta}|${b.tb}|${b.date}`] || b.date;
+    const ta = matchBJTime[`${a.ta}|${a.tb}|${a.date}`] || '00:00';
+    const tb = matchBJTime[`${b.ta}|${b.tb}|${b.date}`] || '00:00';
+    return (da + ta).localeCompare(db + tb);
   });
   matchResults.forEach(m=>{
-    // Get Beijing time display
+    // Get Beijing time display from MATCHES array
     const bjKey = `${m.ta}|${m.tb}|${m.date}`;
-    const bj = matchBJTime[bjKey];
-    const bjDateStr = bj ? `${bj.getMonth()+1}/${bj.getDate()}` : '';
-    const bjTimeStr = bj ? `${bj.getHours().toString().padStart(2,'0')}:${bj.getMinutes().toString().padStart(2,'0')}` : '';
-    const bjDisplay = bj ? `${bjDateStr} ${bjTimeStr}` : '';
+    const bjTimeStr = matchBJTime[bjKey] || '';
+    const bjDateStr = matchBJDate[bjKey] || m.date;
+    // Format date for display (YYYY-MM-DD → M/D)
+    const dateParts = bjDateStr.split('-');
+    const displayDate = `${parseInt(dateParts[1])}/${parseInt(dateParts[2])}`;
     
-    if(bjDateStr!==ld){ld=bjDateStr;h+=`<div class="match-date">📅 ${bjDateStr} (北京时间)</div>`;}
+    if(displayDate!==ld){ld=displayDate;h+=`<div class="match-date">📅 ${displayDate} (北京时间)</div>`;}
     const wA=m.sa>m.sb?'winner':(m.sa<m.sb?'loser':''),wB=m.sb>m.sa?'winner':(m.sb<m.sa?'loser':'');
 
     const venue=getVenue(m.ta,m.tb,m.date);
@@ -4709,7 +4594,7 @@ function validateData() {
   if (typeof VENUES !== 'undefined' && VENUES.length !== 72) errors.push(`VENUES has ${VENUES.length} entries, expected 72`);
   // 2. Each team plays exactly 3 matches
   const teamMatchCount = {};
-  for (const [,h,a,] of MATCHES) {
+  for (const [,time,h,a,] of MATCHES) {
     teamMatchCount[h] = (teamMatchCount[h]||0) + 1;
     teamMatchCount[a] = (teamMatchCount[a]||0) + 1;
   }
@@ -4722,7 +4607,7 @@ function validateData() {
     if (!groupedTeams.has(t)) errors.push(`${t} in TEAMS but not in any group`);
   }
   // 4. Opening match is Mexico vs South Africa on Jun 11
-  if (MATCHES[0][1] !== 'Mexico' || MATCHES[0][2] !== 'South Africa' || MATCHES[0][0] !== '2026-06-11') {
+  if (MATCHES[0][2] !== 'Mexico' || MATCHES[0][3] !== 'South Africa' || MATCHES[0][0] !== '2026-06-12') {
     errors.push(`Opening match should be Mexico vs South Africa on 2026-06-11`);
   }
   // 5. England flag should be gb-eng, not gb
