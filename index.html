@@ -1356,7 +1356,7 @@ function renderEV() {
   let h = '<div class="data-card"><h4>💰 Expected Value Analysis</h4>';
 
   if (evData.length === 0) {
-    h += '<p style="color:var(--text3)">No significant edge found (>3% difference required)</p>';
+    h += '<p style="color:var(--text3)">No market odds loaded. Click 🔄 Sync Polymarket to fetch odds, then EV + Kelly analysis will appear here.</p>';
   } else {
     h += '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">Model vs Market probability difference. Positive EV = profitable opportunity.</div>';
     h += '<table style="width:100%;font-size:0.75rem"><tr style="font-weight:600;color:var(--text2)">';
