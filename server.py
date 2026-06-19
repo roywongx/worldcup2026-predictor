@@ -159,8 +159,21 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         if not api_key:
             self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
             return
-        # Try multiple sport keys for WC match odds
-        for sport in ['soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']:
+
+        # Cache: remember which sport key worked to avoid wasting quota on 404s
+        if not hasattr(self, '_match_odds_sport_cache'):
+            self.__class__._match_odds_sport_cache = None
+
+        sports_to_try = (
+            [self._match_odds_sport_cache, 'soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']
+            if self._match_odds_sport_cache
+            else ['soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']
+        )
+        seen = set()
+        for sport in sports_to_try:
+            if sport in seen or not sport:
+                continue
+            seen.add(sport)
             url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={api_key}&regions=us,eu&markets=h2h&oddsFormat=decimal'
             req = urllib.request.Request(url)
             self._log(f'the-odds-api.com match-odds → {sport}')
@@ -169,6 +182,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     data = json.loads(resp.read())
                     remaining = resp.headers.get('x-requests-remaining', '')
                     self._log(f'the-odds-api.com match-odds ✓ {len(data)} events, remaining={remaining}')
+                    self.__class__._match_odds_sport_cache = sport
                     self._json_response({'data': data, 'remaining': remaining, 'sport': sport})
                     return
             except urllib.error.HTTPError as e:

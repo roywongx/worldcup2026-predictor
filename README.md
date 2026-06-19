@@ -178,7 +178,9 @@ python3 server.py
 | `fitIsotonicCalibration()` | PAVA 算法对小样本（<20）直接返回 null，但 20-50 条时仍可能退化 | 🟡 中 |
 | `getCalibrationStats()` | 使用 `preFormMap` 而非动态 form，可能低估模型实际表现 | 🟡 低 |
 | `addResult()` / `importResults()` | 手动录入后不触发 `reevaluateResults()`，数据可能不同步 | 🟡 低 |
-| `dynamicElo` 全局状态 | 多处 `initDynamicElo()` → `Object.assign(dynamicElo,savedElo)` 模式，若中途抛异常会丢失 Elo 状态 | 🟡 低 |
+| `dynamicElo` 全局状态 | 同步函数已统一用 `withPreTournamentElo`（try/finally 异常安全）；async 函数（MC/Polymarket）保留手动 save/restore | 🟢 已修 |
+| `simulationHistory` 内存 | 10k 次模拟移除 `rounds` 存储（节省 ~50MB） | 🟢 已修 |
+| `_proxy_match_odds` 配额 | 加 sport key 缓存，避免重复 404 浪费配额 | 🟢 已修 |
 | localStorage 版本兼容 | `dataVersion` 从旧版升级时可能触发种子数据重复写入 | 🟢 低 |
 | Edge 兼容性 | 用户报告 Edge 不显示概率，可能与 CSS 或 JS 执行环境有关 | 🔴 待查 |
 
@@ -260,7 +262,9 @@ Traditional "highest probability wins" produces zero draws (even with ~27% draw 
 | `simulateOneTournament()` | 10k MC loops × 72 `matchProbs` calls — perf bottleneck | 🟡 Medium |
 | `fetchPolymarketResults()` | gamma-api format may change | 🟡 Medium |
 | `fitIsotonicCalibration()` | PAVA degeneracy with 20-50 samples | 🟡 Medium |
-| `dynamicElo` global state | `initDynamicElo`/restore pattern — exception unsafe | 🟡 Low |
+| `dynamicElo` global state | Sync functions use `withPreTournamentElo` (try/finally); async keep manual save/restore | 🟢 Fixed |
+| `simulationHistory` memory | Removed `rounds` from 10k stored sims (~50MB saved) | 🟢 Fixed |
+| `_proxy_match_odds` quota | Added sport key cache to avoid repeat 404 calls | 🟢 Fixed |
 | Edge browser compat | User reports predictions not displayed | 🔴 Investigate |
 
 ### Run
