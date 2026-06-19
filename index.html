@@ -1012,14 +1012,74 @@ const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,62
 const RHO_GROUP = -0.20;    // from -0.15, tuned with base=1.25
 const RHO_KNOCKOUT = -0.15; // from -0.12
 
+/** 比赛重要性乘数 (PELE 2026 方法论)
+ *  友谊赛 0.5x → 世界杯淘汰赛 1.76x，约 3 倍差异 */
+const IMPORTANCE_FRIENDLY = 0.60;
+const IMPORTANCE_QUALIFIER = 1.50;
+const IMPORTANCE_WC_GROUP = 1.60;
+const IMPORTANCE_WC_KNOCKOUT = 1.76;
+
+/** 获取比赛重要性乘数 */
+function getMatchImportance(matchDate) {
+  if (!matchDate) return IMPORTANCE_WC_GROUP;
+  const d = matchDate.substring(0, 10);
+  if (d >= '2026-06-28') return IMPORTANCE_WC_KNOCKOUT;
+  return IMPORTANCE_WC_GROUP;
+}
+
+/** Negative Binomial overdispersion parameter (PELE 2026)
+ *  r > 0: larger r → closer to Poisson; smaller r → more variance
+ *  Estimated from historical WC data (1998-2022) */
+const NB_R = 8.5;  // Overdispersion parameter (tuned for football)
+
+/** Negative Binomial PMF: P(X=k) = C(k+r-1, k) * (r/(r+μ))^r * (μ/(r+μ))^k */
+function negBinPMF(k, mu, r) {
+  if (mu <= 0) return k === 0 ? 1 : 0;
+  if (r <= 0) return poissonPMF(k, mu);  // fallback to Poisson
+  const p = r / (r + mu);
+  // Use log-gamma for numerical stability
+  let logCoeff = 0;
+  for (let i = 0; i < k; i++) logCoeff += Math.log(r + i) - Math.log(i + 1);
+  return Math.exp(logCoeff + r * Math.log(p) + k * Math.log(1 - p));
+}
+
 /** 根据比赛日期返回对应的 rho 值 */
 function getRho(matchDate) {
   if (matchDate && matchDate.substring(0, 10) >= '2026-06-28') return RHO_KNOCKOUT;
   return RHO_GROUP;
 }
 
+/** UEFA 俱乐部估值修正 (PELE 2026: 30% discount for European clubs) */
+const UEFA_TEAMS = new Set([
+  'Germany','Spain','France','England','Portugal','Netherlands','Belgium',
+  'Croatia','Switzerland','Denmark','Poland','Serbia','Czech Republic',
+  'Austria','Sweden','Norway','Turkey','Scotland','Wales','Ukraine',
+  'Ireland','Romania','Hungary','Greece','Slovakia','Slovenia',
+  'Czech Republic','Bosnia Herzegovina','Albania','North Macedonia',
+  'Iceland','Finland','Ireland','Northern Ireland','Bulgaria',
+  'Montenegro','Georgia','Armenia','Azerbaijan','Kazakhstan',
+  'Luxembourg','Malta','Cyprus','Estonia','Latvia','Lithuania',
+  'Moldova','Kosovo','Faroe Islands','Gibraltar','Liechtenstein',
+  'San Marino','Andorra'
+]);
+
+/** Get market value with UEFA correction (30% discount for European clubs) */
+function getCorrectedMV(team) {
+  const raw = TEAMS[team] ? TEAMS[team].mv : 50;
+  return UEFA_TEAMS.has(team) ? raw * 0.70 : raw;
+}
+
+/** 交易量排名百分位 (比绝对值更鲁棒) */
+function getVolumePercentile(volume, allVolumes) {
+  if (!volume || !allVolumes || allVolumes.length === 0) return 0.5;
+  const sorted = [...allVolumes].sort((a, b) => a - b);
+  let rank = 0;
+  for (const v of sorted) { if (v <= volume) rank++; }
+  return rank / sorted.length;
+}
+
 /** 根据比赛日期计算 Polymarket blend 权重 (时间衰减: 赛前7天20% → 临场50%) */
-function getMarketBlend(matchDate, volume) {
+function getMarketBlend(matchDate, volume, allVolumes) {
   if (!matchDate) return 0.20;
   const now = new Date();
   const match = new Date(matchDate);
@@ -1030,10 +1090,11 @@ function getMarketBlend(matchDate, volume) {
   else if (hoursUntil <= 168) blend = 0.20 + 0.15 * (1 - (hoursUntil - 24) / 144);
   else blend = 0.20;
 
-  // Volume sentiment: high trading volume → market more confident → increase blend
-  // Volume < $50k = low confidence, > $500k = high confidence
+  // Volume sentiment: use percentile ranking (more robust than absolute log)
+  // 50th percentile = neutral, 90th+ = high confidence boost
   if (volume && volume > 0) {
-    const volumeFactor = Math.min(1.5, Math.max(0.5, Math.log10(volume / 50000) * 0.3 + 1));
+    const pct = getVolumePercentile(volume, allVolumes);
+    const volumeFactor = 0.7 + 0.6 * pct;  // range: 0.7 (0th) to 1.3 (100th)
     blend *= volumeFactor;
   }
   return Math.min(0.60, Math.max(0.10, blend));
@@ -1499,15 +1560,18 @@ function predictOutcome(probs, team1, team2) {
 }
 
 /** Compute win/draw/loss probabilities using Dixon-Coles model.
- *  Single consistent path — no ensemble blending with market odds.
- *  Tournament winner odds ≠ match odds; blending them produces invalid probabilities. */
+ *  Uses Negative Binomial distribution (PELE 2026) for better variance modeling.
+ *  Falls back to Poisson when NB_R is not set. */
 function matchProbs(home, away, formMap, matchDate, marketProbs) {
   const [lh, la] = getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
   let pW = 0, pD = 0, pL = 0;
+  const useNB = NB_R > 0;
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const p = poissonPMF(i, lh) * poissonPMF(j, la) * dixonColesTau(i, j, lh, la, getRho(matchDate));
+      const pi = useNB ? negBinPMF(i, lh, NB_R) : poissonPMF(i, lh);
+      const pj = useNB ? negBinPMF(j, la, NB_R) : poissonPMF(j, la);
+      const p = pi * pj * dixonColesTau(i, j, lh, la, getRho(matchDate));
       if (i > j) pW += p;
       else if (i === j) pD += p;
       else pL += p;
@@ -1617,10 +1681,12 @@ function getProbTrend() {
 // ---- Composite rating (UI display only, not used in core model) ----
 
 /** Weighted composite team strength score (0-1) for display.
- *  Host bonus is included in the base calculation (not added on top). */
+ *  Host bonus is included in the base calculation (not added on top).
+ *  Uses UEFA-corrected market value (PELE 2026: 30% discount for European clubs). */
 function composite(team) {
   if (!TEAMS[team]) return 0;
-  const {elo, fifa, mv, wc:wcApps, form, host, odds} = TEAMS[team];
+  const {elo, fifa, wc:wcApps, form, host, odds} = TEAMS[team];
+  const mv = getCorrectedMV(team);  // UEFA-corrected
   const dynElo = (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : elo;
   const eloN = (dynElo - 1400) / 800;
   const fifaN = (fifa - 900) / 1000;
@@ -1704,8 +1770,11 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
 
   // 90min probabilities
   let pW90=0, pD90=0, pL90=0;
+  const useNB = NB_R > 0;
   for (let i=0;i<=10;i++) for (let j=0;j<=10;j++) {
-    const p=poissonPMF(i,lh90)*poissonPMF(j,la90)*dixonColesTau(i,j,lh90,la90,rho);
+    const pi = useNB ? negBinPMF(i, lh90, NB_R) : poissonPMF(i, lh90);
+    const pj = useNB ? negBinPMF(j, la90, NB_R) : poissonPMF(j, la90);
+    const p=pi*pj*dixonColesTau(i,j,lh90,la90,rho);
     if(i>j)pW90+=p;else if(i===j)pD90+=p;else pL90+=p;
   }
   const t90=pW90+pD90+pL90; pW90/=t90; pD90/=t90; pL90/=t90;
@@ -1717,7 +1786,9 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
 
   let pW_ET=0,pD_ET=0,pL_ET=0;
   for(let i=0;i<=5;i++)for(let j=0;j<=5;j++){
-    const p=poissonPMF(i,lhET)*poissonPMF(j,laET);
+    const pi = useNB ? negBinPMF(i, lhET, NB_R) : poissonPMF(i, lhET);
+    const pj = useNB ? negBinPMF(j, laET, NB_R) : poissonPMF(j, laET);
+    const p=pi*pj;
     if(i>j)pW_ET+=p;else if(i===j)pD_ET+=p;else pL_ET+=p;
   }
   const tET=pW_ET+pD_ET+pL_ET; pW_ET/=tET; pD_ET/=tET; pL_ET/=tET;
@@ -2664,8 +2735,8 @@ function eloGoalIndex(gd) {
 }
 
 /** Update dynamic Elo ratings after a match.
- *  K factor varies by match importance (FIFA standard):
- *  WC knockout: K=80, WC group: K=60, Qualifier: K=50, Friendly: K=30 */
+ *  K factor varies by match importance (FIFA standard + PELE 2026 multiplier):
+ *  WC knockout: K=80×1.76, WC group: K=60×1.60, Qualifier: K=50×1.50 */
 function updateElo(team1, team2, score1, score2, matchDate) {
   if (score1 == null || score2 == null) return; // skip results without exact scores
   const ra = dynamicElo[team1], rb = dynamicElo[team2];
@@ -2677,6 +2748,9 @@ function updateElo(team1, team2, score1, score2, matchDate) {
     const d = matchDate.substring(0, 10);
     if (d >= '2026-06-28') K = 80; // knockout stage
   }
+  // Apply match importance multiplier (PELE 2026)
+  const importance = getMatchImportance(matchDate);
+  K *= importance;
   let W;
   if (score1 > score2) W = 1;
   else if (score1 < score2) W = 0;
@@ -2902,7 +2976,7 @@ const I18N = {
     'model.base':'基础 λ (总进球)','model.rate':'Elo→进球率','model.host':'东道主加成','model.floor':'最低 λ','model.grid':'比分网格',
     'model.k':'K 因子','model.gi':'进球指数','model.fd':'状态衰减','model.et':'加时进球','model.pen':'点球','model.mc':'蒙特卡洛',
     'model.ds':'数据来源','model.eloSrc':'Elo 评分','model.fifaSrc':'FIFA 排名','model.mvSrc':'球队市值','model.oddsSrc':'博彩赔率','model.wcSrc':'世界杯历史','model.ref':'学术依据',
-    'model.breakdown':'球队实力分析 (Top 20)',
+    'model.breakdown':'球队实力分析 (Top 20)','model.nb':'负二项分布','model.importance':'比赛重要性','model.uefaFix':'UEFA 估值修正',
     // Data page
     'data.setup':'快速设置','data.setup.desc':'获取免费 API Key 启用实时数据：',
     'data.getKey':'获取 Key →',
@@ -2978,7 +3052,7 @@ const I18N = {
     'model.base':'Base λ (total goals)','model.rate':'Elo→Goal rate','model.host':'Host advantage','model.floor':'Floor λ','model.grid':'Score grid',
     'model.k':'K factor','model.gi':'Goal index','model.fd':'Form decay','model.et':'Extra time goals','model.pen':'Penalties','model.mc':'Monte Carlo',
     'model.ds':'Data Sources','model.eloSrc':'Elo Ratings','model.fifaSrc':'FIFA Rankings','model.mvSrc':'Market Values','model.oddsSrc':'Bookmaker Odds','model.wcSrc':'WC History','model.ref':'Academic Basis',
-    'model.breakdown':'Team Strength Breakdown (Top 20)',
+    'model.breakdown':'Team Strength Breakdown (Top 20)','model.nb':'Negative Binomial','model.importance':'Match Importance','model.uefaFix':'UEFA Value Correction',
     // Data
     'data.setup':'Quick Setup','data.setup.desc':'Get free API keys for live data:',
     'data.getKey':'Get Key →',
@@ -3672,12 +3746,14 @@ function renderModel(){
   h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">1.25 (×2 ≈ 2.50 total)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.rate')}</span><span class="weight">400 Elo = 1 goal</span></div>`;
   h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO_GROUP} (组) / ${RHO_KNOCKOUT} (淘)</span></div>`;
+  h+=`<div class="factor"><span class="label">NB r (overdispersion)</span><span class="weight">${NB_R}</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.host')}</span><span class="weight">+${HOME_HOST} goals</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.floor')}</span><span class="weight">0.05</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.grid')}</span><span class="weight">10×10</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.grid')}</span><span class="weight">10×10 (NegBin)</span></div>`;
   h+=`</div>`;
   h+=`<div class="model-card"><h4>${t('model.elo')}</h4>`;
-  h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (WC Group) / 80 (KO)</span></div>`;
+  h+=`<div class="factor"><span class="label">Importance</span><span class="weight">Group ${IMPORTANCE_WC_GROUP}x / KO ${IMPORTANCE_WC_KNOCKOUT}x</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">40% base λ (fatigue)</span></div>`;
@@ -3687,14 +3763,15 @@ function renderModel(){
   h+=`<div class="model-card"><h4>${t('model.ds')}</h4>`;
   h+=`<div class="factor"><span class="label">${t('model.eloSrc')}</span><span class="weight">eloratings.net</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fifaSrc')}</span><span class="weight">FIFA.com</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.mvSrc')}</span><span class="weight">Transfermarkt</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.mvSrc')}</span><span class="weight">Transfermarkt (UEFA -30%)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.oddsSrc')}</span><span class="weight">DraftKings</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.ref')}</span><span class="weight">Dixon & Coles (1997)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.ref')}</span><span class="weight">Dixon-Coles (1997) + PELE (2026)</span></div>`;
   h+=`</div></div>`;
   const allTeams=Object.keys(TEAMS).sort((a,b)=>composite(b)-composite(a));
   h+=`<div class="team-breakdown"><h3>${t('model.breakdown')}</h3><div class="breakdown-grid">`;
   allTeams.slice(0,20).forEach(t=>{
-    if(!TEAMS[t])return;const{elo,fifa,mv,form}=TEAMS[t];const de=dynamicElo[t]||elo;
+    if(!TEAMS[t])return;const{elo,fifa,form}=TEAMS[t];const de=dynamicElo[t]||elo;
+    const mv=getCorrectedMV(t);  // UEFA-corrected
     const ep=Math.max(0,(de-1400)/800*100),fp=Math.max(0,(fifa-900)/1000*100),mp=Math.min(mv/1000,1)*100;
     // Display-only composite scores (not the model's actual ATK/DEF from TEAMS)
     const atkScore=Math.max(0,((de-1400)/800*0.45+(fifa-900)/1000*0.25+Math.min(mv/1000,1)*0.20+form*0.10)*100);

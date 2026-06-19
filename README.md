@@ -47,8 +47,11 @@ English below · [中文](#中文)
 | ρ group stage | -0.20 | Dixon & Coles 1997, tuned for draw calibration |
 | ρ knockout | -0.15 | Same |
 | Temperature T | 1.15 | Guo et al. 2017 (fallback when no isotonic data) |
-| Polymarket blend | 20%→50% | Time-decay + volume sentiment |
+| Polymarket blend | 20%→50% | Time-decay + volume percentile sentiment |
 | GBDT blend | 20% | Gradient boosting auxiliary |
+| **NB overdispersion r** | **8.5** | **PELE 2026 (Negative Binomial replaces Poisson)** |
+| **Match importance** | **1.60/1.76** | **PELE 2026 (Group/Knockout multiplier)** |
+| **UEFA value correction** | **-30%** | **PELE 2026 (Transfermarkt European bias fix)** |
 
 ### Run
 
@@ -109,8 +112,11 @@ python3 server.py        # Start server on port 9090
 | ρ 小组赛 | -0.20 | Dixon & Coles 1997，针对平局校准优化 |
 | ρ 淘汰赛 | -0.15 | 同上 |
 | 温度 T | 1.15 | Guo et al. 2017（等保回归无数据时回退） |
-| Polymarket blend | 20%→50% | 时间衰减 + 交易量情绪调整 |
+| Polymarket blend | 20%→50% | 时间衰减 + 交易量排名百分位 |
 | GBDT blend | 20% | 梯度提升辅助模型 |
+| **NB 离散参数 r** | **8.5** | **PELE 2026（负二项分布替代 Poisson）** |
+| **比赛重要性** | **1.60/1.76** | **PELE 2026（小组赛/淘汰赛乘数）** |
+| **UEFA 估值修正** | **-30%** | **PELE 2026（Transfermarkt 欧洲偏见修正）** |
 
 ### 运行
 
