@@ -1381,6 +1381,52 @@ const TPM={"ABCDEFGH":"HGBCAFDE","ABCDEFGI":"CGBDAFEI","ABCDEFGJ":"CGBDAFEJ","AB
 
 // ---- Poisson with Dixon-Coles correction ----
 
+/** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
+function runBacktest() {
+  return withPreTournamentElo(() => {
+    const predictions = [];
+    const outcomes = [];
+    let correct = 0;
+
+    for (const m of WC2022_RESULTS) {
+      const tmpAdded = [];
+      for (const tm of [m.t1, m.t2]) {
+        if (!TEAMS[tm] && WC2022_TEAMS[tm]) { TEAMS[tm] = WC2022_TEAMS[tm]; tmpAdded.push(tm); }
+      }
+      if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
+      const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
+      const probs = matchProbs(m.t1, m.t2, tmpFormMap);
+      tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];});
+      const predArr = [probs.win, probs.draw, probs.loss];
+      const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
+      predictions.push(predArr);
+      outcomes.push(outcome);
+      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
+                         predArr[1] >= predArr[2] ? 1 : 2;
+      if (predWinner === outcome) correct++;
+    }
+
+    if (predictions.length === 0) return null;
+
+    let rpsSum = 0, brierSum = 0, logLossSum = 0;
+    for (let i = 0; i < predictions.length; i++) {
+      rpsSum += rankedProbabilityScore(predictions[i], outcomes[i]);
+      brierSum += brierScore(predictions[i], outcomes[i]);
+      logLossSum += logLoss(predictions[i], outcomes[i]);
+    }
+
+    return {
+    total: predictions.length,
+    correct,
+    accuracy: correct / predictions.length,
+    rps: rpsSum / predictions.length,
+    brier: brierSum / predictions.length,
+    logLoss: logLossSum / predictions.length,
+    ece: expectedCalibrationError(predictions, outcomes)
+  };
+  });
+}
+
 /** Poisson probability mass function */
 function poissonPMF(k, lam) {
   if (lam <= 0) return k === 0 ? 1 : 0;
