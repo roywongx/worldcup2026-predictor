@@ -1083,6 +1083,116 @@ const UEFA_TEAMS = new Set([
   'San Marino','Andorra'
 ]);
 
+// ── Squad-level data & injury system ──────────────────────────────────────
+
+/**
+ * Squad composition: top-N players by position.
+ * Position weights: starter XI (1.0), bench 12-18 (0.6→0.3 sliding), 19-23 (0.1).
+ * GK constraint: exactly 3 GKs in 23-man squad.
+ *
+ * To populate: fetch from Transfermarkt API and store in localStorage.
+ * Format: { teamName: [{ name, pos, value, starter }, ...] }
+ */
+let SQUADS = {};
+
+/** Active injuries/suspensions per team.
+ * Format: { teamName: [{ player, reason, returnDate }, ...] }
+ * Populated from Transfermarkt/FIFA disciplinary API.
+ */
+let INJURIES = {};
+
+/** Compute effective squad market value considering position weights and bench depth.
+ *  Replaces simple TEAMS[t].mv with nuanced calculation. */
+function getEffectiveMV(team) {
+  const squad = SQUADS[team];
+  if (!squad || squad.length === 0) return getCorrectedMV(team); // fallback to static
+
+  const POS_WEIGHT = { GK: 1.0, DEF: 1.0, MID: 1.0, FWD: 1.0 };
+  const BENCH_DECAY = (i) => Math.max(0.1, 1.0 - 0.1 * (i - 11)); // 12th=0.9, 13th=0.8...
+
+  // Get injured player names for this team
+  const injured = new Set((INJURIES[team] || []).map(x => x.player));
+
+  let totalValue = 0;
+  let starterValue = 0;
+  let starterCount = 0;
+
+  for (let i = 0; i < squad.length && i < 23; i++) {
+    const p = squad[i];
+    if (injured.has(p.name)) continue; // skip injured
+    const weight = i < 11 ? 1.0 : BENCH_DECAY(i);
+    const posWeight = POS_WEIGHT[p.pos] || 1.0;
+    const effectiveValue = p.value * weight * posWeight;
+    totalValue += effectiveValue;
+    if (i < 11) { starterValue += effectiveValue; starterCount++; }
+  }
+
+  // Bonus for starter XI concentration (top-heavy squads perform better)
+  const starterConcentration = starterCount > 0 ? starterValue / totalValue : 0.5;
+  const concentrationBonus = 1 + 0.15 * (starterConcentration - 0.5);
+
+  return Math.round(totalValue * concentrationBonus);
+}
+
+/** Get effective attack/defense ratings accounting for injuries.
+ *  Each injured starter reduces the team's atk/def by their position contribution. */
+function getEffectiveAtkDef(team) {
+  const base = TEAMS[team] || {};
+  let atk = base.atk || 1.0;
+  let def = base.def || 1.0;
+
+  const squad = SQUADS[team];
+  const injured = INJURIES[team] || [];
+  if (!squad || injured.length === 0) return { atk, def };
+
+  const injuredNames = new Set(injured.map(x => x.player));
+  let injuredStarterAtk = 0, injuredStarterDef = 0;
+  let totalStarterAtk = 0, totalStarterDef = 0;
+
+  for (let i = 0; i < Math.min(squad.length, 11); i++) {
+    const p = squad[i];
+    const contrib = p.pos === 'FWD' ? 0.15 : p.pos === 'MID' ? 0.10 : p.pos === 'DEF' ? 0.05 : 0.02;
+    totalStarterAtk += contrib;
+    totalStarterDef += (p.pos === 'DEF' || p.pos === 'GK') ? contrib : contrib * 0.3;
+    if (injuredNames.has(p.name)) {
+      injuredStarterAtk += contrib;
+      injuredStarterDef += (p.pos === 'DEF' || p.pos === 'GK') ? contrib : contrib * 0.3;
+    }
+  }
+
+  if (totalStarterAtk > 0) {
+    const atkPenalty = injuredStarterAtk / totalStarterAtk;
+    atk *= (1 - atkPenalty * 0.4); // max 40% reduction
+  }
+  if (totalStarterDef > 0) {
+    const defPenalty = injuredStarterDef / totalStarterDef;
+    def *= (1 - defPenalty * 0.3); // max 30% reduction (defense more resilient)
+  }
+
+  return { atk: Math.max(0.7, atk), def: Math.max(0.7, def) };
+}
+
+/** Load squads and injuries from localStorage */
+function loadSquadData() {
+  try {
+    const raw = localStorage.getItem('wc2026_squads');
+    if (raw) SQUADS = JSON.parse(raw);
+    const rawInj = localStorage.getItem('wc2026_injuries');
+    if (rawInj) INJURIES = JSON.parse(rawInj);
+  } catch(e) {}
+}
+
+/** Save squads and injuries to localStorage */
+function saveSquadData() {
+  try {
+    localStorage.setItem('wc2026_squads', JSON.stringify(SQUADS));
+    localStorage.setItem('wc2026_injuries', JSON.stringify(INJURIES));
+  } catch(e) {}
+}
+
+// Initialize on load
+loadSquadData();
+
 /** Get market value with UEFA correction (30% discount for European clubs) */
 function getCorrectedMV(team) {
   const raw = TEAMS[team] ? TEAMS[team].mv : 50;
@@ -1551,10 +1661,13 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
   const eloA = getEffectiveElo(away);
   // Determine if knockout stage (June 28+)
   const isKnockout = matchDate && matchDate.substring(0, 10) >= '2026-06-28';
-  const atkH = TEAMS[home] ? getTeamAtk(home) : 1.0;
-  const defH = TEAMS[home] ? TEAMS[home].def : 1.0;
-  const atkA = TEAMS[away] ? getTeamAtk(away) : 1.0;
-  const defA = TEAMS[away] ? TEAMS[away].def : 1.0;
+  // Use squad-level atk/def if available (accounts for injuries), else static
+  const effHome = SQUADS[home] ? getEffectiveAtkDef(home) : null;
+  const effAway = SQUADS[away] ? getEffectiveAtkDef(away) : null;
+  const atkH = effHome ? effHome.atk : (TEAMS[home] ? getTeamAtk(home) : 1.0);
+  const defH = effHome ? effHome.def : (TEAMS[home] ? TEAMS[home].def : 1.0);
+  const atkA = effAway ? effAway.atk : (TEAMS[away] ? getTeamAtk(away) : 1.0);
+  const defA = effAway ? effAway.def : (TEAMS[away] ? TEAMS[away].def : 1.0);
   const [lh, la] = getLambdas(eloH, eloA, hBonus, aBonus, atkH, defA, atkA, defH, isKnockout);
 
   // Apply form adjustment: form 0.5 = neutral, >0.5 = boost, <0.5 = penalty
@@ -1774,7 +1887,7 @@ function getProbTrend() {
 function composite(team) {
   if (!TEAMS[team]) return 0;
   const {elo, fifa, wc:wcApps, form, host, odds} = TEAMS[team];
-  const mv = getCorrectedMV(team);  // UEFA-corrected
+  const mv = getEffectiveMV(team);  // Squad-level with injury adjustment
   const dynElo = (dynamicElo && dynamicElo[team]) ? dynamicElo[team] : elo;
   const eloN = (dynElo - 1400) / 800;
   const fifaN = (fifa - 900) / 1000;
