@@ -1043,6 +1043,36 @@ function negBinPMF(k, mu, r) {
   return Math.exp(logCoeff + r * Math.log(p) + k * Math.log(1 - p));
 }
 
+/** Sample from Negative Binomial via Gamma-Poisson mixture.
+ *  X ~ Poisson(G) where G ~ Gamma(r, r/mu). Consistent with negBinPMF. */
+function negBinSample(mu, r) {
+  if (mu <= 0) return 0;
+  if (r <= 0) return poissonSample(mu);
+  // Marsaglia and Tsang's method for Gamma(r, 1) when r >= 1
+  const g = gammaSample(r);
+  return poissonSample(mu * g / r);
+}
+
+/** Gamma(r,1) sample via Marsaglia-Tsang (r >= 1) with boost for r < 1 */
+function gammaSample(r) {
+  if (r < 1) return gammaSample(r + 1) * Math.pow(Math.random(), 1 / r);
+  const d = r - 1/3, c = 1 / Math.sqrt(9 * d);
+  while (true) {
+    let x, v;
+    do { x = randn(); v = 1 + c * x; } while (v <= 0);
+    v = v * v * v;
+    const u = Math.random();
+    if (u < 1 - 0.0331 * (x * x) * (x * x)) return d * v;
+    if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+  }
+}
+
+/** Standard normal sample via Box-Muller */
+function randn() {
+  const u = Math.random(), v = Math.random();
+  return Math.sqrt(-2 * Math.log(u || 1e-10)) * Math.cos(2 * Math.PI * v);
+}
+
 /** 根据比赛日期返回对应的 rho 值 */
 function getRho(matchDate) {
   if (matchDate && matchDate.substring(0, 10) >= '2026-06-28') return RHO_KNOCKOUT;
@@ -1078,8 +1108,11 @@ function getVolumePercentile(volume, allVolumes) {
   return rank / sorted.length;
 }
 
+/** All market volumes for percentile computation (populated by runSimulation) */
+let _allMarketVolumes = [];
+
 /** 根据比赛日期计算 Polymarket blend 权重 (时间衰减: 赛前7天20% → 临场50%) */
-function getMarketBlend(matchDate, volume, allVolumes) {
+function getMarketBlend(matchDate, volume) {
   if (!matchDate) return 0.20;
   const now = new Date();
   const match = new Date(matchDate);
@@ -1092,8 +1125,8 @@ function getMarketBlend(matchDate, volume, allVolumes) {
 
   // Volume sentiment: use percentile ranking (more robust than absolute log)
   // 50th percentile = neutral, 90th+ = high confidence boost
-  if (volume && volume > 0) {
-    const pct = getVolumePercentile(volume, allVolumes);
+  if (volume && volume > 0 && _allMarketVolumes.length > 0) {
+    const pct = getVolumePercentile(volume, _allMarketVolumes);
     const volumeFactor = 0.7 + 0.6 * pct;  // range: 0.7 (0th) to 1.3 (100th)
     blend *= volumeFactor;
   }
@@ -1755,13 +1788,28 @@ function composite(team) {
 
 /** Sample from Poisson distribution using Knuth's algorithm.
  *  Upper bound 20 handles extreme lambdas (rare in football). */
-function poissonSample(lam) {
+/** Sample from Negative Binomial via Gamma-Poisson mixture.
+ *  X ~ Poisson(G) where G ~ Gamma(r, r/mu). Consistent with negBinPMF. */
+function negBinSample(mu, r) {
+  if (mu <= 0) return 0;
+  if (r <= 0) return _poissonSampleRaw(mu);
+  const g = gammaSample(r);
+  return _poissonSampleRaw(mu * g / r);
+}
+
+/** Raw Poisson sample (Knuth algorithm; k<20 safe for lam < 5) */
+function _poissonSampleRaw(lam) {
   if (lam <= 0) return 0;
   const L = Math.exp(-lam);
   let k = 0, p = 1;
-  // Knuth algorithm; k<20 safe because P(X>20) < 1e-12 for lam < 5 (max WC lambda ≈ 3)
   do { k++; p *= Math.random(); } while (p > L && k < 20);
   return k - 1;
+}
+
+/** Sample from Poisson or Negative Binomial (when NB_R > 0, consistent with matchProbs) */
+function poissonSample(lam) {
+  if (NB_R > 0) return negBinSample(lam, NB_R);
+  return _poissonSampleRaw(lam);
 }
 
 // ---- Simulation match (Monte Carlo) ----
@@ -2054,10 +2102,13 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
   // Run knockout rounds
   let currentRound = bracket;
   const rounds = [];
+  const koDates = ['2026-06-28','2026-07-02','2026-07-05','2026-07-09','2026-07-14','2026-07-19'];
+  let koRoundIdx = 0;
 
   while (currentRound.length > 1) {
     const nextRound = [];
     const roundResults = [];
+    const koDate = koDates[Math.min(koRoundIdx, koDates.length - 1)];
     for (let i = 0; i < currentRound.length; i += 2) {
       const home = currentRound[i];
       const away = currentRound[i + 1];
@@ -2069,7 +2120,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
         method = "90'";
         if (ga === gb) { method = 'PSO'; ga++; }
       } else {
-        [ga, gb, method] = simKO(home, away, formMap, '2026-06-28', marketOddsMap);
+        [ga, gb, method] = simKO(home, away, formMap, koDate, marketOddsMap);
       }
 
       const winner = ga > gb ? home : away;
@@ -2078,6 +2129,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
     }
     rounds.push(roundResults);
     currentRound = nextRound;
+    koRoundIdx++;
   }
 
   return { champion: currentRound[0], rounds, rankings, bestThirds };
@@ -3263,6 +3315,7 @@ function runSimulation(){
   const formMap=calculateDynamicForm(results);
   const actualMap=buildActualResultsMap(results);
   const marketOddsMap=state.polymarketMatchOdds||{};
+  _allMarketVolumes=Object.values(marketOddsMap).map(v=>v.volume||0).filter(v=>v>0);
   const standings={},matchResults=[];
   GROUPS.forEach(g=>{standings[g]={};GROUP_TEAMS[g].forEach(t=>{standings[g][t]={P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,ExpPts:0};});});
   let rankings={}, bestThirds=[], ko={};
@@ -3309,14 +3362,14 @@ function runSimulation(){
   const thirdPlaceGroups=thirds.slice(0,8).map(t=>t.group).sort();
   const koBracket=buildKOBracket(rankings,bestThirds,thirdPlaceGroups);
   ko={};
-  function runKORound(teams){const res=[],winners=[];
+  function runKORound(teams,kodate){const res=[],winners=[];
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
       // Known limitation: can't distinguish AET vs PSO from stored scores alone
       if(actual){const ga=actual.score1,gb=actual.score2;winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method:ga!==gb?"90'":'PSO'});}
-      else{const[ga,gb,method]=simKO(home,away,preFormMap,'2026-06-28',marketOddsMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
+      else{const[ga,gb,method]=simKO(home,away,preFormMap,kodate,marketOddsMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
     }return[winners,res];}
-  let[w1,r32r]=runKORound(koBracket);let[w2,r16r]=runKORound(w1);let[w3,qfr]=runKORound(w2);let[w4,sfr]=runKORound(w3);
+  let[w1,r32r]=runKORound(koBracket,'2026-06-28');let[w2,r16r]=runKORound(w1,'2026-07-02');let[w3,qfr]=runKORound(w2,'2026-07-05');let[w4,sfr]=runKORound(w3,'2026-07-09');
   const sfLosers=sfr.map(m=>m.ga>m.gb?m.b:m.a);
   const[tga,tgb,tm]=simKO(sfLosers[0],sfLosers[1],preFormMap,'2026-07-14',marketOddsMap);
   const[fa,fb,fm]=simKO(w4[0],w4[1],preFormMap,'2026-07-19',marketOddsMap);
@@ -4231,7 +4284,10 @@ async function fetchPolymarketData(){
       const cd=await cr.json();const tn=mapPolymarketTeam(cd.question||mk.question||'');if(!tn||!TEAMS[tn])continue;
       const yt=(cd.tokens||[]).find(t=>t.outcome==='Yes');if(yt&&yt.price>0){nc[tn]=yt.price;fc++;}}catch(e){}
     }
-    const ct=Object.values(nc).reduce((s,v)=>s+v,0);if(ct>0)for(const t of Object.keys(nc))nc[t]=nc[t]/ct;
+    // Champion odds are independent binary markets — each team's Yes price IS its
+    // probability of winning. Do NOT normalize to sum=1 (that would inflate small
+    // probabilities and deflate large ones).
+    // ct left intentionally unused; prices are already probabilities.
 
     // Store historical snapshot for trend tracking
     const state=loadState();
