@@ -2283,7 +2283,7 @@ function calculateEV() {
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
 
     for (const m of (typeof MATCHES !== 'undefined' ? MATCHES : [])) {
-      const date = m[0], ta = m[1], tb = m[2];
+      const [date, , ta, tb] = m;
       const key1 = `${ta}|${tb}|`;
       const key2 = `${ta}|${tb}|${date}`;
       const mktOdds = marketOdds[key1] || marketOdds[key2] || null;
@@ -3230,7 +3230,7 @@ function runSimulation(){
       a.P++;b.P++;a.GF+=sa;a.GA+=sb;b.GF+=sb;b.GA+=sa;
       if(sa>sb){a.W++;a.Pts+=3;b.L++;}else if(sa<sb){b.W++;b.Pts+=3;a.L++;}else{a.D++;a.Pts++;b.D++;b.Pts++;}
       a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;a.ExpPts=a.Pts;b.ExpPts=b.Pts;
-      matchResults.push({date,ta,sa,sb,tb,grp,actual:true,probs:null});
+      matchResults.push({date:utcDate,ta,sa,sb,tb,grp,actual:true,probs:null});
     }else{
       const matchKey=`${ta}|${tb}|${utcDate}`;
       const mktProbs=marketOddsMap[matchKey]||null;
@@ -3252,7 +3252,7 @@ function runSimulation(){
       b.W+=probs.loss;b.D+=probs.draw;b.L+=probs.win;b.Pts+=probs.loss*3+probs.draw;
       a.P++;b.P++;a.GF+=lh2;a.GA+=la2;b.GF+=la2;b.GA+=lh2;a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;
       a.ExpPts+=expH;b.ExpPts+=expA;
-      matchResults.push({date,ta,sa:lh2,sb:la2,tb,grp,actual:false,probs,homeExpPts:expH,awayExpPts:expA});
+      matchResults.push({date:utcDate,ta,sa:lh2,sb:la2,tb,grp,actual:false,probs,homeExpPts:expH,awayExpPts:expA});
     }
   });
   // Sort by Pts (probability-weighted actual points) for bracket construction,
@@ -4347,7 +4347,7 @@ function resolveMatchDate(ev, t1, t2) {
   // Fallback: look up from MATCHES array by team name
   if (typeof MATCHES !== 'undefined') {
     for (const m of MATCHES) {
-      if ((m[1] === t1 && m[2] === t2) || (m[1] === t2 && m[2] === t1)) {
+      if ((m[2] === t1 && m[3] === t2) || (m[2] === t2 && m[3] === t1)) {
         return m[0] + 'T00:00:00Z';
       }
     }
