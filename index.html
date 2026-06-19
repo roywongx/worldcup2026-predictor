@@ -4631,17 +4631,10 @@ function validateData() {
   const state=loadState();
   for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   if(!state.actualResults)state.actualResults=[];
-  // Auto-fix: repair results with null scores
-  const nullScoreFixes = {'Mexico|South Africa':[2,0],'South Korea|Czech Republic':[2,1],'Canada|Bosnia Herzegovina':[1,1],'United States|Paraguay':[4,1]};
-  let fixed = 0;
-  for(const r of state.actualResults){
-    if(r.score1==null||r.score2==null){
-      const key = `${r.team1}|${r.team2}`;
-      const scores = nullScoreFixes[key];
-      if(scores){r.score1=scores[0];r.score2=scores[1];fixed++;}
-    }
-  }
-  if(fixed>0){saveState(state);console.log(`[Init] Fixed ${fixed} null scores`);}
+  // Force clear results with null scores (Polymarket data issue)
+  const before = state.actualResults.length;
+  state.actualResults = state.actualResults.filter(r => r.score1 != null && r.score2 != null);
+  if(state.actualResults.length < before){console.log(`[Init] Removed ${before - state.actualResults.length} results with null scores`);saveState(state);}
   // Seed initial results (version 4 = Beijing date format + null score fix)
   // Also re-seed if dataVersion is current but actualResults was cleared
   // Force re-seed with v4 to fix null scores from date mismatch
