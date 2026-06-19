@@ -1006,9 +1006,9 @@ body {
 /** Pre-computed factorial table for Poisson PMF (0-15) */
 const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800,87178291200,1307674368000];
 
-/** Dixon-Coles correlation parameter (ρ = -0.13).
+/** Dixon-Coles correlation parameter (ρ).
  *  Inflates low-score draws (0-0, 1-1) to match real football rates.
- *  小组赛 ρ=-0.15 (保守战术), 淘汰赛 ρ=-0.12 (开放战术) */
+ *  小组赛 ρ=-0.20 (保守战术), 淘汰赛 ρ=-0.15 (开放战术) */
 const RHO_GROUP = -0.20; // increased from -0.15 for better draw calibration with base=1.25
 const RHO_KNOCKOUT = -0.15; // increased from -0.12
 
@@ -1298,48 +1298,51 @@ const WC2022_TEAMS = {
 
 /** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
 function runBacktest() {
-  const predictions = [];
-  const outcomes = [];
-  let correct = 0;
-  const savedElo={...dynamicElo};initDynamicElo();
+  return withPreTournamentElo(() => {
+    const predictions = [];
+    const outcomes = [];
+    let correct = 0;
 
-  for (const m of WC2022_RESULTS) {
-    const tmpAdded = [];
-    for (const tm of [m.t1, m.t2]) {
-      if (!TEAMS[tm] && WC2022_TEAMS[tm]) { TEAMS[tm] = WC2022_TEAMS[tm]; tmpAdded.push(tm); }
+    for (const m of WC2022_RESULTS) {
+      const tmpAdded = [];
+      for (const tm of [m.t1, m.t2]) {
+        if (!TEAMS[tm] && WC2022_TEAMS[tm]) { TEAMS[tm] = WC2022_TEAMS[tm]; tmpAdded.push(tm); }
+      }
+      if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
+      try {
+        const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
+        const probs = matchProbs(m.t1, m.t2, tmpFormMap);
+        const predArr = [probs.win, probs.draw, probs.loss];
+        const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
+        predictions.push(predArr);
+        outcomes.push(outcome);
+        const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
+                           predArr[1] >= predArr[2] ? 1 : 2;
+        if (predWinner === outcome) correct++;
+      } finally {
+        tmpAdded.forEach(t => { delete TEAMS[t]; });
+      }
     }
-    if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
-    const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
-    const probs = matchProbs(m.t1, m.t2, tmpFormMap);
-    tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];});
-    const predArr = [probs.win, probs.draw, probs.loss];
-    const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
-    predictions.push(predArr);
-    outcomes.push(outcome);
-    const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
-                       predArr[1] >= predArr[2] ? 1 : 2;
-    if (predWinner === outcome) correct++;
-  }
 
-  if (predictions.length === 0) return null;
+    if (predictions.length === 0) return null;
 
-  let rpsSum = 0, brierSum = 0, logLossSum = 0;
-  for (let i = 0; i < predictions.length; i++) {
-    rpsSum += rankedProbabilityScore(predictions[i], outcomes[i]);
-    brierSum += brierScore(predictions[i], outcomes[i]);
-    logLossSum += logLoss(predictions[i], outcomes[i]);
-  }
+    let rpsSum = 0, brierSum = 0, logLossSum = 0;
+    for (let i = 0; i < predictions.length; i++) {
+      rpsSum += rankedProbabilityScore(predictions[i], outcomes[i]);
+      brierSum += brierScore(predictions[i], outcomes[i]);
+      logLossSum += logLoss(predictions[i], outcomes[i]);
+    }
 
-  Object.assign(dynamicElo,savedElo);
-  return {
-    total: predictions.length,
-    correct,
-    accuracy: correct / predictions.length,
-    rps: rpsSum / predictions.length,
-    brier: brierSum / predictions.length,
-    logLoss: logLossSum / predictions.length,
-    ece: expectedCalibrationError(predictions, outcomes)
-  };
+    return {
+      total: predictions.length,
+      correct,
+      accuracy: correct / predictions.length,
+      rps: rpsSum / predictions.length,
+      brier: brierSum / predictions.length,
+      logLoss: logLossSum / predictions.length,
+      ece: expectedCalibrationError(predictions, outcomes)
+    };
+  });
 }
 
 // ---- Poisson with Dixon-Coles correction ----
@@ -1350,7 +1353,7 @@ function poissonPMF(k, lam) {
   return Math.exp(-lam + k * Math.log(lam) - Math.log(FACT[k] || FACT[15]));
 }
 
-/** Dixon-Coles tau correction for low-score correlation (rho = -0.13) */
+/** Dixon-Coles tau correction for low-score correlation (ρ = -0.20/-0.15) */
 function dixonColesTau(h, a, lh, la, rho) {
   if (h === 0 && a === 0) return 1 - lh * la * rho;
   if (h === 0 && a === 1) return 1 + lh * rho;
@@ -1450,8 +1453,8 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
       adjA = mid + (adjA - mid) / drawAdj;
     }
 
-    finalH = Math.max(0.05, adjH);
-    finalA = Math.max(0.05, adjA);
+    finalH = Math.max(0.05, Math.min(4.0, adjH));
+    finalA = Math.max(0.05, Math.min(4.0, adjA));
   }
   return [finalH, finalA];
 }
@@ -1470,9 +1473,10 @@ function getHomeBonus(team) {
  *  Based on: Gemini optimization, Guo et al. 2017 "On Calibration of Modern Neural Networks" */
 function temperatureScale(pW, pD, pL, T) {
   T = T || 1.15;
-  const sW = Math.pow(pW, 1 / T);
-  const sD = Math.pow(pD, 1 / T);
-  const sL = Math.pow(pL, 1 / T);
+  // Defensive: clamp to positive to prevent NaN from negative probabilities
+  const sW = Math.pow(Math.max(0.0001, pW), 1 / T);
+  const sD = Math.pow(Math.max(0.0001, pD), 1 / T);
+  const sL = Math.pow(Math.max(0.0001, pL), 1 / T);
   const sum = sW + sD + sL;
   // Probability clipping: min 1.5%, max 97%
   const EPS = 0.015;
@@ -1504,7 +1508,7 @@ function matchProbs(home, away, formMap, matchDate, marketProbs) {
   let pW = 0, pD = 0, pL = 0;
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const p = poissonPMF(i, lh) * poissonPMF(j, la) * dixonColesTau(i, j, lh, la, getRho(matchDate));
+      const p = Math.max(0, poissonPMF(i, lh) * poissonPMF(j, la) * dixonColesTau(i, j, lh, la, getRho(matchDate)));
       if (i > j) pW += p;
       else if (i === j) pD += p;
       else pL += p;
@@ -1675,8 +1679,8 @@ function simKO(home, away, formMap, matchDate, marketOddsMap) {
     // γ = 0.70 ± 0.05 × (eloDiff/400) — stronger team has deeper bench
     const eloH = getEffectiveElo(home), eloA = getEffectiveElo(away);
     const eloDiff = eloH - eloA;
-    const gammaH = 0.70 + 0.05 * (eloDiff / 400);
-    const gammaA = 0.70 - 0.05 * (eloDiff / 400);
+    const gammaH = Math.max(0.1, Math.min(1.3, 0.70 + 0.05 * (eloDiff / 400)));
+    const gammaA = Math.max(0.1, Math.min(1.3, 0.70 - 0.05 * (eloDiff / 400)));
     const lhET = lh90 * (30 / 90) * gammaH;
     const laET = la90 * (30 / 90) * gammaA;
     const etH = poissonSample(lhET), etA = poissonSample(laET);
@@ -1702,7 +1706,6 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
   // 90min probabilities
   let pW90=0, pD90=0, pL90=0;
   for (let i=0;i<=10;i++) for (let j=0;j<=10;j++) {
-    const tau=1; // simplified for speed
     const p=poissonPMF(i,lh90)*poissonPMF(j,la90)*dixonColesTau(i,j,lh90,la90,rho);
     if(i>j)pW90+=p;else if(i===j)pD90+=p;else pL90+=p;
   }
@@ -1710,7 +1713,7 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
 
   // ET lambdas
   const eloH=getEffectiveElo(home), eloA=getEffectiveElo(away), eloDiff=eloH-eloA;
-  const gammaH=0.70+0.05*(eloDiff/400), gammaA=0.70-0.05*(eloDiff/400);
+  const gammaH=Math.max(0.1,Math.min(1.3,0.70+0.05*(eloDiff/400))), gammaA=Math.max(0.1,Math.min(1.3,0.70-0.05*(eloDiff/400)));
   const lhET=lh90*(30/90)*gammaH, laET=la90*(30/90)*gammaA;
 
   let pW_ET=0,pD_ET=0,pL_ET=0;
@@ -1747,7 +1750,7 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
  *  Returns flat array of 32 team names for 16 R32 matches.
  *  Validates: no same-group matchups in R32. */
 function buildKOBracket(rankings, bestThirds, thirdPlaceGroups) {
-  const comboKey = thirdPlaceGroups ? thirdPlaceGroups.sort().join("") : "";
+  const comboKey = thirdPlaceGroups ? [...thirdPlaceGroups].sort().join("") : "";
   const matrixEntry = TPM[comboKey];
 
   // Third-place teams by source group
@@ -1873,7 +1876,8 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
     }
   }
 
-  // Group stage
+  // Group stage — also track individual match results for What-If filtering
+  const allMatchResults = {};
   for (const [date, home, away, grp] of MATCHES) {
     let sa, sb;
     const actual = actualMap[`${home}|${away}|${date}`] || actualMap[`${home}|${away}|`];
@@ -1882,6 +1886,8 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
     } else {
       [sa, sb] = simMatch(home, away, formMap, date, marketOddsMap);
     }
+    allMatchResults[`${home}|${away}`] = { ga: sa, gb: sb };
+    allMatchResults[`${away}|${home}`] = { ga: sb, gb: sa };
     applyGroupResult(st, grp, home, away, sa, sb);
   }
 
@@ -1925,6 +1931,8 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
       }
 
       const winner = ga > gb ? home : away;
+      allMatchResults[`${home}|${away}`] = { ga, gb };
+      allMatchResults[`${away}|${home}`] = { ga: gb, gb: ga };
       nextRound.push(winner);
       roundResults.push({ a: home, ga, gb, b: away, method });
     }
@@ -1932,7 +1940,7 @@ function simulateOneTournament(actualMap, formMap, marketOddsMap) {
     currentRound = nextRound;
   }
 
-  return { champion: currentRound[0], rounds, rankings, bestThirds };
+  return { champion: currentRound[0], rounds, rankings, bestThirds, allMatchResults };
 }
 
 // ---- Monte Carlo simulation ----
@@ -1949,16 +1957,10 @@ function runMonteCarlo(actualMap, N, formMap, marketOddsMap) {
     const result = simulateOneTournament(actualMap, formMap, marketOddsMap);
     champ[result.champion] = (champ[result.champion] || 0) + 1;
 
-    // Store full result for conditional filtering
-    const matchResults = {};
-    for (const round of result.rounds) {
-      for (const m of round) {
-        matchResults[`${m.a}|${m.b}`] = { winner: m.ga > m.gb ? m.a : m.b, ga: m.ga, gb: m.gb };
-      }
-    }
+    // Store full result for conditional filtering (includes group + knockout matches)
     simulationHistory.push({
       champion: result.champion,
-      matchResults,
+      matchResults: result.allMatchResults,
       rounds: result.rounds
     });
 
@@ -2151,30 +2153,30 @@ function applyIsotonicCalibration(probs, iso) {
  *  EV = (model_probability × market_payout) - 1
  *  Positive EV = profitable bet opportunity */
 function calculateEV() {
-  const state = loadState();
-  const marketOdds = state.polymarketMatchOdds || {};
-  const results = [];
+  return withPreTournamentElo(() => {
+    const state = loadState();
+    const marketOdds = state.polymarketMatchOdds || {};
+    const results = [];
 
-  const actualMap = buildActualResultsMap(state.actualResults || []);
-  const savedElo={...dynamicElo};initDynamicElo();
-  const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
+    const actualMap = buildActualResultsMap(state.actualResults || []);
+    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
 
-  for (const m of (typeof MATCHES !== 'undefined' ? MATCHES : [])) {
-    const date = m[0], ta = m[1], tb = m[2];
-    const key1 = `${ta}|${tb}|`;
-    const key2 = `${ta}|${tb}|${date}`;
-    const mktOdds = marketOdds[key1] || marketOdds[key2] || null;
-    if (!mktOdds) continue;
+    for (const m of (typeof MATCHES !== 'undefined' ? MATCHES : [])) {
+      const date = m[0], ta = m[1], tb = m[2];
+      const key1 = `${ta}|${tb}|`;
+      const key2 = `${ta}|${tb}|${date}`;
+      const mktOdds = marketOdds[key1] || marketOdds[key2] || null;
+      if (!mktOdds) continue;
 
-    const resultKey = `${ta}|${tb}`;
-    if (actualMap[resultKey]) continue;
+      const resultKey = `${ta}|${tb}`;
+      if (actualMap[resultKey]) continue;
 
-    const probs = matchProbs(ta, tb, preFormMap, date, mktOdds);
-    const modelProbs = [probs.win, probs.draw, probs.loss];
-    const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
-    const labels = ['W', 'D', 'L'];
+      const probs = matchProbs(ta, tb, preFormMap, date, mktOdds);
+      const modelProbs = [probs.win, probs.draw, probs.loss];
+      const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
+      const labels = ['W', 'D', 'L'];
 
-    for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 3; i++) {
       // EV = (probability × payout) - 1
       // Payout = 1 / market_odds (decimal odds)
       const payout = 1 / Math.max(marketProbs[i], 0.01);
@@ -2201,8 +2203,8 @@ function calculateEV() {
 
   // Sort by EV descending
   results.sort((a, b) => b.ev - a.ev);
-  Object.assign(dynamicElo,savedElo);
   return results;
+  }); // end withPreTournamentElo
 }
 
 /** Render EV analysis panel */
@@ -2513,68 +2515,68 @@ function getBlendedProbs(home, away, formMap, matchDate, marketProbs) {
 function getCalibrationStats(actualResults) {
   if (!actualResults || actualResults.length < 3) return null;
 
-  let correct = 0, total = actualResults.length;
-  let rpsSum = 0, brierSum = 0, logLossSum = 0;
-  const predictions = [];
-  const outcomes = [];
-  const savedElo={...dynamicElo};initDynamicElo();
-  const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
+  return withPreTournamentElo(() => {
+    let correct = 0, total = actualResults.length;
+    let rpsSum = 0, brierSum = 0, logLossSum = 0;
+    const predictions = [];
+    const outcomes = [];
+    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
 
-  for (const r of actualResults) {
-    let predArr;
-    if (r.probs && typeof r.probs.win === 'number') {
-      predArr = [r.probs.win, r.probs.draw, r.probs.loss];
-    } else {
-      const probs = matchProbs(r.team1, r.team2, preFormMap);
-      predArr = [probs.win, probs.draw, probs.loss];
+    for (const r of actualResults) {
+      let predArr;
+      if (r.probs && typeof r.probs.win === 'number') {
+        predArr = [r.probs.win, r.probs.draw, r.probs.loss];
+      } else {
+        const probs = matchProbs(r.team1, r.team2, preFormMap);
+        predArr = [probs.win, probs.draw, probs.loss];
+      }
+
+      let outcome;
+      if (r.score1 > r.score2) outcome = 0;
+      else if (r.score1 === r.score2) outcome = 1;
+      else outcome = 2;
+
+      predictions.push(predArr);
+      outcomes.push(outcome);
+
+      // Check if predicted winner matches actual winner
+      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? r.team1 : (predArr[2] >= predArr[1] && predArr[2] >= predArr[0] ? r.team2 : 'draw');
+      const actWinner = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
+      if (predWinner === actWinner) correct++;
+
+      rpsSum += rankedProbabilityScore(predArr, outcome);
+      brierSum += brierScore(predArr, outcome);
+      logLossSum += logLoss(predArr, outcome);
     }
 
-    let outcome;
-    if (r.score1 > r.score2) outcome = 0;
-    else if (r.score1 === r.score2) outcome = 1;
-    else outcome = 2;
+    // Fit isotonic calibration from stored predictions
+    const isoParams = fitIsotonicCalibration(actualResults);
 
-    predictions.push(predArr);
-    outcomes.push(outcome);
+    // Reliability diagram bins (10 bins from 0 to 1)
+    const nBins = 10;
+    const bins = Array.from({length: nBins}, () => ({count: 0, sumProb: 0, sumOutcome: 0}));
+    for (let i = 0; i < predictions.length; i++) {
+      const pred = predictions[i];
+      const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
+                             pred[1] >= pred[2] ? 1 : 2;
+      const confidence = pred[predictedClass];
+      const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
+      bins[binIdx].count++;
+      bins[binIdx].sumProb += confidence;
+      bins[binIdx].sumOutcome += (predictedClass === outcomes[i]) ? 1 : 0;
+    }
 
-    // Check if predicted winner matches actual winner
-    const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? r.team1 : (predArr[2] >= predArr[1] && predArr[2] >= predArr[0] ? r.team2 : 'draw');
-    const actWinner = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
-    if (predWinner === actWinner) correct++;
-
-    rpsSum += rankedProbabilityScore(predArr, outcome);
-    brierSum += brierScore(predArr, outcome);
-    logLossSum += logLoss(predArr, outcome);
-  }
-
-  // Fit isotonic calibration from stored predictions
-  const isoParams = fitIsotonicCalibration(actualResults);
-
-  // Reliability diagram bins (10 bins from 0 to 1)
-  const nBins = 10;
-  const bins = Array.from({length: nBins}, () => ({count: 0, sumProb: 0, sumOutcome: 0}));
-  for (let i = 0; i < predictions.length; i++) {
-    const pred = predictions[i];
-    const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
-                           pred[1] >= pred[2] ? 1 : 2;
-    const confidence = pred[predictedClass];
-    const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
-    bins[binIdx].count++;
-    bins[binIdx].sumProb += confidence;
-    bins[binIdx].sumOutcome += (predictedClass === outcomes[i]) ? 1 : 0;
-  }
-
-  Object.assign(dynamicElo,savedElo);
-  return {
-    total, correct,
-    accuracy: correct / total,
-    rps: rpsSum / total,
-    brier: brierSum / total,
-    logLoss: logLossSum / total,
-    ece: expectedCalibrationError(predictions, outcomes),
-    bins: bins,
-    isoParams: isoParams
-  };
+    return {
+      total, correct,
+      accuracy: correct / total,
+      rps: rpsSum / total,
+      brier: brierSum / total,
+      logLoss: logLossSum / total,
+      ece: expectedCalibrationError(predictions, outcomes),
+      bins: bins,
+      isoParams: isoParams
+    };
+  }); // end withPreTournamentElo
 }
 
 // ---- Dynamic Elo system ----
@@ -2917,7 +2919,7 @@ const I18N = {
     'toast.invalid':'输入无效','toast.needKey':'请先设置 API Key','toast.testing':'测试中...',
     // Footer
     'footer.group':'小组赛：Dixon-Coles Poisson 期望值','footer.ko':'淘汰赛：Poisson 模拟 + 加时/点球',
-    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.15/-0.12) + 温度收缩',
+    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.20/-0.15) + 温度收缩',
     'footer.radar':'雷达：Polymarket 真金白银价格 vs 模型预测',
     'footer.mc':'蒙特卡洛 10k 概率分布 · 数据存储于 localStorage',
     'footer.disclaimer':'仅供娱乐 — 足球不可预测',
@@ -2993,7 +2995,7 @@ const I18N = {
     'toast.invalid':'Invalid input','toast.needKey':'Set API key first','toast.testing':'Testing...',
     // Footer
     'footer.group':'Group stage: Dixon-Coles Poisson expected values','footer.ko':'Knockout: Poisson sim + ET/PSO',
-    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.15/-0.12) + Temperature Scaling',
+    'footer.model':'Elo Logistic + Dixon-Coles (ρ=-0.20/-0.15) + Temperature Scaling',
     'footer.radar':'Radar: Polymarket real-money prices vs model predictions',
     'footer.mc':'Monte Carlo 10k for probability distributions · Data persisted in localStorage',
     'footer.disclaimer':'For entertainment only — football is unpredictable',
@@ -3398,6 +3400,7 @@ function runMonteCarloUI(){
   const champ={},finalist={},semi={},quarter={},r16={};
   let done=0;
   function processChunk(){
+    try{
     const end=Math.min(done+chunkSize,N);
     for(let i=done;i<end;i++){
       const result=simulateOneTournament(actualMap,preFormMap,marketOddsMap);
@@ -3415,6 +3418,11 @@ function runMonteCarloUI(){
       mcResults={champ,finalist,semi,quarter,r16,N};
       renderProbabilities();
       if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}
+    }
+    }catch(e){
+      Object.assign(dynamicElo,savedElo);
+      if(btn){btn.textContent='🎲 Monte Carlo (10,000x)';btn.disabled=false;}
+      console.error('Monte Carlo error:',e);
     }
   }
   setTimeout(processChunk,50);
@@ -3435,7 +3443,10 @@ function queryWhatIf(lockedMatches) {
         const expected = lockedMatches[key];
         const actual = run.matchResults[key];
         if (!actual) return false;
-        return actual.winner === expected;
+        if (expected === 'draw') return actual.ga === actual.gb;
+        // expected is a team name — match against actual winner
+        const winner = actual.ga > actual.gb ? key.split('|')[0] : key.split('|')[1];
+        return winner === expected;
       });
     });
   }
@@ -3615,7 +3626,7 @@ function renderModel(){
   try{
   let h='<div class="model-overview">';
   h+=`<div class="model-card"><h4>${t('model.dc')}</h4>`;
-  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">2.30 (1.15 × 2)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">2.50 (1.25 × 2)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.rate')}</span><span class="weight">400 Elo = 1 goal</span></div>`;
   h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO_GROUP} (组) / ${RHO_KNOCKOUT} (淘)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.host')}</span><span class="weight">+${HOME_HOST} goals</span></div>`;
@@ -3626,8 +3637,8 @@ function renderModel(){
   h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (World Cup)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">40% base λ (fatigue)</span></div>`;
-  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 20% Elo</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">γ=0.70 ± 0.05×(eloDiff/400)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.pen')}</span><span class="weight">50/50 ± 5%×(eloDiff/400)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.mc')}</span><span class="weight">${MC_DEFAULT.toLocaleString()}</span></div>`;
   h+=`</div>`;
   h+=`<div class="model-card"><h4>${t('model.ds')}</h4>`;
@@ -3773,7 +3784,7 @@ function renderRadar(){
   h+=`</div>`;
 
   // EV Analysis Panel
-  try { h += renderEV(); } catch(e) {}
+  try { h += renderEV(); } catch(e) { console.error('renderEV:', e); }
 
   // Brier Score Tracker (打脸榜)
   const brierScores = computeBrierScores();
@@ -4402,10 +4413,11 @@ function addResult(){
   const state=loadState();const t1=document.getElementById('res-team1').value,t2=document.getElementById('res-team2').value;
   const s1=parseInt(document.getElementById('res-score1').value),s2=parseInt(document.getElementById('res-score2').value);
   if(!t1||!t2||isNaN(s1)||isNaN(s2)||t1===t2){showToast('Invalid input');return;}
-  const savedElo={...dynamicElo};initDynamicElo();
-  const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-  const probs=matchProbs(t1,t2,preFormMap);const[lh,la]=getFormAdjustedLambdas(t1,t2,preFormMap);
-  Object.assign(dynamicElo,savedElo);
+  const {probs,lh,la} = withPreTournamentElo(() => {
+    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
+    const probs=matchProbs(t1,t2,preFormMap);const[lh,la]=getFormAdjustedLambdas(t1,t2,preFormMap);
+    return {probs,lh,la};
+  });
   const pred=predictOutcome(probs,t1,t2);
   const act=s1>s2?t1:(s2>s1?t2:'draw');
   state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'manual',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
@@ -4417,13 +4429,13 @@ function clearResults(){const s=loadState();s.actualResults=[];saveState(s);show
 function importResults(){
   const ta=document.getElementById('results-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);if(!Array.isArray(d))throw 0;const s=loadState();let c=0;
-    const savedElo={...dynamicElo};initDynamicElo();
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-    for(const r of d){if(r.team1&&r.team2&&typeof r.score1==='number'&&typeof r.score2==='number'){
-      const probs=matchProbs(r.team1,r.team2,preFormMap);const pred=predictOutcome(probs,r.team1,r.team2);
-      const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-      s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}
-    Object.assign(dynamicElo,savedElo);
+    withPreTournamentElo(() => {
+      const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
+      for(const r of d){if(r.team1&&r.team2&&typeof r.score1==='number'&&typeof r.score2==='number'){
+        const probs=matchProbs(r.team1,r.team2,preFormMap);const pred=predictOutcome(probs,r.team1,r.team2);
+        const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
+        s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}
+    });
     s.lastUpdate=new Date().toISOString();saveState(s);reevaluateResults();
   mcResults=null;runSimulation();showToast(`Imported ${c}`);renderData();
   }catch(e){showToast('Invalid JSON');}
@@ -4488,16 +4500,16 @@ function validateData() {
   if(!state.actualResults)state.actualResults=[];
   // Seed initial results (version 3 = with predGoals for comparison)
   if(!state.dataVersion || state.dataVersion < 3){
-    const init=[
+    const seedMatches=[
       {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},
       {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'},
       {team1:'Canada',team2:'Bosnia Herzegovina',score1:1,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
       {team1:'United States',team2:'Paraguay',score1:4,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
     ];
     const existing=new Set(state.actualResults.map(r=>`${r.team1}|${r.team2}`));
-    const savedElo={...dynamicElo};initDynamicElo();
+    withPreTournamentElo(() => {
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-    for(const r of init){
+    for(const r of seedMatches){
       const k=`${r.team1}|${r.team2}`;
       if(existing.has(k)){
         const idx=state.actualResults.findIndex(x=>x.team1===r.team1&&x.team2===r.team2);
@@ -4520,7 +4532,7 @@ function validateData() {
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
       state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
     }
-    Object.assign(dynamicElo,savedElo);
+    }); // end withPreTournamentElo
     state.dataVersion=3;
     state.lastUpdate=new Date().toISOString();saveState(state);
   }
