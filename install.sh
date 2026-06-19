@@ -36,7 +36,13 @@ download() {
 download "${BASE_URL}/index.html" "index.html"
 download "${BASE_URL}/server.py" "server.py"
 
-echo "✅ Downloaded index.html + server.py"
+# Download module files (model/, data/, mc-worker.js)
+mkdir -p model data
+for f in model/stats.js model/elo.js model/dixon-coles.js model/gbdt.js model/monte-carlo.js data/teams.js data/matches.js mc-worker.js; do
+  curl -fsSL "${BASE_URL}/${f}" -o "${f}" 2>/dev/null || wget -q "${BASE_URL}/${f}" -O "${f}"
+done
+
+echo "✅ Downloaded index.html + server.py + 8 module files"
 
 echo ""
 echo "📋 Usage:"

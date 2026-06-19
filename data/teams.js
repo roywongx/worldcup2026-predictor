@@ -212,29 +212,36 @@ WC26.getEffectiveAtkDef = function(team) {
 
   const squad = WC26.SQUADS[team];
   const injured = WC26.INJURIES[team] || [];
-  if (!squad || injured.length === 0) return { atk, def };
+  if (!squad || squad.length === 0 || injured.length === 0) return { atk, def };
 
   const injuredNames = new Set(injured.map(x => x.player));
-  let injuredStarterAtk = 0, injuredStarterDef = 0;
-  let totalStarterAtk = 0, totalStarterDef = 0;
+  // Compute total squad value for weight calculation
+  const totalSquadValue = squad.reduce((s, p) => s + (p.value || 1), 0);
+  let injuredAtkWeight = 0, injuredDefWeight = 0;
+  let totalAtkWeight = 0, totalDefWeight = 0;
 
   for (let i = 0; i < Math.min(squad.length, 11); i++) {
     const p = squad[i];
-    const contrib = p.pos === 'FWD' ? 0.15 : p.pos === 'MID' ? 0.10 : p.pos === 'DEF' ? 0.05 : 0.02;
-    totalStarterAtk += contrib;
-    totalStarterDef += (p.pos === 'DEF' || p.pos === 'GK') ? contrib : contrib * 0.3;
+    const valueWeight = (p.value || 1) / totalSquadValue;
+    // Position-based attack/defense contribution
+    const atkContrib = p.pos === 'FWD' ? valueWeight * 2.5 :
+                       p.pos === 'MID' ? valueWeight * 1.5 :
+                       p.pos === 'DEF' ? valueWeight * 0.5 : valueWeight * 0.2;
+    const defContrib = (p.pos === 'DEF' || p.pos === 'GK') ? valueWeight * 2.0 : valueWeight * 0.3;
+    totalAtkWeight += atkContrib;
+    totalDefWeight += defContrib;
     if (injuredNames.has(p.name)) {
-      injuredStarterAtk += contrib;
-      injuredStarterDef += (p.pos === 'DEF' || p.pos === 'GK') ? contrib : contrib * 0.3;
+      injuredAtkWeight += atkContrib;
+      injuredDefWeight += defContrib;
     }
   }
 
-  if (totalStarterAtk > 0) {
-    const atkPenalty = injuredStarterAtk / totalStarterAtk;
+  if (totalAtkWeight > 0) {
+    const atkPenalty = injuredAtkWeight / totalAtkWeight;
     atk *= (1 - atkPenalty * 0.4);
   }
-  if (totalStarterDef > 0) {
-    const defPenalty = injuredStarterDef / totalStarterDef;
+  if (totalDefWeight > 0) {
+    const defPenalty = injuredDefWeight / totalDefWeight;
     def *= (1 - defPenalty * 0.3);
   }
 

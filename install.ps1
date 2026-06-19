@@ -9,7 +9,17 @@ Write-Host "🏆 Installing World Cup 2026 Predictor..." -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Uri "$BaseUrl/index.html" -OutFile index.html -UseBasicParsing
     Invoke-WebRequest -Uri "$BaseUrl/server.py" -OutFile server.py -UseBasicParsing
-    Write-Host "✅ Downloaded index.html + server.py" -ForegroundColor Green
+    # Download module files
+    New-Item -ItemType Directory -Force -Path model, data | Out-Null
+    $moduleFiles = @(
+        "model/stats.js", "model/elo.js", "model/dixon-coles.js",
+        "model/gbdt.js", "model/monte-carlo.js",
+        "data/teams.js", "data/matches.js", "mc-worker.js"
+    )
+    foreach ($f in $moduleFiles) {
+        Invoke-WebRequest -Uri "$BaseUrl/$f" -OutFile $f -UseBasicParsing
+    }
+    Write-Host "✅ Downloaded index.html + server.py + 8 module files" -ForegroundColor Green
 
     # Auto-open
     Start-Process "http://localhost:9090"

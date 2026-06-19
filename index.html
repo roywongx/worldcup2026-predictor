@@ -2486,7 +2486,7 @@ function renderModel(){
   h+=`<div class="team-breakdown"><h3>${t('model.breakdown')}</h3><div class="breakdown-grid">`;
   allTeams.slice(0,20).forEach(t=>{
     if(!TEAMS[t])return;const{elo,fifa,form}=TEAMS[t];const de=WC26.dynamicElo[t]||elo;
-    const mv=WC26.getCorrectedMV(t);  // UEFA-corrected
+    const mv=WC26.getEffectiveMV(t);  // Squad-level with injury adjustment
     const ep=Math.max(0,(de-1400)/800*100),fp=Math.max(0,(fifa-900)/1000*100),mp=Math.min(mv/1000,1)*100;
     // Display-only composite scores (not the model's actual ATK/DEF from TEAMS)
     const atkScore=Math.max(0,((de-1400)/800*0.45+(fifa-900)/1000*0.25+Math.min(mv/1000,1)*0.20+form*0.10)*100);

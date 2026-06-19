@@ -21,6 +21,8 @@ self.onmessage = function(e) {
       // Initialize dynamic Elo and rebuild from actual results
       self.WC26.initDynamicElo();
       self.WC26.rebuildDynamicElo(actualResults || []);
+      // Train GBDT so matchProbs can use GBDT blend in Worker context
+      self.WC26.trainAndBlendGBDT(actualResults || []);
       const savedElo = { ...self.WC26.dynamicElo };
       self.WC26.initDynamicElo();
 
