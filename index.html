@@ -1008,9 +1008,9 @@ const FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,62
 
 /** Dixon-Coles correlation parameter (ρ = -0.13).
  *  Inflates low-score draws (0-0, 1-1) to match real football rates.
- *  小组赛 ρ=-0.15 (保守战术), 淘汰赛 ρ=-0.12 (开放战术) */
-const RHO_GROUP = -0.20; // increased from -0.15 for better draw calibration with base=1.25
-const RHO_KNOCKOUT = -0.15; // increased from -0.12
+ *  小组赛 ρ=-0.20 (高平局校准), 淘汰赛 ρ=-0.15 (稍开放) */
+const RHO_GROUP = -0.20;    // from -0.15, tuned with base=1.25
+const RHO_KNOCKOUT = -0.15; // from -0.12
 
 /** 根据比赛日期返回对应的 rho 值 */
 function getRho(matchDate) {
@@ -1378,7 +1378,7 @@ function getForm(team, formMap) {
  *  λ = base × stageFactor × atkMod × eloMod × (1 + host)
  *  Reference: Dixon-Coles (1997), Football Meets Data, cup26matches.com */
 function getLambdas(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, isKnockout) {
-  const base = 1.25; // historical WC avg total goals ~2.5-2.7 (was 1.15→2.30, too low)
+  const base = 1.25; // half of WC avg total goals ~2.5 (each team's λ)
   const stageFactor = isKnockout ? 0.92 : 1.0; // knockout ~2.3 total (was 0.88→2.02, too low)
 
   // Elo logistic mapping → win probability for home team
@@ -1436,22 +1436,22 @@ function getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs) {
     const mktWL = marketProbs.win / marketProbs.loss;
     const modelWL = finalH / finalA;
     const ratioAdj = Math.pow(mktWL / modelWL, MARKET_BLEND);
-    let adjH = finalH * Math.sqrt(ratioAdj);
-    let adjA = finalA / Math.sqrt(ratioAdj);
+    let mktAdjH = finalH * Math.sqrt(ratioAdj);
+    let mktAdjA = finalA / Math.sqrt(ratioAdj);
 
     // Step 2: Adjust total lambda based on market draw probability
     if (marketProbs.draw > 0) {
-      const adjTotal = adjH + adjA;
-      const approxDraw = 2 * Math.sqrt(adjH * adjA) / adjTotal * 0.40;
+      const adjTotal = mktAdjH + mktAdjA;
+      const approxDraw = 2 * Math.sqrt(mktAdjH * mktAdjA) / adjTotal * 0.40;
       const drawRatio = marketProbs.draw / Math.max(approxDraw, 0.01);
       const drawAdj = Math.pow(drawRatio, MARKET_BLEND);
       const mid = adjTotal / 2;
-      adjH = mid + (adjH - mid) / drawAdj;
-      adjA = mid + (adjA - mid) / drawAdj;
+      mktAdjH = mid + (mktAdjH - mid) / drawAdj;
+      mktAdjA = mid + (mktAdjA - mid) / drawAdj;
     }
 
-    finalH = Math.max(0.05, adjH);
-    finalA = Math.max(0.05, adjA);
+    finalH = Math.max(0.05, mktAdjH);
+    finalA = Math.max(0.05, mktAdjA);
   }
   return [finalH, finalA];
 }
@@ -1702,7 +1702,6 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
   // 90min probabilities
   let pW90=0, pD90=0, pL90=0;
   for (let i=0;i<=10;i++) for (let j=0;j<=10;j++) {
-    const tau=1; // simplified for speed
     const p=poissonPMF(i,lh90)*poissonPMF(j,la90)*dixonColesTau(i,j,lh90,la90,rho);
     if(i>j)pW90+=p;else if(i===j)pD90+=p;else pL90+=p;
   }
@@ -2203,6 +2202,17 @@ function calculateEV() {
   });
 }
 
+/** Fetch Polymarket match odds and save to localStorage, then re-render the given section */
+async function fetchAndSaveMatchOdds(section) {
+  const r = await fetchPolymarketMatchOdds();
+  const s = loadState();
+  s.polymarketMatchOdds = r;
+  saveState(s);
+  const count = Object.keys(r).length;
+  showToast(`Match odds: ${count} matches`);
+  if (section === 'ev') renderEVSection();
+}
+
 /** Render EV analysis panel */
 function renderEV() {
   const evData = calculateEV();
@@ -2259,7 +2269,7 @@ function renderEVSection() {
     if (oddsCount === 0) {
       h += '<div class="data-card" style="text-align:center;padding:2rem">';
       h += '<p style="color:var(--text3);margin-bottom:1rem">需要先获取 Polymarket 赔率数据</p>';
-      h += '<button class="data-btn data-btn-primary" onclick="fetchPolymarketMatchOdds().then(r=>{const s=loadState();s.polymarketMatchOdds=r;saveState(s);showToast(\'Odds: \'+Object.keys(r).length+\' matches\');renderEVSection();})">📊 获取 Polymarket 赔率</button>';
+      h += '<button class="data-btn data-btn-primary" onclick="fetchAndSaveMatchOdds(\'ev\')">📊 获取 Polymarket 赔率</button>';
       h += '</div>';
     } else {
       h += '<div class="data-card"><p style="color:var(--text3)">已获取 '+oddsCount+' 场赔率，无显著偏差（>3%差异要求）。点击 🔄 Sync Polymarket 更新。</p></div>';
@@ -3612,7 +3622,7 @@ function renderModel(){
   try{
   let h='<div class="model-overview">';
   h+=`<div class="model-card"><h4>${t('model.dc')}</h4>`;
-  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">2.30 (1.15 × 2)</span></div>`;
+  h+=`<div class="factor"><span class="label">${t('model.base')}</span><span class="weight">1.25 (×2 ≈ 2.50 total)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.rate')}</span><span class="weight">400 Elo = 1 goal</span></div>`;
   h+=`<div class="factor"><span class="label">DC ρ</span><span class="weight">${RHO_GROUP} (组) / ${RHO_KNOCKOUT} (淘)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.host')}</span><span class="weight">+${HOME_HOST} goals</span></div>`;
@@ -3765,7 +3775,7 @@ function renderRadar(){
   h+=`<button class="data-btn data-btn-primary" onclick="syncPolymarketData()">🔄 Sync Polymarket</button>`;
   h+=`<button class="data-btn data-btn-secondary" onclick="reevaluateResults();mcResults=null;runSimulation();renderAll()">🔁 Re-evaluate</button>`;
   h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?t('prob.stopAuto'):t('prob.auto5min')}</button>`;
-  h+=`<button class="data-btn data-btn-green" onclick="fetchPolymarketMatchOdds().then(r=>{const s=loadState();s.polymarketMatchOdds=r;saveState(s);showToast('Match odds: '+Object.keys(r).length+' matches');})">📊 ${t('radar.fetchMatchOdds')}</button>`;
+  h+=`<button class="data-btn data-btn-green" onclick="fetchAndSaveMatchOdds('radar')">📊 ${t('radar.fetchMatchOdds')}</button>`;
   h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
   h+=`</div>`;
 
@@ -4485,7 +4495,8 @@ function validateData() {
   for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   if(!state.actualResults)state.actualResults=[];
   // Seed initial results (version 3 = with predGoals for comparison)
-  if(!state.dataVersion || state.dataVersion < 3){
+  // Also re-seed if dataVersion is current but actualResults was cleared
+  if(!state.dataVersion || state.dataVersion < 3 || state.actualResults.length === 0){
     const init=[
       {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},
       {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'},

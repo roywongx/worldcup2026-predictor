@@ -210,7 +210,7 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 print(f'World Cup Predictor server')
 print(f'   http://localhost:{PORT}')
-print(f'   Bind: {BIND}:{PORT} (localhost only)')
+print(f'   Bind: {BIND}:{PORT} (LAN accessible)')
 print()
 
 ThreadedHTTPServer((BIND, PORT), ProxyHandler).serve_forever()

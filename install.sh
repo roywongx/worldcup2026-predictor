@@ -38,12 +38,6 @@ download "${BASE_URL}/server.py" "server.py"
 
 echo "✅ Downloaded index.html + server.py"
 
-# Auto-open if possible
-if [ -n "$OPEN_CMD" ]; then
-    echo "🌐 Opening in browser..."
-    $OPEN_CMD "http://localhost:9090" 2>/dev/null || true
-fi
-
 echo ""
 echo "📋 Usage:"
 echo "   python3 server.py        # Start server on port 9090"
