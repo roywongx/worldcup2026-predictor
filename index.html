@@ -3020,7 +3020,9 @@ function applyLang(){
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────
-function fl(t){const c=FLAGS[t];const name=getTeamName(t);return c?`<img src="https://flagcdn.com/w40/${c}.png" width="20" height="14" style="border-radius:2px;vertical-align:middle;margin-right:4px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1)">`+name:name;}
+/** HTML-escape to prevent XSS from user-controlled strings */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fl(t){const c=FLAGS[t];const name=esc(getTeamName(t));return c?`<img src="https://flagcdn.com/w40/${esc(c)}.png" width="20" height="14" style="border-radius:2px;vertical-align:middle;margin-right:4px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1)">`+name:name;}
 function bf(t){const c=FLAGS[t];return c?`<img src="https://flagcdn.com/w20/${c}.png" width="16" height="11" style="border-radius:1.5px;vertical-align:middle;margin-right:3px">`:'';}
 function showToast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2200);}
 
@@ -4427,7 +4429,7 @@ function importResults(){
   try{const d=JSON.parse(ta.value);if(!Array.isArray(d))throw 0;const s=loadState();let c=0;
     withPreTournamentElo(() => {
       const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-      for(const r of d){if(r.team1&&r.team2&&typeof r.score1==='number'&&typeof r.score2==='number'){
+      for(const r of d){if(r.team1&&r.team2&&TEAMS[r.team1]&&TEAMS[r.team2]&&typeof r.score1==='number'&&typeof r.score2==='number'){
         const probs=matchProbs(r.team1,r.team2,preFormMap);const pred=predictOutcome(probs,r.team1,r.team2);
         const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
         s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}

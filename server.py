@@ -45,14 +45,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         print(f'  [{ts}] {msg}')
 
     def _get_api_key(self):
-        """Extract API key from X-API-Key header (preferred) or query param (fallback)."""
-        # SEC-1: prefer header over URL param
-        key = self.headers.get('X-API-Key', '')
-        if key:
-            return key
-        # Fallback: query param (for backward compatibility)
-        params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-        return params.get('key', [''])[0]
+        """Extract API key from X-API-Key header only."""
+        return self.headers.get('X-API-Key', '')
 
     def _test_key(self):
         """Test if a football-data.org API key is valid."""
