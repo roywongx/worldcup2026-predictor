@@ -4631,9 +4631,21 @@ function validateData() {
   const state=loadState();
   for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   if(!state.actualResults)state.actualResults=[];
-  // Seed initial results (version 3 = with predGoals for comparison)
+  // Auto-fix: repair results with null scores
+  const nullScoreFixes = {'Mexico|South Africa':[2,0],'South Korea|Czech Republic':[2,1],'Canada|Bosnia Herzegovina':[1,1],'United States|Paraguay':[4,1]};
+  let fixed = 0;
+  for(const r of state.actualResults){
+    if(r.score1==null||r.score2==null){
+      const key = `${r.team1}|${r.team2}`;
+      const scores = nullScoreFixes[key];
+      if(scores){r.score1=scores[0];r.score2=scores[1];fixed++;}
+    }
+  }
+  if(fixed>0){saveState(state);console.log(`[Init] Fixed ${fixed} null scores`);}
+  // Seed initial results (version 4 = Beijing date format + null score fix)
   // Also re-seed if dataVersion is current but actualResults was cleared
-  if(!state.dataVersion || state.dataVersion < 3 || state.actualResults.length === 0){
+  // Force re-seed with v4 to fix null scores from date mismatch
+  if(!state.dataVersion || state.dataVersion < 4 || state.actualResults.length === 0){
     const init=[
       {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},
       {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'},
@@ -4667,7 +4679,7 @@ function validateData() {
       state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
     }
     }); // end withPreTournamentElo
-    state.dataVersion=3;
+    state.dataVersion=4;
     state.lastUpdate=new Date().toISOString();saveState(state);
   }
   const sm=state.marketData;if(sm&&sm.matches)marketData=sm;
