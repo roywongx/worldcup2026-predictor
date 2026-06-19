@@ -3291,7 +3291,13 @@ async function syncPolymarketData() {
 
     // 2. 赔率: Polymarket + the-odds-api.com
     const polyOdds = await fetchPolymarketMatchOdds();
-    const matchOdds = await fetchMatchOdds(); // the-odds-api.com h2h
+    const oddsKey = getApiKey('oddsapi');
+    let matchOdds = {};
+    if (oddsKey) {
+      matchOdds = await fetchMatchOdds(); // the-odds-api.com h2h
+    } else {
+      console.log('[Sync] No odds API key — skipping the-odds-api.com. Set key in Data tab → API Keys.');
+    }
 
     // 3. 冠军赔率: Polymarket champion odds (Radar)
     await fetchPolymarketData();

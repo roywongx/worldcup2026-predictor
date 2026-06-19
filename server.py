@@ -46,11 +46,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def _get_api_key(self):
         """Extract API key from X-API-Key header only."""
-        return self.headers.get('X-API-Key', '')
+        key = self.headers.get('X-API-Key', '')
+        if not key:
+            self._log(f'⚠ No X-API-Key in header (path={self.path})')
+        return key
 
     def _odds_request(self, path, params=None):
         """Build the-odds-api request using header auth so keys stay out of URLs."""
         api_key = self._get_api_key()
+        if not api_key or len(api_key) < 10:
+            self._log(f'⚠ _odds_request: invalid API key (len={len(api_key)}) — will get 401')
         query = urllib.parse.urlencode(params or {})
         url = f'https://api.the-odds-api.com/v4/{path}'
         if query:
@@ -134,7 +139,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         """Proxy to the-odds-api.com with API key from header."""
         api_key = self._get_api_key()
         if not api_key:
-            self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
+            self._log('✗ /api/odds: No API key in request header')
+            self._json_response({'error': 'Missing API key. Set it in Data tab → API Keys → Odds API, then save.'}, 400)
             return
 
         req = self._odds_request('sports/soccer_fifa_world_cup_winner/odds/', {
@@ -162,7 +168,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         """Proxy to the-odds-api.com for match-level h2h odds."""
         api_key = self._get_api_key()
         if not api_key:
-            self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
+            self._log('✗ /api/match-odds: No API key in request header')
+            self._json_response({'error': 'Missing API key. Set it in Data tab → API Keys → Odds API, then save.'}, 400)
             return
 
         # Cache: remember which sport key worked to avoid wasting quota on 404s
