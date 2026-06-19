@@ -75,8 +75,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': 'Pass X-API-Key header or ?key=YOUR_KEY'}, 400)
             return
 
-        url = f'https://api.the-odds-api.com/v4/sports?apiKey={api_key}'
-        req = urllib.request.Request(url)
+        url = 'https://api.the-odds-api.com/v4/sports'
+        req = urllib.request.Request(url, headers={'x-api-key': api_key})
         # SEC-1: don't log key
         self._log('test-odds →')
         try:
@@ -129,8 +129,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': 'Missing API key (X-API-Key header)'}, 400)
             return
 
-        url = f'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?apiKey={api_key}&regions=us&markets=outrights&oddsFormat=american'
-        req = urllib.request.Request(url)
+        url = f'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup_winner/odds/?regions=us&markets=outrights&oddsFormat=american'
+        req = urllib.request.Request(url, headers={'x-api-key': api_key})
         # SEC-1: don't log key
         self._log('the-odds-api.com →')
         try:
@@ -168,8 +168,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             if sport in seen or not sport:
                 continue
             seen.add(sport)
-            url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={api_key}&regions=us,eu&markets=h2h&oddsFormat=decimal'
-            req = urllib.request.Request(url)
+            url = f'https://api.the-odds-api.com/v4/sports/{sport}/odds/?regions=us,eu&markets=h2h&oddsFormat=decimal'
+            req = urllib.request.Request(url, headers={'x-api-key': api_key})
             self._log(f'the-odds-api.com match-odds → {sport}')
             try:
                 with urllib.request.urlopen(req, timeout=15) as resp:
