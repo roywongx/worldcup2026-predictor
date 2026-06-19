@@ -3633,6 +3633,7 @@ function runMonteCarloUI(){
   let done=0;
   function processChunk(){
     const end=Math.min(done+chunkSize,N);
+    try {
     for(let i=done;i<end;i++){
       const result=simulateOneTournament(actualMap,preFormMap,marketOddsMap);
       champ[result.champion]=(champ[result.champion]||0)+1;
@@ -3647,6 +3648,7 @@ function runMonteCarloUI(){
       });
       simulationHistory.push({ champion: result.champion, matchResults: mr });
     }
+    } catch(e) { Object.assign(dynamicElo,savedElo); console.error('MC chunk error:',e); return; }
     done=end;
     if(btn)btn.textContent=`${t('prob.simulating')} ${(done/N*100).toFixed(0)}%`;
     if(done<N){setTimeout(processChunk,0);}
