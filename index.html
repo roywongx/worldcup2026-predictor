@@ -1238,75 +1238,85 @@ for (const g of GROUPS) for (const t of GROUP_TEAMS[g]) teamToGroup[t] = g;
  *  Dates are LOCAL dates (UTC-5 to UTC-8 depending on venue)
  *  Matchday 1: Jun 11-17 | Matchday 2: Jun 18-23 | Matchday 3: Jun 24-27 */
 const MATCHES = [
-  // ── Matchday 1: Jun 11-14 (6 matches/day, simultaneous kickoffs) ──
+  // ── Matchday 1: Jun 11-17 ──
   ["2026-06-11","Mexico","South Africa","A"],["2026-06-11","South Korea","Czech Republic","A"],
-  ["2026-06-11","Germany","Curaçao","E"],["2026-06-11","Ivory Coast","Ecuador","E"],
-  ["2026-06-11","France","Senegal","I"],["2026-06-11","Iraq","Norway","I"],
-  ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","Qatar","Switzerland","B"],
-  ["2026-06-12","Netherlands","Japan","F"],["2026-06-12","Sweden","Tunisia","F"],
-  ["2026-06-12","Argentina","Algeria","J"],["2026-06-12","Austria","Jordan","J"],
-  ["2026-06-13","Brazil","Morocco","C"],["2026-06-13","Haiti","Scotland","C"],
-  ["2026-06-13","Belgium","Egypt","G"],["2026-06-13","Iran","New Zealand","G"],
-  ["2026-06-13","Portugal","DR Congo","K"],["2026-06-13","Uzbekistan","Colombia","K"],
-  ["2026-06-14","United States","Paraguay","D"],["2026-06-14","Australia","Turkey","D"],
-  ["2026-06-14","Spain","Cape Verde","H"],["2026-06-14","Saudi Arabia","Uruguay","H"],
-  ["2026-06-14","England","Croatia","L"],["2026-06-14","Ghana","Panama","L"],
-  // ── Matchday 2: Jun 18-21 (6 matches/day, simultaneous kickoffs) ──
-  ["2026-06-18","Mexico","South Korea","A"],["2026-06-18","South Africa","Czech Republic","A"],
-  ["2026-06-18","Germany","Ivory Coast","E"],["2026-06-18","Curaçao","Ecuador","E"],
-  ["2026-06-18","France","Iraq","I"],["2026-06-18","Senegal","Norway","I"],
-  ["2026-06-19","Canada","Qatar","B"],["2026-06-19","Bosnia Herzegovina","Switzerland","B"],
-  ["2026-06-19","Netherlands","Sweden","F"],["2026-06-19","Japan","Tunisia","F"],
-  ["2026-06-19","Argentina","Austria","J"],["2026-06-19","Algeria","Jordan","J"],
-  ["2026-06-20","Brazil","Haiti","C"],["2026-06-20","Morocco","Scotland","C"],
-  ["2026-06-20","Belgium","Iran","G"],["2026-06-20","Egypt","New Zealand","G"],
-  ["2026-06-20","Portugal","Uzbekistan","K"],["2026-06-20","DR Congo","Colombia","K"],
-  ["2026-06-21","United States","Australia","D"],["2026-06-21","Paraguay","Turkey","D"],
-  ["2026-06-21","Spain","Saudi Arabia","H"],["2026-06-21","Cape Verde","Uruguay","H"],
-  ["2026-06-21","England","Ghana","L"],["2026-06-21","Croatia","Panama","L"],
-  // ── Matchday 3: Jun 24-27 (6 matches/day, simultaneous kickoffs) ──
-  ["2026-06-24","Mexico","Czech Republic","A"],["2026-06-24","South Africa","South Korea","A"],
-  ["2026-06-24","Germany","Ecuador","E"],["2026-06-24","Curaçao","Ivory Coast","E"],
-  ["2026-06-24","France","Norway","I"],["2026-06-24","Senegal","Iraq","I"],
-  ["2026-06-25","Canada","Switzerland","B"],["2026-06-25","Bosnia Herzegovina","Qatar","B"],
-  ["2026-06-25","Netherlands","Tunisia","F"],["2026-06-25","Japan","Sweden","F"],
-  ["2026-06-25","Argentina","Jordan","J"],["2026-06-25","Algeria","Austria","J"],
-  ["2026-06-26","Brazil","Scotland","C"],["2026-06-26","Morocco","Haiti","C"],
-  ["2026-06-26","Belgium","New Zealand","G"],["2026-06-26","Egypt","Iran","G"],
-  ["2026-06-26","Portugal","Colombia","K"],["2026-06-26","DR Congo","Uzbekistan","K"],
-  ["2026-06-27","United States","Turkey","D"],["2026-06-27","Paraguay","Australia","D"],
-  ["2026-06-27","Spain","Uruguay","H"],["2026-06-27","Cape Verde","Saudi Arabia","H"],
-  ["2026-06-27","England","Panama","L"],["2026-06-27","Croatia","Ghana","L"]
+  ["2026-06-12","Canada","Bosnia Herzegovina","B"],["2026-06-12","United States","Paraguay","D"],
+  ["2026-06-13","Qatar","Switzerland","B"],["2026-06-13","Brazil","Morocco","C"],
+  ["2026-06-13","Haiti","Scotland","C"],["2026-06-13","Australia","Turkey","D"],
+  ["2026-06-14","Germany","Curaçao","E"],["2026-06-14","Ivory Coast","Ecuador","E"],
+  ["2026-06-14","Netherlands","Japan","F"],["2026-06-14","Sweden","Tunisia","F"],
+  ["2026-06-15","Belgium","Egypt","G"],["2026-06-15","Iran","New Zealand","G"],
+  ["2026-06-15","Spain","Cape Verde","H"],["2026-06-15","Saudi Arabia","Uruguay","H"],
+  ["2026-06-16","France","Senegal","I"],["2026-06-16","Iraq","Norway","I"],
+  ["2026-06-16","Argentina","Algeria","J"],["2026-06-16","Austria","Jordan","J"],
+  ["2026-06-17","Portugal","DR Congo","K"],["2026-06-17","Uzbekistan","Colombia","K"],
+  ["2026-06-17","England","Croatia","L"],["2026-06-17","Ghana","Panama","L"],
+  // ── Matchday 2: Jun 18-23 ──
+  ["2026-06-18","Czech Republic","South Africa","A"],["2026-06-18","Mexico","South Korea","A"],
+  ["2026-06-18","Switzerland","Bosnia Herzegovina","B"],["2026-06-18","Canada","Qatar","B"],
+  ["2026-06-19","Scotland","Morocco","C"],["2026-06-19","Brazil","Haiti","C"],
+  ["2026-06-19","United States","Australia","D"],["2026-06-19","Turkey","Paraguay","D"],
+  ["2026-06-20","Germany","Ivory Coast","E"],["2026-06-20","Ecuador","Curaçao","E"],
+  ["2026-06-20","Netherlands","Sweden","F"],["2026-06-20","Tunisia","Japan","F"],
+  ["2026-06-21","Belgium","Iran","G"],["2026-06-21","New Zealand","Egypt","G"],
+  ["2026-06-21","Spain","Saudi Arabia","H"],["2026-06-21","Uruguay","Cape Verde","H"],
+  ["2026-06-22","France","Iraq","I"],["2026-06-22","Norway","Senegal","I"],
+  ["2026-06-22","Argentina","Austria","J"],["2026-06-22","Jordan","Algeria","J"],
+  ["2026-06-23","Portugal","Uzbekistan","K"],["2026-06-23","Colombia","DR Congo","K"],
+  ["2026-06-23","England","Ghana","L"],["2026-06-23","Panama","Croatia","L"],
+  // ── Matchday 3: Jun 24-27 (simultaneous kick-offs) ──
+  ["2026-06-24","Czech Republic","Mexico","A"],["2026-06-24","South Africa","South Korea","A"],
+  ["2026-06-24","Switzerland","Canada","B"],["2026-06-24","Bosnia Herzegovina","Qatar","B"],
+  ["2026-06-24","Scotland","Brazil","C"],["2026-06-24","Morocco","Haiti","C"],
+  ["2026-06-25","Turkey","United States","D"],["2026-06-25","Paraguay","Australia","D"],
+  ["2026-06-25","Ecuador","Germany","E"],["2026-06-25","Curaçao","Ivory Coast","E"],
+  ["2026-06-25","Japan","Sweden","F"],["2026-06-25","Tunisia","Netherlands","F"],
+  ["2026-06-26","Egypt","Iran","G"],["2026-06-26","New Zealand","Belgium","G"],
+  ["2026-06-26","Cape Verde","Saudi Arabia","H"],["2026-06-26","Uruguay","Spain","H"],
+  ["2026-06-26","Norway","France","I"],["2026-06-26","Senegal","Iraq","I"],
+  ["2026-06-27","Algeria","Austria","J"],["2026-06-27","Jordan","Argentina","J"],
+  ["2026-06-27","Colombia","Portugal","K"],["2026-06-27","DR Congo","Uzbekistan","K"],
+  ["2026-06-27","Panama","England","L"],["2026-06-27","Croatia","Ghana","L"]
 ];
 
 /** Venue/city for each match (order matches MATCHES array).
  *  Source: FIFA official via kickoffadventures.com
  *  Short city names for compact display. */
 const VENUES = [
-  // MD1: Jun 11 (Groups A, E, I)
-  "Mexico City 🇲🇽","Guadalajara 🇲🇽","Houston 🇺🇸","Dallas 🇺🇸","New York 🇺🇸","Boston 🇺🇸",
-  // MD1: Jun 12 (Groups B, F, J)
-  "Toronto 🇨🇦","Vancouver 🇨🇦","Philadelphia 🇺🇸","Monterrey 🇲🇽","Kansas City 🇺🇸","San Francisco 🇺🇸",
-  // MD1: Jun 13 (Groups C, G, K)
-  "New York 🇺🇸","Boston 🇺🇸","Seattle 🇺🇸","Los Angeles 🇺🇸","Houston 🇺🇸","Dallas 🇺🇸",
-  // MD1: Jun 14 (Groups D, H, L)
-  "Los Angeles 🇺🇸","San Francisco 🇺🇸","Atlanta 🇺🇸","Miami 🇺🇸","Toronto 🇨🇦","Mexico City 🇲🇽",
-  // MD2: Jun 18 (Groups A, E, I)
-  "Guadalajara 🇲🇽","Monterrey 🇲🇽","Houston 🇺🇸","Dallas 🇺🇸","New York 🇺🇸","Boston 🇺🇸",
-  // MD2: Jun 19 (Groups B, F, J)
-  "Vancouver 🇨🇦","Seattle 🇺🇸","Philadelphia 🇺🇸","Kansas City 🇺🇸","San Francisco 🇺🇸","Los Angeles 🇺🇸",
-  // MD2: Jun 20 (Groups C, G, K)
-  "Atlanta 🇺🇸","Miami 🇺🇸","New York 🇺🇸","Boston 🇺🇸","Houston 🇺🇸","Dallas 🇺🇸",
-  // MD2: Jun 21 (Groups D, H, L)
-  "Los Angeles 🇺🇸","San Francisco 🇺🇸","Toronto 🇨🇦","Mexico City 🇲🇽","Vancouver 🇨🇦","Seattle 🇺🇸",
-  // MD3: Jun 24 (Groups A, E, I)
-  "Mexico City 🇲🇽","Guadalajara 🇲🇽","Houston 🇺🇸","Dallas 🇺🇸","New York 🇺🇸","Boston 🇺🇸",
-  // MD3: Jun 25 (Groups B, F, J)
-  "Toronto 🇨🇦","Vancouver 🇨🇦","Philadelphia 🇺🇸","Monterrey 🇲🇽","Kansas City 🇺🇸","San Francisco 🇺🇸",
-  // MD3: Jun 26 (Groups C, G, K)
-  "New York 🇺🇸","Boston 🇺🇸","Seattle 🇺🇸","Los Angeles 🇺🇸","Houston 🇺🇸","Dallas 🇺🇸",
-  // MD3: Jun 27 (Groups D, H, L)
-  "Los Angeles 🇺🇸","San Francisco 🇺🇸","Atlanta 🇺🇸","Miami 🇺🇸","Toronto 🇨🇦","Mexico City 🇲🇽"
+  // MD1: Jun 11 (Group A)
+  "Mexico City 🇲🇽","Guadalajara 🇲🇽",
+  // MD1: Jun 12 (Groups B, D)
+  "Toronto 🇨🇦","Los Angeles 🇺🇸",
+  // MD1: Jun 13 (Groups B, C, D)
+  "San Francisco 🇺🇸","New York 🇺🇸","Boston 🇺🇸","Vancouver 🇨🇦",
+  // MD1: Jun 14 (Groups E, F)
+  "Houston 🇺🇸","Philadelphia 🇺🇸","Dallas 🇺🇸","Guadalajara 🇲🇽",
+  // MD1: Jun 15 (Groups G, H)
+  "Seattle 🇺🇸","Los Angeles 🇺🇸","Atlanta 🇺🇸","Miami 🇺🇸",
+  // MD1: Jun 16 (Groups I, J)
+  "New York 🇺🇸","Boston 🇺🇸","Kansas City 🇺🇸","San Francisco 🇺🇸",
+  // MD1: Jun 17 (Groups K, L)
+  "Houston 🇺🇸","Mexico City 🇲🇽","Dallas 🇺🇸","Toronto 🇨🇦",
+  // MD2: Jun 18 (Groups A, B)
+  "Atlanta 🇺🇸","Guadalajara 🇲🇽","Los Angeles 🇺🇸","Vancouver 🇨🇦",
+  // MD2: Jun 19 (Groups C, D)
+  "Boston 🇺🇸","Philadelphia 🇺🇸","Seattle 🇺🇸","San Francisco 🇺🇸",
+  // MD2: Jun 20 (Groups E, F)
+  "Toronto 🇨🇦","Kansas City 🇺🇸","Houston 🇺🇸","Guadalajara 🇲🇽",
+  // MD2: Jun 21 (Groups G, H)
+  "Los Angeles 🇺🇸","Vancouver 🇨🇦","Atlanta 🇺🇸","Miami 🇺🇸",
+  // MD2: Jun 22 (Groups I, J)
+  "Philadelphia 🇺🇸","New York 🇺🇸","Dallas 🇺🇸","San Francisco 🇺🇸",
+  // MD2: Jun 23 (Groups K, L)
+  "Houston 🇺🇸","Guadalajara 🇲🇽","Boston 🇺🇸","Toronto 🇨🇦",
+  // MD3: Jun 24 (Groups A, B, C)
+  "Mexico City 🇲🇽","Guadalajara 🇲🇽","Vancouver 🇨🇦","Seattle 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸",
+  // MD3: Jun 25 (Groups D, E, F)
+  "Los Angeles 🇺🇸","San Francisco 🇺🇸","Philadelphia 🇺🇸","New York 🇺🇸","Dallas 🇺🇸","Kansas City 🇺🇸",
+  // MD3: Jun 26 (Groups G, H, I)
+  "Seattle 🇺🇸","Vancouver 🇨🇦","Houston 🇺🇸","Guadalajara 🇲🇽","Boston 🇺🇸","Toronto 🇨🇦",
+  // MD3: Jun 27 (Groups J, K, L)
+  "Kansas City 🇺🇸","Dallas 🇺🇸","Miami 🇺🇸","Atlanta 🇺🇸","New York 🇺🇸","Philadelphia 🇺🇸"
 ];
 
 // ---- FIFA Annex C: 495 third-place combination matrix ----
