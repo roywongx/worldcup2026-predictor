@@ -1422,8 +1422,9 @@ function runBacktest() {
       }
       if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
       const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
-      const probs = matchProbs(m.t1, m.t2, tmpFormMap);
-      tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];});
+      let probs;
+      try { probs = matchProbs(m.t1, m.t2, tmpFormMap); }
+      finally { tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];}); }
       const predArr = [probs.win, probs.draw, probs.loss];
       const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
       predictions.push(predArr);
@@ -1758,6 +1759,7 @@ function poissonSample(lam) {
   if (lam <= 0) return 0;
   const L = Math.exp(-lam);
   let k = 0, p = 1;
+  // Knuth algorithm; k<20 safe because P(X>20) < 1e-12 for lam < 5 (max WC lambda ≈ 3)
   do { k++; p *= Math.random(); } while (p > L && k < 20);
   return k - 1;
 }
@@ -1790,8 +1792,8 @@ function simKO(home, away, formMap, matchDate, marketOddsMap) {
     // γ = 0.70 ± 0.05 × (eloDiff/400) — stronger team has deeper bench
     const eloH = getEffectiveElo(home), eloA = getEffectiveElo(away);
     const eloDiff = eloH - eloA;
-    const gammaH = 0.70 + 0.05 * (eloDiff / 400);
-    const gammaA = 0.70 - 0.05 * (eloDiff / 400);
+    const gammaH = Math.max(0.10, 0.70 + 0.05 * (eloDiff / 400));
+    const gammaA = Math.max(0.10, 0.70 - 0.05 * (eloDiff / 400));
     const lhET = lh90 * (30 / 90) * gammaH;
     const laET = la90 * (30 / 90) * gammaA;
     const etH = poissonSample(lhET), etA = poissonSample(laET);
@@ -1827,7 +1829,7 @@ function koAdvanceProbs(home, away, formMap, matchDate, marketOddsMap) {
 
   // ET lambdas
   const eloH=getEffectiveElo(home), eloA=getEffectiveElo(away), eloDiff=eloH-eloA;
-  const gammaH=0.70+0.05*(eloDiff/400), gammaA=0.70-0.05*(eloDiff/400);
+  const gammaH=Math.max(0.10,0.70+0.05*(eloDiff/400)), gammaA=Math.max(0.10,0.70-0.05*(eloDiff/400));
   const lhET=lh90*(30/90)*gammaH, laET=la90*(30/90)*gammaA;
 
   let pW_ET=0,pD_ET=0,pL_ET=0;
