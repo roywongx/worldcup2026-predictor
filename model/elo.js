@@ -12,13 +12,13 @@ WC26.isotonicCalibration = null;
 WC26.getMatchImportance = function(matchDate) {
   if (!matchDate) return WC26.IMPORTANCE_WC_GROUP;
   const d = matchDate.substring(0, 10);
-  if (d >= '2026-06-28') return WC26.IMPORTANCE_WC_KNOCKOUT;
+  if (d >= '2026-06-29') return WC26.IMPORTANCE_WC_KNOCKOUT;
   return WC26.IMPORTANCE_WC_GROUP;
 };
 
 /** Get rho based on match date */
 WC26.getRho = function(matchDate) {
-  if (matchDate && matchDate.substring(0, 10) >= '2026-06-28') return WC26.RHO_KNOCKOUT;
+  if (matchDate && matchDate.substring(0, 10) >= '2026-06-29') return WC26.RHO_KNOCKOUT;
   return WC26.RHO_GROUP;
 };
 
@@ -43,7 +43,7 @@ WC26.updateElo = function(team1, team2, score1, score2, matchDate) {
   let K = 60;
   if (matchDate) {
     const d = matchDate.substring(0, 10);
-    if (d >= '2026-06-28') K = 80;
+    if (d >= '2026-06-29') K = 80;
   }
   const importance = WC26.getMatchImportance(matchDate);
   K *= importance;

@@ -40,7 +40,7 @@ WC26.getFormAdjustedLambdas = function(home, away, formMap, matchDate, marketPro
   const aBonus = WC26.getHomeBonus(away);
   const eloH = WC26.getEffectiveElo(home);
   const eloA = WC26.getEffectiveElo(away);
-  const isKnockout = matchDate && matchDate.substring(0, 10) >= '2026-06-28';
+  const isKnockout = matchDate && matchDate.substring(0, 10) >= '2026-06-29';
   const effHome = WC26.SQUADS[home] ? WC26.getEffectiveAtkDef(home) : null;
   const effAway = WC26.SQUADS[away] ? WC26.getEffectiveAtkDef(away) : null;
   const atkH = effHome ? effHome.atk : (WC26.TEAMS[home] ? WC26.getTeamAtk(home) : 1.0);
