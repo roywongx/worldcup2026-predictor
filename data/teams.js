@@ -1,41 +1,56 @@
 // World Cup 2026 Predictor — extracted module
 // data/teams.js — Team data, squads, and injury system
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 /** Pre-computed factorial table for Poisson PMF (0-15) */
 WC26.FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800,87178291200,1307674368000];
 
-/** Dixon-Coles correlation parameter */
-WC26.RHO_GROUP = -0.20;
-WC26.RHO_KNOCKOUT = -0.15;
-
-/** Match importance multipliers (PELE 2026) */
-WC26.IMPORTANCE_FRIENDLY = 0.60;
-WC26.IMPORTANCE_QUALIFIER = 1.50;
-WC26.IMPORTANCE_WC_GROUP = 1.00;
-WC26.IMPORTANCE_WC_KNOCKOUT = 1.10;
-
-/** Negative Binomial overdispersion parameter */
-WC26.NB_R = 8.5;
-
-/** Home advantage in expected goals */
-WC26.HOME_HOST = 0.30;
-
-/** Monte Carlo default */
-WC26.MC_DEFAULT = 50000;
-
-/** Model tuning constants (named for readability) */
+/** All tuning constants in one place */
 WC26.CONFIG = {
-  BASE_LAMBDA: 1.25,          // baseline expected goals before modifiers
-  KNOCKOUT_FACTOR: 0.92,      // goals reduced in knockout stage
-  ATKDEF_DAMPING: 0.35,       // exponent for ATK/DEF ratio adjustment
-  FORM_AMP: 0.30,             // form deviation → lambda multiplier amplitude
-  TILT_ATK: 0.10,             // tilt weight: attack-minded → more goals scored
-  TILT_DEF: 0.05,             // tilt weight: attack-minded → more goals conceded
-  MIN_LAMBDA: 0.18,           // floor for raw lambda from getLambdas
-  MIN_FINAL: 0.05,            // floor for final adjusted lambda
-  DRAW_APPROX: 0.40,          // Poisson draw approximation scaling factor
+  // Dixon-Coles model
+  BASE_LAMBDA: 1.25,            // baseline expected goals before modifiers
+  KNOCKOUT_FACTOR: 0.92,        // goals reduced in knockout stage
+  ATKDEF_DAMPING: 0.35,         // exponent for ATK/DEF ratio adjustment
+  FORM_AMP: 0.30,               // form deviation → lambda multiplier amplitude
+  TILT_ATK: 0.10,               // tilt weight: attack-minded → more goals scored
+  TILT_DEF: 0.05,               // tilt weight: attack-minded → more goals conceded
+  MIN_LAMBDA: 0.18,             // floor for raw lambda from getLambdas
+  MIN_FINAL: 0.05,              // floor for final adjusted lambda
+  DRAW_APPROX: 0.40,            // Poisson draw approximation scaling factor
+  // Dixon-Coles correlation
+  RHO_GROUP: -0.20,             // rho for group stage
+  RHO_KNOCKOUT: -0.15,          // rho for knockout stage
+  // Elo system
+  IMPORTANCE_FRIENDLY: 0.60,
+  IMPORTANCE_QUALIFIER: 1.50,
+  IMPORTANCE_WC_GROUP: 1.00,
+  IMPORTANCE_WC_KNOCKOUT: 1.10,
+  // Sampling
+  NB_R: 8.5,                    // Negative Binomial overdispersion
+  // Venue
+  HOME_HOST: 0.30,              // home advantage in expected goals
+  // Simulation
+  MC_DEFAULT: 50000,            // default Monte Carlo iterations
 };
+
+// Backward-compatible aliases → WC26.CONFIG.*
+// get: reads from CONFIG; set: writes to CONFIG (for ablation tests)
+const _alias = (key) => ({
+  get() { return this.CONFIG[key]; },
+  set(v) { this.CONFIG[key] = v; },
+  configurable: true, enumerable: true,
+});
+Object.defineProperties(WC26, {
+  RHO_GROUP:              _alias('RHO_GROUP'),
+  RHO_KNOCKOUT:           _alias('RHO_KNOCKOUT'),
+  IMPORTANCE_FRIENDLY:    _alias('IMPORTANCE_FRIENDLY'),
+  IMPORTANCE_QUALIFIER:   _alias('IMPORTANCE_QUALIFIER'),
+  IMPORTANCE_WC_GROUP:    _alias('IMPORTANCE_WC_GROUP'),
+  IMPORTANCE_WC_KNOCKOUT: _alias('IMPORTANCE_WC_KNOCKOUT'),
+  NB_R:                   _alias('NB_R'),
+  HOME_HOST:              _alias('HOME_HOST'),
+  MC_DEFAULT:             _alias('MC_DEFAULT'),
+});
 
 /** UEFA club teams for 30% valuation correction */
 WC26.UEFA_TEAMS = new Set([

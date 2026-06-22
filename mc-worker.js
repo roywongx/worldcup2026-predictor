@@ -1,6 +1,5 @@
 // MC Web Worker — runs tournament simulations off the main thread
-self.WC26 = {};
-globalThis.window = globalThis;  // Shim for modules that check window.WC26
+// Modules use globalThis.WC26, which works in both Worker and browser
 
 importScripts(
   'data/teams.js',

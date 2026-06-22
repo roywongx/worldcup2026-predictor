@@ -1,6 +1,6 @@
 // World Cup 2026 Predictor — extracted module
 // model/stats.js — Pure math and scoring functions (no dependencies beyond data/)
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 /** Negative Binomial PMF: P(X=k) = C(k+r-1, k) * (r/(r+μ))^r * (μ/(r+μ))^k */
 WC26.negBinPMF = function(k, mu, r) {

@@ -1,6 +1,6 @@
 // World Cup 2026 Predictor — extracted module
 // data/matches.js — Match schedule, venues, and third-place matrix
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 /** Match schedule: [date, BJTime, home, away, group] */
 WC26.MATCHES = [

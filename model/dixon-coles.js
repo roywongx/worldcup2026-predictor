@@ -1,6 +1,6 @@
 // World Cup 2026 Predictor — extracted module
 // model/dixon-coles.js — Core Dixon-Coles prediction model
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 /** All market volumes for percentile computation */
 WC26._allMarketVolumes = [];

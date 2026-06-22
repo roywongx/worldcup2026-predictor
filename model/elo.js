@@ -1,6 +1,6 @@
 // World Cup 2026 Predictor — extracted module
 // model/elo.js — Elo rating system
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 /** Dynamic Elo ratings (mutable) */
 WC26.dynamicElo = {};

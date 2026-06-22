@@ -1,6 +1,6 @@
 // World Cup 2026 Predictor — extracted module
 // model/monte-carlo.js — Monte Carlo simulation engine
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 /** Apply a match result to group standings (mutates st in place) */
 WC26.applyGroupResult = function(st, grp, team1, team2, score1, score2) {

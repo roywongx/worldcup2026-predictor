@@ -1,6 +1,6 @@
 // World Cup 2026 Predictor — extracted module
 // model/gbdt.js — Simplified Gradient Boosting Decision Trees
-window.WC26 = window.WC26 || {};
+globalThis.WC26 = globalThis.WC26 || {};
 
 WC26.SimpleGBDT = class SimpleGBDT {
   constructor(nTrees = 15, learningRate = 0.08, maxDepth = 2) {
