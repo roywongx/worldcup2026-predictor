@@ -12,13 +12,13 @@ WC26.SimpleGBDT = class SimpleGBDT {
     this.featureNames = ['eloDiff', 'atkDiff', 'defDiff', 'formDiff', 'homeBonus', 'momentumDiff'];
   }
 
-  extractFeatures(team1, team2) {
+  extractFeatures(team1, team2, formMap) {
     const t1 = WC26.TEAMS[team1] || {elo:1500,fifa:1500,mv:50,wc:0,form:0.5,host:0,odds:0,atk:1.0,def:1.0};
     const t2 = WC26.TEAMS[team2] || {elo:1500,fifa:1500,mv:50,wc:0,form:0.5,host:0,odds:0,atk:1.0,def:1.0};
     const dynElo1 = (WC26.dynamicElo && WC26.dynamicElo[team1]) || t1.elo;
     const dynElo2 = (WC26.dynamicElo && WC26.dynamicElo[team2]) || t2.elo;
-    const form1 = WC26.getForm(team1);
-    const form2 = WC26.getForm(team2);
+    const form1 = WC26.getForm(team1, formMap);
+    const form2 = WC26.getForm(team2, formMap);
     const momentum1 = WC26.getMomentum ? WC26.getMomentum(team1) : 0;
     const momentum2 = WC26.getMomentum ? WC26.getMomentum(team2) : 0;
 
@@ -126,10 +126,10 @@ WC26.SimpleGBDT = class SimpleGBDT {
     return x[stump.feature] <= stump.threshold ? stump.leftVal : stump.rightVal;
   }
 
-  predict(team1, team2) {
+  predict(team1, team2, formMap) {
     if (!this.trained) return null;
 
-    const features = this.extractFeatures(team1, team2);
+    const features = this.extractFeatures(team1, team2, formMap);
     const F = [0, 0, 0];
 
     for (const tree of this.trees) {
@@ -164,7 +164,7 @@ WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
 
   // Step 2: GBDT blend (20%)
   if (WC26.gbdt && WC26.gbdt.trained) {
-    const gbdtProbs = WC26.gbdt.predict(home, away);
+    const gbdtProbs = WC26.gbdt.predict(home, away, formMap);
     if (gbdtProbs) {
       const B = 0.20;
       probs = {

@@ -124,9 +124,10 @@ WC26.predictOutcome = function(probs, team1, team2) {
   return probs.win >= probs.loss ? team1 : team2;
 };
 
-/** Compute raw win/draw/loss probabilities using Dixon-Coles model.
- *  Pure DC + Negative Binomial — no calibration, no GBDT, no market blend.
- *  Use getBlendedProbs() for the full pipeline. */
+/** Dixon-Coles probability matrix with NB overdispersion.
+ *  λ is pre-adjusted by form + market (via getFormAdjustedLambdas).
+ *  No GBDT, no temperature scaling, no isotonic calibration here.
+ *  Use getBlendedProbs() for the full 4-step pipeline. */
 WC26.matchProbs = function(home, away, formMap, matchDate, marketProbs) {
   const [lh, la] = WC26.getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
