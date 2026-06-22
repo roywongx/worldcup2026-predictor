@@ -3,7 +3,7 @@
 window.WC26 = window.WC26 || {};
 
 WC26.SimpleGBDT = class SimpleGBDT {
-  constructor(nTrees = 20, learningRate = 0.1, maxDepth = 2) {
+  constructor(nTrees = 15, learningRate = 0.08, maxDepth = 2) {
     this.nTrees = nTrees;
     this.lr = learningRate;
     this.maxDepth = maxDepth;

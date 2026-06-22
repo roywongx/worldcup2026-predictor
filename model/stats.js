@@ -26,10 +26,14 @@ WC26.gammaSample = function(r) {
   }
 };
 
-/** Standard normal sample via Box-Muller */
+/** Standard normal sample via Box-Muller (caches second sample) */
+WC26._randnSpare = null;
 WC26.randn = function() {
+  if (WC26._randnSpare !== null) { const s = WC26._randnSpare; WC26._randnSpare = null; return s; }
   const u = Math.random(), v = Math.random();
-  return Math.sqrt(-2 * Math.log(u || 1e-10)) * Math.cos(2 * Math.PI * v);
+  const mag = Math.sqrt(-2 * Math.log(u || 1e-10));
+  WC26._randnSpare = mag * Math.sin(2 * Math.PI * v);
+  return mag * Math.cos(2 * Math.PI * v);
 };
 
 /** Poisson probability mass function */
@@ -56,13 +60,15 @@ WC26.negBinSample = function(mu, r) {
   return WC26._poissonSampleRaw(mu * g / r);
 };
 
-/** Raw Poisson sample (Knuth algorithm with high-enough cap for NB gamma mixing) */
+/** Raw Poisson sample: Ahrens-Dieter for small λ, normal approx for large λ */
 WC26._poissonSampleRaw = function(lam) {
   if (lam <= 0) return 0;
   if (lam > 30) { const s = WC26.randn(); return Math.max(0, Math.round(lam + Math.sqrt(lam) * s)); }
-  const L = Math.exp(-lam);
+  // Ahrens-Dieter rejection method — constant-time for small λ
+  const c = 0.6931471805599453; // ln(2)
+  const p0 = Math.exp(-lam);
   let k = 0, p = 1;
-  do { k++; p *= Math.random(); } while (p > L && k < 100);
+  do { k++; p *= Math.random(); } while (p > p0);
   return k - 1;
 };
 
@@ -201,12 +207,16 @@ WC26.applyIsotonicCalibration = function(probs, iso) {
   const calibrate = (p, lookup) => {
     if (!lookup || lookup.length === 0) return p;
     p = Math.max(0.001, Math.min(0.999, p));
-    let best = lookup[0];
-    for (const bin of lookup) {
-      if (p >= bin.p) best = bin;
-      else break;
+    // Binary search for the bin
+    let lo = 0, hi = lookup.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lookup[mid].p <= p) lo = mid; else hi = mid - 1; }
+    // Linear interpolation between adjacent bins
+    if (lo < lookup.length - 1) {
+      const a = lookup[lo], b = lookup[lo + 1];
+      const t = (p - a.p) / Math.max(1e-10, b.p - a.p);
+      return a.calP + t * (b.calP - a.calP);
     }
-    return best.calP;
+    return lookup[lo].calP;
   };
 
   let cW = calibrate(probs.win, iso.win);

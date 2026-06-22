@@ -24,14 +24,27 @@ WC26.HOME_HOST = 0.30;
 /** Monte Carlo default */
 WC26.MC_DEFAULT = 50000;
 
+/** Model tuning constants (named for readability) */
+WC26.CONFIG = {
+  BASE_LAMBDA: 1.25,          // baseline expected goals before modifiers
+  KNOCKOUT_FACTOR: 0.92,      // goals reduced in knockout stage
+  ATKDEF_DAMPING: 0.35,       // exponent for ATK/DEF ratio adjustment
+  FORM_AMP: 0.30,             // form deviation → lambda multiplier amplitude
+  TILT_ATK: 0.10,             // tilt weight: attack-minded → more goals scored
+  TILT_DEF: 0.05,             // tilt weight: attack-minded → more goals conceded
+  MIN_LAMBDA: 0.18,           // floor for raw lambda from getLambdas
+  MIN_FINAL: 0.05,            // floor for final adjusted lambda
+  DRAW_APPROX: 0.40,          // Poisson draw approximation scaling factor
+};
+
 /** UEFA club teams for 30% valuation correction */
 WC26.UEFA_TEAMS = new Set([
   'Germany','Spain','France','England','Portugal','Netherlands','Belgium',
   'Croatia','Switzerland','Denmark','Poland','Serbia','Czech Republic',
   'Austria','Sweden','Norway','Turkey','Scotland','Wales','Ukraine',
   'Ireland','Romania','Hungary','Greece','Slovakia','Slovenia',
-  'Czech Republic','Bosnia Herzegovina','Albania','North Macedonia',
-  'Iceland','Finland','Ireland','Northern Ireland','Bulgaria',
+  'Bosnia Herzegovina','Albania','North Macedonia',
+  'Iceland','Finland','Northern Ireland','Bulgaria',
   'Montenegro','Georgia','Armenia','Azerbaijan','Kazakhstan',
   'Luxembourg','Malta','Cyprus','Estonia','Latvia','Lithuania',
   'Moldova','Kosovo','Faroe Islands','Gibraltar','Liechtenstein',

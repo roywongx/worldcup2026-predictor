@@ -1,7 +1,6 @@
 // MC Web Worker — runs tournament simulations off the main thread
-// Make WC26 available as both self.WC26 and window.WC26 for module compatibility
 self.WC26 = {};
-self.window = self;  // Must be AFTER WC26 is defined so modules can find it
+globalThis.window = globalThis;  // Shim for modules that check window.WC26
 
 importScripts(
   'data/teams.js',

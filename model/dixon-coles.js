@@ -16,8 +16,8 @@ WC26.getForm = function(team, formMap) {
 
 /** Convert Elo ratings to Poisson lambda (expected goals) */
 WC26.getLambdas = function(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH, isKnockout) {
-  const base = 1.25;
-  const stageFactor = isKnockout ? 0.92 : 1.0;
+  const C = WC26.CONFIG;
+  const stageFactor = isKnockout ? C.KNOCKOUT_FACTOR : 1.0;
 
   const eloScale = isKnockout ? 1.10 : 0.90;
   const eloDiff = eloH - eloA;
@@ -26,11 +26,11 @@ WC26.getLambdas = function(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA,
   const eloModH = 0.3 + 1.4 * expectedWinH;
   const eloModA = 0.3 + 1.4 * (1 - expectedWinH);
 
-  const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), 0.35);
-  const atkModA = Math.pow((atkA || 1.0) / (defH || 1.0), 0.35);
+  const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), C.ATKDEF_DAMPING);
+  const atkModA = Math.pow((atkA || 1.0) / (defH || 1.0), C.ATKDEF_DAMPING);
 
-  const lh = Math.max(0.18, base * stageFactor * atkModH * eloModH * (1 + hostBonusH));
-  const la = Math.max(0.18, base * stageFactor * atkModA * eloModA * (1 + hostBonusA));
+  const lh = Math.max(C.MIN_LAMBDA, C.BASE_LAMBDA * stageFactor * atkModH * eloModH * (1 + hostBonusH));
+  const la = Math.max(C.MIN_LAMBDA, C.BASE_LAMBDA * stageFactor * atkModA * eloModA * (1 + hostBonusA));
   return [lh, la];
 };
 
@@ -51,11 +51,12 @@ WC26.getFormAdjustedLambdas = function(home, away, formMap, matchDate, marketPro
 
   const formH = WC26.getForm(home, formMap);
   const formA = WC26.getForm(away, formMap);
-  const adjH = 1 + (formH - 0.5) * 0.30;
-  const adjA = 1 + (formA - 0.5) * 0.30;
+  const C = WC26.CONFIG;
+  const adjH = 1 + (formH - 0.5) * C.FORM_AMP;
+  const adjA = 1 + (formA - 0.5) * C.FORM_AMP;
 
-  let finalH = Math.max(0.05, lh * adjH);
-  let finalA = Math.max(0.05, la * adjA);
+  let finalH = Math.max(C.MIN_FINAL, lh * adjH);
+  let finalA = Math.max(C.MIN_FINAL, la * adjA);
 
   if (marketProbs && marketProbs.win > 0 && marketProbs.loss > 0) {
     const MARKET_BLEND = WC26.getMarketBlend(matchDate, marketProbs.volume);
@@ -68,7 +69,7 @@ WC26.getFormAdjustedLambdas = function(home, away, formMap, matchDate, marketPro
 
     if (marketProbs.draw > 0) {
       const adjTotal = mktAdjH + mktAdjA;
-      const approxDraw = 2 * Math.sqrt(mktAdjH * mktAdjA) / adjTotal * 0.40;
+      const approxDraw = 2 * Math.sqrt(mktAdjH * mktAdjA) / adjTotal * C.DRAW_APPROX;
       const drawRatio = marketProbs.draw / Math.max(approxDraw, 0.01);
       const drawAdj = Math.pow(drawRatio, MARKET_BLEND);
       const mid = adjTotal / 2;
@@ -85,10 +86,10 @@ WC26.getFormAdjustedLambdas = function(home, away, formMap, matchDate, marketPro
   if (WC26.getTilt) {
     const tiltH = WC26.getTilt(home);
     const tiltA = WC26.getTilt(away);
-    finalH *= (1 + 0.10 * tiltH - 0.05 * tiltA);  // home scores more if attack-minded, concedes more if away is attack-minded
-    finalA *= (1 + 0.10 * tiltA - 0.05 * tiltH);  // symmetric
-    finalH = Math.max(0.05, finalH);
-    finalA = Math.max(0.05, finalA);
+    finalH *= (1 + C.TILT_ATK * tiltH - C.TILT_DEF * tiltA);
+    finalA *= (1 + C.TILT_ATK * tiltA - C.TILT_DEF * tiltH);
+    finalH = Math.max(C.MIN_FINAL, finalH);
+    finalA = Math.max(C.MIN_FINAL, finalA);
   }
 
   // Altitude adjustment (B3): high-altitude venues penalize non-adapted teams
