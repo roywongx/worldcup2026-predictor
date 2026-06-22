@@ -40,8 +40,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def end_headers(self):
-        if not self.path.startswith('/api/'):
-            # Prevent browser caching of HTML/JS files (not API responses)
+        if self.path.startswith('/api/'):
+            # Cache API responses to reduce quota consumption
+            if '/results' in self.path:
+                self.send_header('Cache-Control', 'public, max-age=300')       # 5 min
+            elif '/odds' in self.path:
+                self.send_header('Cache-Control', 'public, max-age=1800')      # 30 min
+            elif '/test' in self.path:
+                self.send_header('Cache-Control', 'public, max-age=60')        # 1 min
+        else:
+            # HTML/JS: no cache
             self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             self.send_header('Pragma', 'no-cache')
         super().end_headers()

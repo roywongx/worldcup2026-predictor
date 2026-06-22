@@ -32,25 +32,48 @@ download() {
     fi
 }
 
-# Download both files
-download "${BASE_URL}/index.html" "index.html"
-download "${BASE_URL}/server.py" "server.py"
+# Download checksum file first
+echo "📋 Downloading checksums..."
+download "${BASE_URL}/SHA256SUMS" "SHA256SUMS"
 
-# Download module files (model/, data/, mc-worker.js)
+# Download all files
+FILES="index.html server.py model/stats.js model/elo.js model/dixon-coles.js model/gbdt.js model/monte-carlo.js data/teams.js data/matches.js mc-worker.js"
+
 mkdir -p model data
-for f in model/stats.js model/elo.js model/dixon-coles.js model/gbdt.js model/monte-carlo.js data/teams.js data/matches.js mc-worker.js; do
-  curl -fsSL "${BASE_URL}/${f}" -o "${f}" 2>/dev/null || wget -q "${BASE_URL}/${f}" -O "${f}"
+for f in $FILES; do
+    download "${BASE_URL}/${f}" "${f}"
 done
 
-echo "✅ Downloaded index.html + server.py + 8 module files"
+echo "🔍 Verifying file integrity..."
+FAILED=0
+while IFS='  ' read -r expected_hash filename; do
+    [[ -z "$filename" ]] && continue
+    if [[ ! -f "$filename" ]]; then
+        echo "  ❌ MISSING: $filename"
+        FAILED=1
+        continue
+    fi
+    actual_hash=$(sha256sum "$filename" | cut -d' ' -f1)
+    if [[ "$actual_hash" != "$expected_hash" ]]; then
+        echo "  ❌ MISMATCH: $filename"
+        echo "     expected: $expected_hash"
+        echo "     actual:   $actual_hash"
+        FAILED=1
+    else
+        echo "  ✅ $filename"
+    fi
+done < SHA256SUMS
 
+if [[ $FAILED -ne 0 ]]; then
+    echo ""
+    echo "❌ Integrity check failed! Files may be corrupted or tampered."
+    echo "   Re-run install or download from: https://github.com/${REPO}"
+    exit 1
+fi
+
+echo ""
+echo "✅ All files verified. Installed to $(pwd)"
 echo ""
 echo "📋 Usage:"
 echo "   python3 server.py        # Start server on port 9090"
 echo "   Open http://localhost:9090"
-echo ""
-echo "📊 Data sources (all free, no API key required):"
-echo "   - Polymarket gamma/clob API (odds + results)"
-echo "   - Dixon-Coles Poisson model (built-in)"
-echo ""
-echo "🔄 Click 'Sync Polymarket' in the app to fetch latest odds"

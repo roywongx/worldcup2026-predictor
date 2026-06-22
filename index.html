@@ -1966,8 +1966,9 @@ function runSimulation(){
   function runKORound(teams,kodate){const res=[],winners=[];
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
-      // Known limitation: can't distinguish AET vs PSO from stored scores alone
-      if(actual){const ga=actual.score1,gb=actual.score2;winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method:ga!==gb?"90'":'PSO'});}
+      if(actual){let ga=actual.score1,gb=actual.score2;const method=ga!==gb?"90'":'PSO';
+        if(ga===gb&&actual.winner){if(actual.winner===home)ga++;else gb++;}
+        winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
       else{const[ga,gb,method]=WC26.simKO(home,away,preFormMap,kodate,marketOddsMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
     }return[winners,res];}
   let[w1,r32r]=runKORound(koBracket,'2026-06-28');let[w2,r16r]=runKORound(w1,'2026-07-02');let[w3,qfr]=runKORound(w2,'2026-07-05');let[w4,sfr]=runKORound(w3,'2026-07-09');
