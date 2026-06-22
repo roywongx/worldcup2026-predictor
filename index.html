@@ -2133,12 +2133,18 @@ function renderMatches(){
           ${mkt?`<span style="margin-left:4px;color:var(--purple)">Mkt: W:${(mkt.win*100).toFixed(0)}% D:${(mkt.draw*100).toFixed(0)}% L:${(mkt.loss*100).toFixed(0)}%</span>`:''}
         </div>`;
       }
-      h+=`<div style="border-left:3px solid var(--green);background:var(--card);border-radius:var(--radius-sm);padding:0.5rem 1rem;margin-bottom:0.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      const src=stored?stored.source:'';
+      const isUnverified=src==='unverified';
+      const scoreIcon=isUnverified
+        ?`<span style="font-size:0.72rem;color:var(--orange);font-weight:700" title="${stored.altScore?'Alt source: '+stored.altScore.s1+'-'+stored.altScore.s2:''}">⚠</span>`
+        :`<span style="font-size:0.72rem;color:var(--green);font-weight:700">✓</span>`;
+      const borderColor=isUnverified?'var(--orange)':'var(--green)';
+      h+=`<div style="border-left:3px solid ${borderColor};background:var(--card);border-radius:var(--radius-sm);padding:0.5rem 1rem;margin-bottom:0.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
         <div style="display:flex;align-items:center">
           <span class="m-group">${m.grp}</span>
           ${bjTimeHtml}
           <span class="m-team home ${wA}">${fl(m.ta)}</span>
-          <span class="m-score">${m.sa} - ${m.sb} <span style="font-size:0.72rem;color:var(--green);font-weight:700">✓</span></span>
+          <span class="m-score">${m.sa} - ${m.sb} ${scoreIcon}</span>
           <span class="m-team away ${wB}">${fl(m.tb)}</span>
           ${venueHtml}
         </div>
@@ -2813,8 +2819,8 @@ async function fetchResults(){
   if(!apiKey){if(se)se.textContent='Need API key';showToast('Set Football-Data.org API key first');return false;}
   if(se)se.textContent=t('prob.fetchingResults');
   try{
+    // Fetch primary source (football-data.org)
     let data=null;
-    // Try local proxy first
     try{
       const r=await fetch('/api/results',{headers:{'X-API-Key':apiKey}});
       const j=await r.json();
@@ -2822,11 +2828,34 @@ async function fetchResults(){
       else if(j.matches){data=j;logFetch('results',true,'via proxy');}
     }catch(e){logFetch('results',false,'proxy: Request failed');}
     if(!data){showToast('Could not fetch — check API key and server');if(se)se.textContent='Fetch failed';return false;}
+
+    // Fetch verification source (worldcupjson.net, no API key needed)
+    let altData=null;
+    try{
+      const r2=await fetch('/api/results-alt');
+      const j2=await r2.json();
+      if(!j2.error&&Array.isArray(j2)){altData=j2;logFetch('results-alt',true,`${j2.length} matches`);}
+      else if(j2.error){logFetch('results-alt',false,j2.error);}
+    }catch(e){logFetch('results-alt',false,'Request failed');}
+
+    // Build alt source lookup: key="t1|t2" → {s1,s2}
+    // openfootball format: {team1, team2, score: {ft: [s1, s2]}}
+    const altMap={};
+    if(altData){
+      for(const m of altData){
+        let s1,s2,t1,t2;
+        if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);}
+        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);}
+        if(s1!=null&&s2!=null&&t1&&t2&&TEAMS[t1]&&TEAMS[t2])altMap[`${t1}|${t2}`]={s1,s2};
+      }
+    }
+
     let matches=[];let source='football-data.org';
     if(Array.isArray(data)){matches=data;source='worldcupjson.net';}else if(data.matches){matches=data.matches;}
     const state=loadState();if(!state.actualResults)state.actualResults=[];
-    const existing=new Set(state.actualResults.map(r=>`${r.team1}|${r.team2}`));
-    let nc=0;
+    const existingMap={};state.actualResults.forEach((r,i)=>{existingMap[`${r.team1}|${r.team2}`]=i;});
+    let nc=0,vc=0,mc=0;
+    const mismatches=[];
     WC26.withPreTournamentElo(() => {
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
     for(const m of matches){
@@ -2834,17 +2863,62 @@ async function fetchResults(){
       if(m.score){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';}
       else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
-      const k=`${t1}|${t2}`;if(existing.has(k))continue;
+      const k=`${t1}|${t2}`;
+
+      // Cross-verify with alt source
+      const alt=altMap[k];
+      const scoresMatch=alt&&alt.s1===s1&&alt.s2===s2;
+      const verified=!!alt&&scoresMatch;
+      const mismatch=alt&&!scoresMatch;
+
+      if(k in existingMap){
+        // Already exists — check if we should verify/fix it
+        const ex=state.actualResults[existingMap[k]];
+        if(ex.source!=='verified'&&alt){
+          if(alt.s1===ex.score1&&alt.s2===ex.score2){
+            ex.source='verified';vc++;
+          }else{
+            // Alt source disagrees with stored value — fix it
+            mismatches.push({t1,t2,stored:`${ex.score1}-${ex.score2}`,alt:`${alt.s1}-${alt.s2}`});
+            ex.score1=alt.s1;ex.score2=alt.s2;
+            const act=alt.s1>alt.s2?t1:(alt.s2>alt.s1?t2:'draw');
+            ex.actual=act;ex.source='verified';
+            // Recompute prediction
+            const probs=WC26.matchProbs(t1,t2,preFormMap);
+            const pred=WC26.predictOutcome(probs,t1,t2);
+            ex.predicted=pred;ex.correct=(pred===act);
+            const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
+            ex.predGoals=[lh.toFixed(2),la.toFixed(2)];
+            ex.probs={win:probs.win,draw:probs.draw,loss:probs.loss};
+            mc++;
+          }
+        }
+        continue;
+      }
+
+      // New result
+      const resultSource=verified?'verified':(mismatch?'unverified':source);
       const probs=WC26.matchProbs(t1,t2,preFormMap);
       const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
       const pred=WC26.predictOutcome(probs,t1,t2);
       const act=s1>s2?t1:(s2>s1?t2:'draw');
-      state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
-      nc++;existing.add(k);
+      const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:resultSource,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}};
+      if(mismatch)entry.altScore={s1:alt.s1,s2:alt.s2};
+      state.actualResults.push(entry);
+      nc++;existingMap[k]=state.actualResults.length-1;
+      if(mismatch)mismatches.push({t1,t2,primary:`${s1}-${s2}`,alt:`${alt.s1}-${alt.s2}`});
     }
     }); // end withPreTournamentElo
-    if(nc>0){state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
-  mcResults=null;runSimulation();showToast(`Fetched ${nc} new results`);if(se)se.textContent=`+${nc} · ${new Date().toLocaleTimeString()}`;}
+    // Log verification summary
+    const summary=[`${nc} new`];
+    if(vc>0)summary.push(`${vc} verified`);
+    if(mc>0)summary.push(`${mc} corrected`);
+    if(mismatches.length>0){
+      summary.push(`${mismatches.length} mismatch`);
+      logFetch('verify',false,mismatches.map(m=>`${m.t1} vs ${m.t2}: ${m.primary||m.stored} → ${m.alt}`).join('; '));
+    }
+    if(nc+vc+mc>0){state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
+  mcResults=null;runSimulation();showToast(`Fetched: ${summary.join(', ')}`);if(se)se.textContent=`${summary.join(' · ')} · ${new Date().toLocaleTimeString()}`;}
     else{showToast('No new results');if(se)se.textContent=`No new · ${new Date().toLocaleTimeString()}`;}
     return true;
   }catch(e){console.error('fetchResults:',e);if(se)se.textContent='Error: Request failed';showToast('Error: Request failed');return false;}

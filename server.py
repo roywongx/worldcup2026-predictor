@@ -21,7 +21,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(DIR), **kwargs)
 
     def do_GET(self):
-        if self.path.startswith('/api/results'):
+        if self.path.startswith('/api/results-alt'):
+            self._proxy_worldcupjson()
+        elif self.path.startswith('/api/results'):
             self._proxy_football_data()
         elif self.path.startswith('/api/match-odds'):
             self._proxy_match_odds()
@@ -135,6 +137,25 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': f'HTTP {e.code}: {body}'}, e.code)
         except Exception as e:
             self._log(f'football-data.org ✗ {e}')
+            self._json_response({'error': str(e)}, 502)
+
+    def _proxy_worldcupjson(self):
+        """Proxy to openfootball GitHub for cross-verification (no API key needed)."""
+        url = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
+        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+        self._log('openfootball →')
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+                matches = data.get('matches', []) if isinstance(data, dict) else []
+                self._log(f'openfootball ✓ {len(matches)} matches')
+                self._json_response(matches)
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='replace')[:300]
+            self._log(f'openfootball ✗ HTTP {e.code}: {body[:80]}')
+            self._json_response({'error': f'HTTP {e.code}: {body}'}, e.code)
+        except Exception as e:
+            self._log(f'openfootball ✗ {e}')
             self._json_response({'error': str(e)}, 502)
 
     def _proxy_odds_api(self):
