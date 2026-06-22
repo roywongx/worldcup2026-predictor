@@ -1047,7 +1047,7 @@ function runBacktest() {
       if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
       const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
       let probs;
-      try { probs = WC26.matchProbs(m.t1, m.t2, tmpFormMap); }
+      try { probs = WC26.getBlendedProbs(m.t1, m.t2, tmpFormMap); }
       finally { tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];}); }
       const predArr = [probs.win, probs.draw, probs.loss];
       const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
@@ -1095,7 +1095,7 @@ function rollingBacktest() {
       if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
       const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
       let probs;
-      try { probs = WC26.matchProbs(m.t1, m.t2, tmpFormMap); }
+      try { probs = WC26.getBlendedProbs(m.t1, m.t2, tmpFormMap); }
       finally { tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];}); }
       const predArr = [probs.win, probs.draw, probs.loss];
       const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
@@ -1303,7 +1303,7 @@ function calculateEV() {
       const resultKey = `${ta}|${tb}`;
       if (actualMap[resultKey]) continue;
 
-      const probs = WC26.matchProbs(ta, tb, preFormMap, date, mktOdds);
+      const probs = WC26.getBlendedProbs(ta, tb, preFormMap, date, mktOdds);
       const modelProbs = [probs.win, probs.draw, probs.loss];
       const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
       const labels = ['W', 'D', 'L'];
@@ -1485,7 +1485,7 @@ function getCalibrationStats(actualResults) {
       if (r.probs && typeof r.probs.win === 'number') {
         predArr = [r.probs.win, r.probs.draw, r.probs.loss];
       } else {
-        const probs = WC26.matchProbs(r.team1, r.team2, preFormMap);
+        const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap);
         predArr = [probs.win, probs.draw, probs.loss];
       }
 
@@ -1933,7 +1933,7 @@ function runSimulation(){
       matchResults.push({date:utcDate,ta,sa,sb,tb,grp,actual:true,probs:null});
     }else{
       const mktProbs=WC26.getStoredMarketOdds(marketOddsMap,ta,tb,utcDate);
-      const probs=WC26.matchProbs(ta,tb,preFormMap,utcDate,mktProbs);
+      const probs=WC26.getBlendedProbs(ta,tb,preFormMap,utcDate,mktProbs);
       const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
       const[lh,la]=WC26.getFormAdjustedLambdas(ta,tb,preFormMap,utcDate,mktProbs);
       // Find most probable score consistent with predicted outcome
@@ -2859,9 +2859,9 @@ async function fetchResults(){
     WC26.withPreTournamentElo(() => {
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
     for(const m of matches){
-      let s1,s2,t1,t2,md;
-      if(m.score){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';}
-      else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';}
+      let s1,s2,t1,t2,md,winner=null;
+      if(m.score){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;}
+      else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
       const k=`${t1}|${t2}`;
 
@@ -2883,8 +2883,9 @@ async function fetchResults(){
             ex.score1=alt.s1;ex.score2=alt.s2;
             const act=alt.s1>alt.s2?t1:(alt.s2>alt.s1?t2:'draw');
             ex.actual=act;ex.source='verified';
+            if(alt.s1===alt.s2&&ex.winner)delete ex.winner; // clear stale winner on score change
             // Recompute prediction
-            const probs=WC26.matchProbs(t1,t2,preFormMap);
+            const probs=WC26.getBlendedProbs(t1,t2,preFormMap);
             const pred=WC26.predictOutcome(probs,t1,t2);
             ex.predicted=pred;ex.correct=(pred===act);
             const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
@@ -2898,11 +2899,12 @@ async function fetchResults(){
 
       // New result
       const resultSource=verified?'verified':(mismatch?'unverified':source);
-      const probs=WC26.matchProbs(t1,t2,preFormMap);
+      const probs=WC26.getBlendedProbs(t1,t2,preFormMap);
       const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
       const pred=WC26.predictOutcome(probs,t1,t2);
       const act=s1>s2?t1:(s2>s1?t2:'draw');
       const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:resultSource,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}};
+      if(winner)entry.winner=winner;
       if(mismatch)entry.altScore={s1:alt.s1,s2:alt.s2};
       state.actualResults.push(entry);
       nc++;existingMap[k]=state.actualResults.length-1;
@@ -3218,7 +3220,7 @@ async function fetchPolymarketResults() {
                 const key = `${t1}|${t2}`;
                 const result = top.score[0] > top.score[1] ? t1 : (top.score[0] < top.score[1] ? t2 : 'draw');
                 const dateStr = resolveMatchDate(ev, t1, t2);
-                const probs = WC26.matchProbs(t1, t2, preFormMap, dateStr);
+                const probs = WC26.getBlendedProbs(t1, t2, preFormMap, dateStr);
                 const [lh, la] = WC26.getFormAdjustedLambdas(t1, t2, preFormMap, dateStr);
                 const pred = WC26.predictOutcome(probs, t1, t2);
                 const newResult = {team1:t1,team2:t2,score1:top.score[0],score2:top.score[1],date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket-exact',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}};
@@ -3287,7 +3289,7 @@ async function fetchPolymarketResults() {
         const oddsSum = pWin1+pDraw+pWin2;
         const preOdds = oddsSum > 0 ? { win: pWin1/oddsSum, draw: pDraw/oddsSum, loss: pWin2/oddsSum } : null;
         const dateStr = resolveMatchDate(ev, team1, team2);
-        const probs = WC26.matchProbs(team1, team2, preFormMap, dateStr, preOdds);
+        const probs = WC26.getBlendedProbs(team1, team2, preFormMap, dateStr, preOdds);
         const pred = WC26.predictOutcome(probs,team1,team2);
         const [lh, la] = WC26.getFormAdjustedLambdas(team1, team2, preFormMap, dateStr, preOdds);
         const newResult = {team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds};
@@ -3336,7 +3338,7 @@ function reevaluateResults() {
     const marketOddsMap = state.polymarketMatchOdds || {};
     for (const r of state.actualResults) {
       const mktOdds = r.preMatchOdds || WC26.getStoredMarketOdds(marketOddsMap, r.team1, r.team2, r.date);
-      const probs = WC26.matchProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
+      const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
       const pred = WC26.predictOutcome(probs,r.team1,r.team2);
       const [lh, la] = WC26.getFormAdjustedLambdas(r.team1, r.team2, preFormMap, r.date, mktOdds);
       if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
@@ -3449,7 +3451,7 @@ function addResult(){
   if(!t1||!t2||isNaN(s1)||isNaN(s2)||t1===t2){showToast('Invalid input');return;}
   const { probs, lh, la } = WC26.withPreTournamentElo(() => {
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-    const probs=WC26.matchProbs(t1,t2,preFormMap);const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
+    const probs=WC26.getBlendedProbs(t1,t2,preFormMap);const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
     return { probs, lh, la };
   });
   const pred=WC26.predictOutcome(probs,t1,t2);
@@ -3466,7 +3468,7 @@ function importResults(){
     WC26.withPreTournamentElo(() => {
       const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
       for(const r of d){if(r.team1&&r.team2&&TEAMS[r.team1]&&TEAMS[r.team2]&&typeof r.score1==='number'&&typeof r.score2==='number'){
-        const probs=WC26.matchProbs(r.team1,r.team2,preFormMap);const pred=WC26.predictOutcome(probs,r.team1,r.team2);
+        const probs=WC26.getBlendedProbs(r.team1,r.team2,preFormMap);const pred=WC26.predictOutcome(probs,r.team1,r.team2);
         const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
         s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}
     });
@@ -3536,6 +3538,14 @@ function validateData() {
   const before = state.actualResults.length;
   state.actualResults = state.actualResults.filter(r => r.score1 != null && r.score2 != null);
   if(state.actualResults.length < before){console.log(`[Init] Removed ${before - state.actualResults.length} results with null scores`);saveState(state);}
+  // Backfill winner for existing draw results (penalty shootouts)
+  let winnerFixed=0;
+  for(const r of state.actualResults){
+    if(r.score1===r.score2&&!r.winner&&r.actual&&r.actual!=='draw'){
+      r.winner=r.actual;winnerFixed++;
+    }
+  }
+  if(winnerFixed>0){console.log(`[Init] Backfilled winner for ${winnerFixed} draw results`);saveState(state);}
   // Seed initial results (version 4 = Beijing date format + null score fix)
   // Also re-seed if dataVersion is current but actualResults was cleared
   // Force re-seed with v4 to fix null scores from date mismatch
@@ -3554,7 +3564,7 @@ function validateData() {
       if(existing.has(k)){
         const idx=state.actualResults.findIndex(x=>x.team1===r.team1&&x.team2===r.team2);
         if(idx>=0&&!state.actualResults[idx].predGoals){
-          const probs=WC26.matchProbs(r.team1,r.team2,preFormMap);
+          const probs=WC26.getBlendedProbs(r.team1,r.team2,preFormMap);
           const[lh,la]=WC26.getFormAdjustedLambdas(r.team1,r.team2,preFormMap);
           const pred=WC26.predictOutcome(probs,r.team1,r.team2);
           const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
@@ -3566,7 +3576,7 @@ function validateData() {
         }
         continue;
       }
-      const probs=WC26.matchProbs(r.team1,r.team2,preFormMap);
+      const probs=WC26.getBlendedProbs(r.team1,r.team2,preFormMap);
       const[lh,la]=WC26.getFormAdjustedLambdas(r.team1,r.team2,preFormMap);
       const pred=WC26.predictOutcome(probs,r.team1,r.team2);
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');

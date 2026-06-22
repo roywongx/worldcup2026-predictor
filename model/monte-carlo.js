@@ -234,7 +234,11 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
       if (actual) {
         ga = actual.score1; gb = actual.score2;
         method = "90'";
-        if (ga === gb) { method = 'PSO'; ga++; }
+        if (ga === gb) {
+          method = 'PSO';
+          if(actual.winner){if(actual.winner===home)ga++;else gb++;}
+          else ga++; // fallback: home team advances
+        }
       } else {
         [ga, gb, method] = WC26.simKO(home, away, formMap, koDate, marketOddsMap);
       }
@@ -318,8 +322,10 @@ WC26.buildActualResultsMap = function(actualResults) {
     const key1 = `${r.team1}|${r.team2}|${dateStr}`;
     const key2 = `${r.team2}|${r.team1}|${dateStr}`;
     const val = { score1: r.score1, score2: r.score2, team1: r.team1, team2: r.team2 };
+    if(r.winner)val.winner=r.winner;
     map[key1] = val;
     map[key2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
+    if(r.winner)map[key2].winner=r.winner;
 
     const ndKey1 = `${r.team1}|${r.team2}|`;
     const ndKey2 = `${r.team2}|${r.team1}|`;

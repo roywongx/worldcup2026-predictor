@@ -147,17 +147,7 @@ WC26.matchProbs = function(home, away, formMap, matchDate, marketProbs) {
     probs = WC26.temperatureScale(raw.win, raw.draw, raw.loss, 1.15);
   }
 
-  if (WC26.gbdt && WC26.gbdt.trained) {
-    const gbdtProbs = WC26.gbdt.predict(home, away);
-    if (gbdtProbs) {
-      const BLEND = 0.20;
-      probs = {
-        win: (1 - BLEND) * probs.win + BLEND * gbdtProbs.win,
-        draw: (1 - BLEND) * probs.draw + BLEND * gbdtProbs.draw,
-        loss: (1 - BLEND) * probs.loss + BLEND * gbdtProbs.loss,
-      };
-    }
-  }
+  // NOTE: GBDT blending removed from here — use WC26.getBlendedProbs() for DC+GBDT mix
   return probs;
 };
 
