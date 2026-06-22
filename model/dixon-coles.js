@@ -5,12 +5,11 @@ globalThis.WC26 = globalThis.WC26 || {};
 /** All market volumes for percentile computation */
 WC26._allMarketVolumes = [];
 
-/** Get dynamic form for a team (0-1) */
+/** Get dynamic form for a team (0-1).
+ *  Priority: explicit formMap > global calculateDynamicForm cache > static TEAMS */
 WC26.getForm = function(team, formMap) {
   if (formMap && formMap[team] !== undefined) return formMap[team];
-  if (typeof currentResults !== 'undefined' && currentResults && currentResults.formMap && currentResults.formMap[team] !== undefined) {
-    return currentResults.formMap[team];
-  }
+  if (WC26._dynamicFormMap && WC26._dynamicFormMap[team] !== undefined) return WC26._dynamicFormMap[team];
   return WC26.TEAMS[team] ? WC26.TEAMS[team].form : 0.5;
 };
 
@@ -162,29 +161,32 @@ WC26.oddsToProb = function(usOdds) {
 WC26.calculateHedge = function(myBet, otherOdds) {
   // myBet: { outcome: 'W', odds: 2.5, stake: 100 }
   // otherOdds: { W: 2.5, D: 3.2, L: 3.0 }
-  const myPayout = myBet.stake * myBet.odds;
+  // Solves the linear system so all outcomes yield equal net payout.
+  const S = myBet.stake;
+  const O_my = myBet.odds;
   const results = ['W', 'D', 'L'];
-  const otherOutcomes = results.filter(o => o !== myBet.outcome);
+  const others = results.filter(o => o !== myBet.outcome);
+  const O1 = otherOdds[others[0]], O2 = otherOdds[others[1]];
+  if (!O1 || O1 <= 1 || !O2 || O2 <= 1) return { hedgeBets: [], totalStaked: S, guaranteedProfit: 0 };
 
-  // For each other outcome, compute hedge amount to guarantee profit
-  // Profit if my bet wins: myPayout - totalStaked
-  // Profit if other wins: otherOdds[o] * hedgeAmount - totalStaked
-  // Set equal: myPayout = otherOdds[o] * hedgeAmount → hedgeAmount = myPayout / otherOdds[o]
-  // But this ignores the draw hedge. Proper approach: solve system of equations.
+  // Equal payout condition: S*(O_my-1) - X1 - X2 = X1*(O1-1) - S - X2 = X2*(O2-1) - S - X1
+  // Solving: X1 = S * (O_my - O2) / (O1 + O2 - 2)
+  //          X2 = S * (O_my - O1) / (O1 + O2 - 2)
+  const denom = O1 + O2 - 2;
+  if (denom <= 0) return { hedgeBets: [], totalStaked: S, guaranteedProfit: 0 };
 
-  // Simple approach: for each other outcome, bet enough to cover myPayout
+  let X1 = S * (O_my - O2) / denom;
+  let X2 = S * (O_my - O1) / denom;
+  // If negative, that outcome doesn't need hedging (already covered)
+  X1 = Math.max(0, Math.ceil(X1 * 100) / 100);
+  X2 = Math.max(0, Math.ceil(X2 * 100) / 100);
+
   const hedgeBets = [];
-  let totalStaked = myBet.stake;
-
-  for (const o of otherOutcomes) {
-    const odds = otherOdds[o];
-    if (!odds || odds <= 1) continue;
-    const amount = Math.ceil(myPayout / odds * 100) / 100;  // round up to cents
-    hedgeBets.push({ outcome: o, odds, amount });
-    totalStaked += amount;
-  }
-
-  const guaranteedProfit = myPayout - totalStaked;
+  if (X1 > 0) hedgeBets.push({ outcome: others[0], odds: O1, amount: X1 });
+  if (X2 > 0) hedgeBets.push({ outcome: others[1], odds: O2, amount: X2 });
+  const totalStaked = S + X1 + X2;
+  // Guaranteed profit = payout from any outcome - total staked
+  const guaranteedProfit = Math.round((S * O_my - totalStaked) * 100) / 100;
   return { hedgeBets, totalStaked, guaranteedProfit };
 };
 

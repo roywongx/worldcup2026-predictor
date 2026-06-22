@@ -1989,6 +1989,7 @@ function runSimulation(){
   }
 
   currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,isoParams};
+  WC26._dynamicFormMap=formMap;
   takeProbSnapshot(results.length > 0 ? 'simulation' : 'init');
   renderAll();
   }catch(e){console.error('runSimulation:',e);}
