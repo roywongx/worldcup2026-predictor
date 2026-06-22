@@ -130,7 +130,7 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
   }
 
   if (bracket.length !== 32 || new Set(bracket).size !== 32) {
-    console.warn('Invalid KO bracket generated', { length: bracket.length, unique: new Set(bracket).size, comboKey });
+    throw new Error(`Invalid KO bracket: ${bracket.length} teams, ${new Set(bracket).size} unique (comboKey=${comboKey})`);
   }
   return bracket;
 };

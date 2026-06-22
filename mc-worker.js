@@ -24,7 +24,6 @@ self.onmessage = function(e) {
       // Train GBDT so matchProbs can use GBDT blend in Worker context
       self.WC26.trainAndBlendGBDT(actualResults || []);
       const savedElo = { ...self.WC26.dynamicElo };
-      self.WC26.initDynamicElo();
 
       const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
       const history = [];
@@ -35,6 +34,7 @@ self.onmessage = function(e) {
         try {
           const end = Math.min(done + cs, N);
           for (let i = done; i < end; i++) {
+            Object.assign(self.WC26.dynamicElo, savedElo);
             const result = self.WC26.simulateOneTournament(actualMap, formMap, marketOddsMap);
             champ[result.champion] = (champ[result.champion] || 0) + 1;
             if (result.rounds.length >= 4) for (const m of result.rounds[3]) { finalist[m.a] = (finalist[m.a]||0)+1; finalist[m.b] = (finalist[m.b]||0)+1; }
@@ -43,7 +43,7 @@ self.onmessage = function(e) {
             if (result.rounds.length >= 1) for (const m of result.rounds[0]) { r16[m.a] = (r16[m.a]||0)+1; r16[m.b] = (r16[m.b]||0)+1; }
             const mr = {};
             result.rounds.slice(0, 4).forEach((round, ri) => {
-              for (const m of round) mr[`${m.a}|${m.b}`] = { ga: m.ga, gb: m.gb, round: ri + 1 };
+              for (const m of round) mr[`${m.a}|${m.b}`] = { winner: m.ga > m.gb ? m.a : m.b, ga: m.ga, gb: m.gb, round: ri + 1 };
             });
             history.push({ champion: result.champion, matchResults: mr });
           }

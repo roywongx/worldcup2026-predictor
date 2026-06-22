@@ -89,7 +89,9 @@ WC26.SimpleGBDT = class SimpleGBDT {
         thresholds.push((values[i] + values[i + 1]) / 2);
       }
 
-      for (const threshold of thresholds.slice(0, 10)) {
+      const step = Math.max(1, Math.floor(thresholds.length / 10));
+      const sampled = thresholds.filter((_, i) => i % step === 0).slice(0, 10);
+      for (const threshold of sampled) {
         let leftSum = 0, leftCount = 0, rightSum = 0, rightCount = 0;
         for (let i = 0; i < X.length; i++) {
           if (X[i][f] <= threshold) {
