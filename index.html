@@ -1027,8 +1027,8 @@ const RHO_KNOCKOUT = WC26.RHO_KNOCKOUT;
 const NB_R = WC26.NB_R;
 const HOME_HOST = WC26.HOME_HOST;
 const MC_DEFAULT = WC26.MC_DEFAULT;
-const IMPORTANCE_WC_GROUP = WC26.IMPORTANCE_WC_GROUP;
-const IMPORTANCE_WC_KNOCKOUT = WC26.IMPORTANCE_WC_KNOCKOUT;
+const ELO_K_BASE = WC26.CONFIG.ELO_K_BASE;
+const ELO_K_KO_BONUS = WC26.CONFIG.ELO_K_KO_BONUS;
 
 
 
@@ -2565,7 +2565,7 @@ function renderModel(){
   h+=`</div>`;
   h+=`<div class="model-card"><h4>${t('model.elo')}</h4>`;
   h+=`<div class="factor"><span class="label">${t('model.k')}</span><span class="weight">60 (WC Group) / 80 (KO)</span></div>`;
-  h+=`<div class="factor"><span class="label">Importance</span><span class="weight">Group ${WC26.IMPORTANCE_WC_GROUP}x / KO ${WC26.IMPORTANCE_WC_KNOCKOUT}x</span></div>`;
+  h+=`<div class="factor"><span class="label">Elo K</span><span class="weight">Group ${WC26.CONFIG.ELO_K_BASE} / KO ${WC26.CONFIG.ELO_K_BASE}+${WC26.CONFIG.ELO_K_KO_BONUS}=${WC26.CONFIG.ELO_K_BASE+WC26.CONFIG.ELO_K_KO_BONUS}</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.gi')}</span><span class="weight">G=(11+N)/8, N≥3</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.fd')}</span><span class="weight">exp(-0.15 × days)</span></div>`;
   h+=`<div class="factor"><span class="label">${t('model.et')}</span><span class="weight">40% base λ (fatigue)</span></div>`;

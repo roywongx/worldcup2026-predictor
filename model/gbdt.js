@@ -156,19 +156,33 @@ WC26.trainAndBlendGBDT = function(actualResults) {
   return WC26.gbdt.trained;
 };
 
-/** Get blended prediction: 80% Dixon-Coles + 20% GBDT */
+/** Full probability pipeline: DC → GBDT blend → temperature → calibration.
+ *  Single entry point for all predictions. */
 WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
-  const dcProbs = WC26.matchProbs(home, away, formMap, matchDate, marketProbs);
+  // Step 1: Pure Dixon-Coles (with market-adjusted lambdas)
+  let probs = WC26.matchProbs(home, away, formMap, matchDate, marketProbs);
 
-  if (!WC26.gbdt.trained) return dcProbs;
+  // Step 2: GBDT blend (20%)
+  if (WC26.gbdt && WC26.gbdt.trained) {
+    const gbdtProbs = WC26.gbdt.predict(home, away);
+    if (gbdtProbs) {
+      const B = 0.20;
+      probs = {
+        win:  (1 - B) * probs.win  + B * gbdtProbs.win,
+        draw: (1 - B) * probs.draw + B * gbdtProbs.draw,
+        loss: (1 - B) * probs.loss + B * gbdtProbs.loss,
+      };
+    }
+  }
 
-  const gbdtProbs = WC26.gbdt.predict(home, away);
-  if (!gbdtProbs) return dcProbs;
+  // Step 3: Temperature scaling (smooths overconfidence)
+  probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, 1.15);
 
-  const BLEND = 0.20;
-  return {
-    win: (1 - BLEND) * dcProbs.win + BLEND * gbdtProbs.win,
-    draw: (1 - BLEND) * dcProbs.draw + BLEND * gbdtProbs.draw,
-    loss: (1 - BLEND) * dcProbs.loss + BLEND * gbdtProbs.loss
-  };
+  // Step 4: Isotonic calibration (if fitted from actual results)
+  if (WC26.isotonicCalibration) {
+    const cal = WC26.calibrateProbs(probs.win, probs.draw, probs.loss);
+    if (cal && typeof cal.win === 'number' && !isNaN(cal.win)) probs = cal;
+  }
+
+  return probs;
 };

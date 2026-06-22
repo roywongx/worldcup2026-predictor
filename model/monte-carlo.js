@@ -205,25 +205,71 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
   }
 
   const rankings = {};
-  for (const g of WC26.GROUPS) {
-    rankings[g] = WC26.GROUP_TEAMS[g].slice().sort((a, b) => {
-      const sa = st[g][a], sb = st[g][b];
-      if (sa.pts !== sb.pts) return sb.pts - sa.pts;
-      // FIFA H2H tiebreaker: among all teams tied on these points
-      const tied = WC26.GROUP_TEAMS[g].filter(t => st[g][t].pts === sa.pts);
-      if (tied.length >= 2 && tied.length < 4) {
-        const h2h = (team) => {
-          let pts=0,gf=0,ga=0;
-          for(const opp of tied){if(opp===team)continue;const r=st[g][team].h2h?.[opp];if(r){pts+=r.pts;gf+=r.gf;ga+=r.ga;}}
-          return {pts,gf,ga,gd:gf-ga};
-        };
-        const ha=h2h(a), hb=h2h(b);
-        if(ha.pts!==hb.pts) return hb.pts-ha.pts;
-        if(ha.gd!==hb.gd) return hb.gd-ha.gd;
-        if(ha.gf!==hb.gf) return hb.gf-ha.gf;
+  // FIFA 7-step group ranking with recursive H2H tiebreaker
+  const rankGroup = (g) => {
+    const teams = WC26.GROUP_TEAMS[g];
+    const s = st[g];
+    // Step 1: Sort by overall points (descending)
+    const sorted = teams.slice().sort((a, b) => s[b].pts - s[a].pts);
+
+    // Resolve ties with FIFA H2H rules
+    const resolve = (list) => {
+      if (list.length <= 1) return list;
+      const pts = s[list[0]].pts;
+      const tied = list.filter(t => s[t].pts === pts);
+      const rest = list.filter(t => s[t].pts !== pts);
+
+      if (tied.length === 1) return [...tied, ...resolve(rest)];
+
+      // Compute H2H stats among tied teams
+      const h2h = {};
+      for (const t of tied) {
+        let hPts=0, hGf=0, hGa=0;
+        for (const opp of tied) {
+          if (opp === t) continue;
+          const r = s[t].h2h?.[opp];
+          if (r) { hPts += r.pts; hGf += r.gf; hGa += r.ga; }
+        }
+        h2h[t] = { pts: hPts, gf: hGf, ga: hGa, gd: hGf - hGa };
       }
-      return sb.gd - sa.gd || sb.gf - sa.gf;
-    });
+
+      // Sort tied teams by H2H: pts → gd → gf → overall gd → overall gf
+      tied.sort((a, b) => {
+        const ha = h2h[a], hb = h2h[b];
+        if (ha.pts !== hb.pts) return hb.pts - ha.pts;
+        if (ha.gd !== hb.gd) return hb.gd - ha.gd;
+        if (ha.gf !== hb.gf) return hb.gf - ha.gf;
+        if (s[b].gd !== s[a].gd) return s[b].gd - s[a].gd;
+        return s[b].gf - s[a].gf;
+      });
+
+      // Find subgroups still tied after H2H (recursive narrowing)
+      const result = [];
+      let i = 0;
+      while (i < tied.length) {
+        const h = h2h[tied[i]];
+        const sub = [tied[i]];
+        while (i + sub.length < tied.length &&
+               h2h[tied[i + sub.length]].pts === h.pts &&
+               h2h[tied[i + sub.length]].gd === h.gd &&
+               h2h[tied[i + sub.length]].gf === h.gf) {
+          sub.push(tied[i + sub.length]);
+        }
+        // If still tied after H2H, fall back to overall gd → gf
+        if (sub.length > 1) {
+          sub.sort((a, b) => s[b].gd - s[a].gd || s[b].gf - s[a].gf);
+        }
+        result.push(...sub);
+        i += sub.length;
+      }
+      return [...result, ...resolve(rest)];
+    };
+
+    return resolve(sorted);
+  };
+
+  for (const g of WC26.GROUPS) {
+    rankings[g] = rankGroup(g);
   }
 
   const statRankings = {};

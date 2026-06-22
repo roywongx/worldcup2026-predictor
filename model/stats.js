@@ -39,8 +39,7 @@ WC26.randn = function() {
 /** Poisson probability mass function */
 WC26.poissonPMF = function(k, lam) {
   if (lam <= 0) return k === 0 ? 1 : 0;
-  const logFact = k <= 15 ? Math.log(WC26.FACT[k]) : (k * Math.log(k) - k + 0.5 * Math.log(2 * Math.PI * k));
-  return Math.exp(-lam + k * Math.log(lam) - logFact);
+  return Math.exp(-lam + k * Math.log(lam) - WC26._logFactorial(k));
 };
 
 /** Dixon-Coles tau correction for low-score correlation */
@@ -60,16 +59,45 @@ WC26.negBinSample = function(mu, r) {
   return WC26._poissonSampleRaw(mu * g / r);
 };
 
-/** Raw Poisson sample: Ahrens-Dieter for small λ, normal approx for large λ */
+/** Raw Poisson sample: Knuth for λ<10, transformed rejection for 10≤λ<30, normal for λ≥30 */
 WC26._poissonSampleRaw = function(lam) {
   if (lam <= 0) return 0;
-  if (lam > 30) { const s = WC26.randn(); return Math.max(0, Math.round(lam + Math.sqrt(lam) * s)); }
-  // Ahrens-Dieter rejection method — constant-time for small λ
-  const c = 0.6931471805599453; // ln(2)
-  const p0 = Math.exp(-lam);
-  let k = 0, p = 1;
-  do { k++; p *= Math.random(); } while (p > p0);
-  return k - 1;
+  if (lam < 10) {
+    // Knuth algorithm — O(λ) iterations, fast for small λ
+    const L = Math.exp(-lam);
+    let k = 0, p = 1;
+    do { k++; p *= Math.random(); } while (p > L);
+    return k - 1;
+  }
+  if (lam >= 30) {
+    // Normal approximation with continuity correction
+    const s = WC26.randn();
+    return Math.max(0, Math.round(lam + Math.sqrt(lam) * s));
+  }
+  // 10 ≤ λ < 30: Atkinson transformed rejection (constant-time average)
+  const c = 0.767 - 3.36 / lam;
+  const beta = Math.PI / Math.sqrt(3 * lam);
+  const alpha = beta * lam;
+  const k = Math.log(c) - lam - Math.log(beta);
+  const logLam = Math.log(lam);
+  while (true) {
+    let u = Math.random();
+    if (u === 0) continue;
+    const x = (alpha - Math.log((1 - u) / u)) / beta;
+    const n = Math.floor(x + 0.5);
+    if (n < 0) continue;
+    const v = Math.random();
+    const y = alpha - beta * x;
+    const lhs = y + Math.log(v / (1 + Math.exp(y)) / (1 + Math.exp(y)));
+    const rhs = k + n * logLam - WC26._logFactorial(n);
+    if (lhs <= rhs) return n;
+  }
+};
+
+/** Log factorial using Stirling for n>15 */
+WC26._logFactorial = function(n) {
+  if (n <= 15) return Math.log(WC26.FACT[n]);
+  return n * Math.log(n) - n + 0.5 * Math.log(2 * Math.PI * n);
 };
 
 /** Sample from Poisson or Negative Binomial (when NB_R > 0, consistent with matchProbs) */

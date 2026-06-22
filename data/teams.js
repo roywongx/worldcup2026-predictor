@@ -20,11 +20,11 @@ WC26.CONFIG = {
   // Dixon-Coles correlation
   RHO_GROUP: -0.20,             // rho for group stage
   RHO_KNOCKOUT: -0.15,          // rho for knockout stage
-  // Elo system
-  IMPORTANCE_FRIENDLY: 0.60,
-  IMPORTANCE_QUALIFIER: 1.50,
-  IMPORTANCE_WC_GROUP: 1.00,
-  IMPORTANCE_WC_KNOCKOUT: 1.10,
+  // Elo system (K = base + stage bonus, no multiplicative importance)
+  ELO_K_BASE: 30,               // base K for group stage
+  ELO_K_KO_BONUS: 15,           // additive bonus for knockout stage
+  ELO_K_FRIENDLY: 15,           // K for friendlies (future use)
+  ELO_K_QUALIFIER: 25,          // K for qualifiers (future use)
   // Sampling
   NB_R: 8.5,                    // Negative Binomial overdispersion
   // Venue
@@ -43,10 +43,6 @@ const _alias = (key) => ({
 Object.defineProperties(WC26, {
   RHO_GROUP:              _alias('RHO_GROUP'),
   RHO_KNOCKOUT:           _alias('RHO_KNOCKOUT'),
-  IMPORTANCE_FRIENDLY:    _alias('IMPORTANCE_FRIENDLY'),
-  IMPORTANCE_QUALIFIER:   _alias('IMPORTANCE_QUALIFIER'),
-  IMPORTANCE_WC_GROUP:    _alias('IMPORTANCE_WC_GROUP'),
-  IMPORTANCE_WC_KNOCKOUT: _alias('IMPORTANCE_WC_KNOCKOUT'),
   NB_R:                   _alias('NB_R'),
   HOME_HOST:              _alias('HOME_HOST'),
   MC_DEFAULT:             _alias('MC_DEFAULT'),

@@ -8,12 +8,9 @@ WC26.dynamicElo = {};
 /** Isotonic calibration cache */
 WC26.isotonicCalibration = null;
 
-/** Get match importance multiplier */
+/** Get match importance multiplier (legacy — now returns 1.0, K uses additive bonus) */
 WC26.getMatchImportance = function(matchDate) {
-  if (!matchDate) return WC26.IMPORTANCE_WC_GROUP;
-  const d = matchDate.substring(0, 10);
-  if (d >= '2026-06-29') return WC26.IMPORTANCE_WC_KNOCKOUT;
-  return WC26.IMPORTANCE_WC_GROUP;
+  return 1.0;
 };
 
 /** Get rho based on match date */
@@ -34,19 +31,16 @@ WC26.eloGoalIndex = function(gd) {
   return sum;
 };
 
-/** Update dynamic Elo ratings after a match */
+/** Update dynamic Elo ratings after a match.
+ *  K = base + stage_bonus (additive, not multiplicative). */
 WC26.updateElo = function(team1, team2, score1, score2, matchDate) {
   if (score1 == null || score2 == null) return;
   const ra = WC26.dynamicElo[team1], rb = WC26.dynamicElo[team2];
   const gd = Math.abs(score1 - score2);
   const G = WC26.eloGoalIndex(gd);
-  let K = 60;
-  if (matchDate) {
-    const d = matchDate.substring(0, 10);
-    if (d >= '2026-06-29') K = 80;
-  }
-  const importance = WC26.getMatchImportance(matchDate);
-  K *= importance;
+  const C = WC26.CONFIG;
+  let K = C.ELO_K_BASE;
+  if (matchDate && matchDate.substring(0, 10) >= '2026-06-29') K += C.ELO_K_KO_BONUS;
   let W;
   if (score1 > score2) W = 1;
   else if (score1 < score2) W = 0;

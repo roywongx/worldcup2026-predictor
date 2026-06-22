@@ -124,16 +124,18 @@ WC26.predictOutcome = function(probs, team1, team2) {
   return probs.win >= probs.loss ? team1 : team2;
 };
 
-/** Compute win/draw/loss probabilities using Dixon-Coles model */
+/** Compute raw win/draw/loss probabilities using Dixon-Coles model.
+ *  Pure DC + Negative Binomial — no calibration, no GBDT, no market blend.
+ *  Use getBlendedProbs() for the full pipeline. */
 WC26.matchProbs = function(home, away, formMap, matchDate, marketProbs) {
   const [lh, la] = WC26.getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
   let pW = 0, pD = 0, pL = 0;
-  const useNB = WC26.NB_R > 0;
+  const useNB = WC26.CONFIG.NB_R > 0;
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
-      const pi = useNB ? WC26.negBinPMF(i, lh, WC26.NB_R) : WC26.poissonPMF(i, lh);
-      const pj = useNB ? WC26.negBinPMF(j, la, WC26.NB_R) : WC26.poissonPMF(j, la);
+      const pi = useNB ? WC26.negBinPMF(i, lh, WC26.CONFIG.NB_R) : WC26.poissonPMF(i, lh);
+      const pj = useNB ? WC26.negBinPMF(j, la, WC26.CONFIG.NB_R) : WC26.poissonPMF(j, la);
       const p = pi * pj * WC26.dixonColesTau(i, j, lh, la, WC26.getRho(matchDate));
       if (i > j) pW += p;
       else if (i === j) pD += p;
@@ -141,15 +143,7 @@ WC26.matchProbs = function(home, away, formMap, matchDate, marketProbs) {
     }
   }
   const total = pW + pD + pL;
-  const raw = { win: pW/total, draw: pD/total, loss: pL/total };
-
-  let probs = WC26.calibrateProbs(raw.win, raw.draw, raw.loss);
-  if (!WC26.isotonicCalibration) {
-    probs = WC26.temperatureScale(raw.win, raw.draw, raw.loss, 1.15);
-  }
-
-  // NOTE: GBDT blending removed from here — use WC26.getBlendedProbs() for DC+GBDT mix
-  return probs;
+  return { win: pW/total, draw: pD/total, loss: pL/total };
 };
 
 /** Convert American moneyline odds to implied probability */
