@@ -11,6 +11,10 @@ WC26.applyGroupResult = function(st, grp, team1, team2, score1, score2) {
   if (score1 > score2) { a.w++; a.pts += 3; b.l++; }
   else if (score1 < score2) { b.w++; b.pts += 3; a.l++; }
   else { a.d++; a.pts++; b.d++; b.pts++; }
+  // H2H tracking
+  if (!a.h2h) a.h2h = {}; if (!b.h2h) b.h2h = {};
+  a.h2h[team2] = { gf: score1, ga: score2, pts: score1 > score2 ? 3 : score1 < score2 ? 0 : 1 };
+  b.h2h[team1] = { gf: score2, ga: score1, pts: score2 > score1 ? 3 : score2 < score1 ? 0 : 1 };
 };
 
 /** Find the 8 best third-place teams across all groups */
@@ -204,7 +208,21 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
   for (const g of WC26.GROUPS) {
     rankings[g] = WC26.GROUP_TEAMS[g].slice().sort((a, b) => {
       const sa = st[g][a], sb = st[g][b];
-      return sb.pts - sa.pts || sb.gd - sa.gd || sb.gf - sa.gf;
+      if (sa.pts !== sb.pts) return sb.pts - sa.pts;
+      // FIFA H2H tiebreaker: among all teams tied on these points
+      const tied = WC26.GROUP_TEAMS[g].filter(t => st[g][t].pts === sa.pts);
+      if (tied.length >= 2 && tied.length < 4) {
+        const h2h = (team) => {
+          let pts=0,gf=0,ga=0;
+          for(const opp of tied){if(opp===team)continue;const r=st[g][team].h2h?.[opp];if(r){pts+=r.pts;gf+=r.gf;ga+=r.ga;}}
+          return {pts,gf,ga,gd:gf-ga};
+        };
+        const ha=h2h(a), hb=h2h(b);
+        if(ha.pts!==hb.pts) return hb.pts-ha.pts;
+        if(ha.gd!==hb.gd) return hb.gd-ha.gd;
+        if(ha.gf!==hb.gf) return hb.gf-ha.gf;
+      }
+      return sb.gd - sa.gd || sb.gf - sa.gf;
     });
   }
 

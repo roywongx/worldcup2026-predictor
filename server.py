@@ -7,6 +7,7 @@ import http.server
 import socketserver
 import json
 import sys
+import threading
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -15,6 +16,8 @@ from datetime import datetime
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 9090
 DIR = Path(__file__).parent
 BIND = '0.0.0.0'  # accessible on local network
+
+_sport_cache_lock = threading.Lock()
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -37,9 +40,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def end_headers(self):
-        # Prevent browser caching of HTML/JS files
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Pragma', 'no-cache')
+        if not self.path.startswith('/api/'):
+            # Prevent browser caching of HTML/JS files (not API responses)
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
         super().end_headers()
 
     def _log(self, msg):
@@ -196,12 +200,14 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         # Cache: remember which sport key worked to avoid wasting quota on 404s
-        if not hasattr(self, '_match_odds_sport_cache'):
-            self.__class__._match_odds_sport_cache = None
+        with _sport_cache_lock:
+            if not hasattr(self.__class__, '_match_odds_sport_cache'):
+                self.__class__._match_odds_sport_cache = None
+            cached_sport = self.__class__._match_odds_sport_cache
 
         sports_to_try = (
-            [self._match_odds_sport_cache, 'soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']
-            if self._match_odds_sport_cache
+            [cached_sport, 'soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']
+            if cached_sport
             else ['soccer_fifa_world_cup', 'soccer_fifa_world_cup_winner']
         )
         seen = set()
@@ -220,7 +226,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     data = json.loads(resp.read())
                     remaining = resp.headers.get('x-requests-remaining', '')
                     self._log(f'the-odds-api.com match-odds ✓ {len(data)} events, remaining={remaining}')
-                    self.__class__._match_odds_sport_cache = sport
+                    with _sport_cache_lock:
+                        self.__class__._match_odds_sport_cache = sport
                     self._json_response({'data': data, 'remaining': remaining, 'sport': sport})
                     return
             except urllib.error.HTTPError as e:

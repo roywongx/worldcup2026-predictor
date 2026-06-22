@@ -28,12 +28,23 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for API calls, cache-first for static assets
-  if (e.request.url.includes('/api/') || e.request.url.includes('polymarket') || e.request.url.includes('football-data')) {
+  const url = new URL(e.request.url);
+  // Network-first for API calls
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('polymarket') || url.hostname.includes('football-data')) {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
     );
+  } else if (url.pathname === '/' || url.pathname.endsWith('/index.html')) {
+    // Network-first for index.html — ensures updates are visible
+    e.respondWith(
+      fetch(e.request).then(resp => {
+        const clone = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return resp;
+      }).catch(() => caches.match(e.request))
+    );
   } else {
+    // Cache-first for static assets (model/, data/, sw.js)
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
         const clone = resp.clone();

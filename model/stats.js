@@ -35,7 +35,8 @@ WC26.randn = function() {
 /** Poisson probability mass function */
 WC26.poissonPMF = function(k, lam) {
   if (lam <= 0) return k === 0 ? 1 : 0;
-  return Math.exp(-lam + k * Math.log(lam) - Math.log(WC26.FACT[k] || WC26.FACT[15]));
+  const logFact = k <= 15 ? Math.log(WC26.FACT[k]) : (k * Math.log(k) - k + 0.5 * Math.log(2 * Math.PI * k));
+  return Math.exp(-lam + k * Math.log(lam) - logFact);
 };
 
 /** Dixon-Coles tau correction for low-score correlation */
@@ -55,12 +56,13 @@ WC26.negBinSample = function(mu, r) {
   return WC26._poissonSampleRaw(mu * g / r);
 };
 
-/** Raw Poisson sample (Knuth algorithm; k<30 safe for lam < 6 via NB gamma mixing) */
+/** Raw Poisson sample (Knuth algorithm with high-enough cap for NB gamma mixing) */
 WC26._poissonSampleRaw = function(lam) {
   if (lam <= 0) return 0;
+  if (lam > 30) { const s = WC26.randn(); return Math.max(0, Math.round(lam + Math.sqrt(lam) * s)); }
   const L = Math.exp(-lam);
   let k = 0, p = 1;
-  do { k++; p *= Math.random(); } while (p > L && k < 30);
+  do { k++; p *= Math.random(); } while (p > L && k < 100);
   return k - 1;
 };
 
@@ -229,9 +231,6 @@ WC26.calibrateProbs = function(pW, pD, pL) {
   const total = cal.win + cal.draw + cal.loss;
   if (total <= 0) return { win: pW, draw: pD, loss: pL };
   const rW = cal.win / total, rD = cal.draw / total, rL = cal.loss / total;
-  if (rW > 0.95 || rD > 0.95 || rL > 0.95 || rW < 0.05 || rD < 0.05 || rL < 0.05) {
-    return { win: pW, draw: pD, loss: pL };
-  }
   return { win: rW, draw: rD, loss: rL };
 };
 
