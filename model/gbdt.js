@@ -156,7 +156,8 @@ WC26.trainAndBlendGBDT = function(actualResults) {
   return WC26.gbdt.trained;
 };
 
-/** Full probability pipeline: DC → GBDT blend → temperature → calibration.
+/** Full probability pipeline: DC → GBDT blend → calibration → temperature.
+ *  Order matches legacy: calibrateProbs first, temperatureScale as fallback.
  *  Single entry point for all predictions. */
 WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
   // Step 1: Pure Dixon-Coles (with market-adjusted lambdas)
@@ -175,13 +176,13 @@ WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
     }
   }
 
-  // Step 3: Temperature scaling (smooths overconfidence)
-  probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, 1.15);
-
-  // Step 4: Isotonic calibration (if fitted from actual results)
+  // Step 3: Isotonic calibration (if fitted from actual results)
   if (WC26.isotonicCalibration) {
     const cal = WC26.calibrateProbs(probs.win, probs.draw, probs.loss);
     if (cal && typeof cal.win === 'number' && !isNaN(cal.win)) probs = cal;
+  } else {
+    // Step 4: Temperature scaling as fallback when no calibration
+    probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, 1.15);
   }
 
   return probs;
