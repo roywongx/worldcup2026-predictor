@@ -176,17 +176,20 @@ WC26.temperatureScale = function(pW, pD, pL, T) {
   return { win: rW / rSum, draw: rD / rSum, loss: rL / rSum };
 };
 
-/** Fit isotonic calibration using PAVA (Pool Adjacent Violators Algorithm) */
+/** Fit isotonic calibration using PAVA (Pool Adjacent Violators Algorithm).
+ *  Recomputes raw DC probabilities to avoid double-calibrating on stored probs. */
 WC26.fitIsotonicCalibration = function(actualResults) {
   if (!actualResults || actualResults.length < 20) return null;
 
   const outcomes = { win: [], draw: [], loss: [] };
   for (const r of actualResults) {
-    if (!r.probs || typeof r.probs.win !== 'number') continue;
+    if (r.score1 == null || r.score2 == null) continue;
+    // Recompute raw DC probs (don't use stored r.probs which may already be calibrated)
+    const raw = WC26.matchProbs(r.team1, r.team2, {}, r.date);
     const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
-    outcomes.win.push({ p: r.probs.win, y: outcome === 0 ? 1 : 0 });
-    outcomes.draw.push({ p: r.probs.draw, y: outcome === 1 ? 1 : 0 });
-    outcomes.loss.push({ p: r.probs.loss, y: outcome === 2 ? 1 : 0 });
+    outcomes.win.push({ p: raw.win, y: outcome === 0 ? 1 : 0 });
+    outcomes.draw.push({ p: raw.draw, y: outcome === 1 ? 1 : 0 });
+    outcomes.loss.push({ p: raw.loss, y: outcome === 2 ? 1 : 0 });
   }
 
   const result = {};
@@ -235,16 +238,13 @@ WC26.applyIsotonicCalibration = function(probs, iso) {
   const calibrate = (p, lookup) => {
     if (!lookup || lookup.length === 0) return p;
     p = Math.max(0.001, Math.min(0.999, p));
-    // Binary search for the bin
-    let lo = 0, hi = lookup.length - 1;
-    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lookup[mid].p <= p) lo = mid; else hi = mid - 1; }
-    // Linear interpolation between adjacent bins
-    if (lo < lookup.length - 1) {
-      const a = lookup[lo], b = lookup[lo + 1];
-      const t = (p - a.p) / Math.max(1e-10, b.p - a.p);
-      return a.calP + t * (b.calP - a.calP);
+    // Step function: find last bin where p >= bin.p (safe, no extrapolation)
+    let best = lookup[0];
+    for (const bin of lookup) {
+      if (p >= bin.p) best = bin;
+      else break;
     }
-    return lookup[lo].calP;
+    return Math.max(0.001, Math.min(0.999, best.calP));
   };
 
   let cW = calibrate(probs.win, iso.win);
