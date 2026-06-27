@@ -44,18 +44,28 @@ WC26.getThirdPlaceGroups = function(bestThirdTeams, rankings) {
 
 /** Build R32 bracket using FIFA Annex C 495-combination matrix */
 WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
+  // FIFA Official 2026 Bracket Structure
+  // Based on: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/knockout-stage-match-schedule-bracket
+  //
+  // Top Half (Matches 73-80):
+  //   M73: A2 vs B1    M74: E1 vs 3rd(D/F)    M75: F1 vs C2    M76: C1 vs F2
+  //   M77: I1 vs F3    M78: E2 vs I2           M79: A1 vs 3rd(E) M80: L1 vs 3rd(I)
+  //
+  // Bottom Half (Matches 81-88):
+  //   M81: D1 vs 3rd(B) M82: G1 vs 3rd(A)    M83: K2 vs L2    M84: H1 vs J2
+  //   M85: B2 vs G2     M86: J1 vs 3rd(H)     M87: K1 vs 3rd   M88: D2 vs 3rd(G)
+
   const comboKey = thirdPlaceGroups ? thirdPlaceGroups.slice().sort().join("") : "";
   const matrixEntry = WC26.TPM[comboKey];
 
+  // Build third-place team map
   const thirdMap = {};
   for (const g of WC26.GROUPS) {
     if (rankings[g] && rankings[g].length >= 3) thirdMap[g] = rankings[g][2];
   }
 
+  // Assign third-place groups to winner slots using FIFA matrix
   const W_SLOTS = ['A','B','D','E','G','I','K','L'];
-  const bracket = [];
-  const usedGroups = new Set();
-
   function assignThirdGroupsToWinners() {
     if (matrixEntry && matrixEntry.length >= 8) {
       const mapped = matrixEntry.slice(0, 8).split('');
@@ -63,11 +73,9 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
         return mapped;
       }
     }
-
     const qualified = (thirdPlaceGroups || []).filter(g => thirdMap[g]);
     const assigned = Array(W_SLOTS.length).fill(null);
     const used = new Set();
-
     function backtrack(slot) {
       if (slot === W_SLOTS.length) return true;
       const wg = W_SLOTS[slot];
@@ -81,57 +89,58 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
       }
       return false;
     }
-
     return backtrack(0) ? assigned : [];
   }
   const thirdAssignments = assignThirdGroupsToWinners();
+  const thirdFor = (slotIdx) => {
+    const tg = thirdAssignments[slotIdx];
+    return tg && thirdMap[tg] ? thirdMap[tg] : null;
+  };
 
-  // 8 matches: group winners vs third-place teams
-  for (let i = 0; i < 8; i++) {
-    const wg = W_SLOTS[i];
-    bracket.push(rankings[wg][0]);
-    usedGroups.add(wg + 'W');
+  // Helper: get team by group position (0=winner, 1=runner-up, 2=third)
+  const W = (g) => rankings[g][0];
+  const R = (g) => rankings[g][1];
+  const T = (g) => rankings[g][2];
 
-    const tg = thirdAssignments[i];
-    const thirdTeam = tg ? thirdMap[tg] : null;
-    if (thirdTeam && tg !== wg) {
-      bracket.push(thirdTeam);
-    } else {
-      bracket.push(rankings[wg][1]);
-      usedGroups.add(wg + 'R');
-    }
-  }
+  // FIFA official bracket order (32 teams, 16 matches)
+  // Each pair is [home, away] for one R32 match
+  const bracket = [];
 
-  // 4 matches: remaining group winners vs runners-up (cross-group)
-  const remainingWinners = WC26.GROUPS.filter(g => !usedGroups.has(g + 'W'));
-  const usedRunners = new Set();
-  for (const g of [...usedGroups].filter(x => x.endsWith('R')).map(x => x[0])) usedRunners.add(g);
+  // ── TOP HALF ──
+  // M73: A2 vs B1
+  bracket.push(R('A'), W('B'));
+  // M74: E1 vs 3rd (assigned to slot 3=D)
+  bracket.push(W('E'), thirdFor(3) || R('E'));
+  // M75: F1 vs C2
+  bracket.push(W('F'), R('C'));
+  // M76: C1 vs F2
+  bracket.push(W('C'), R('F'));
+  // M77: I1 vs F3
+  bracket.push(W('I'), T('F') || R('I'));
+  // M78: E2 vs I2
+  bracket.push(R('E'), R('I'));
+  // M79: A1 vs 3rd (assigned to slot 3=E)
+  bracket.push(W('A'), thirdFor(3) || R('A'));
+  // M80: L1 vs 3rd (assigned to slot 7=I)
+  bracket.push(W('L'), thirdFor(7) || R('L'));
 
-  for (const wg of remainingWinners) {
-    let assigned = false;
-    for (const rg of WC26.GROUPS) {
-      if (rg === wg || usedRunners.has(rg)) continue;
-      bracket.push(rankings[wg][0], rankings[rg][1]);
-      usedRunners.add(rg);
-      assigned = true;
-      break;
-    }
-    if (!assigned) {
-      for (const rg of WC26.GROUPS) {
-        if (!usedRunners.has(rg)) {
-          bracket.push(rankings[wg][0], rankings[rg][1]);
-          usedRunners.add(rg);
-          break;
-        }
-      }
-    }
-  }
-
-  // 4 matches: remaining runners-up vs runners-up (cross-group)
-  const ruLeft = WC26.GROUPS.filter(g => !usedRunners.has(g));
-  for (let i = 0; i < ruLeft.length - 1; i += 2) {
-    bracket.push(rankings[ruLeft[i]][1], rankings[ruLeft[i+1]][1]);
-  }
+  // ── BOTTOM HALF ──
+  // M81: D1 vs 3rd (assigned to slot 1=B)
+  bracket.push(W('D'), thirdFor(1) || R('D'));
+  // M82: G1 vs 3rd (assigned to slot 4=A)
+  bracket.push(W('G'), thirdFor(4) || R('G'));
+  // M83: K2 vs L2
+  bracket.push(R('K'), R('L'));
+  // M84: H1 vs J2
+  bracket.push(W('H'), R('J'));
+  // M85: B2 vs G2
+  bracket.push(R('B'), R('G'));
+  // M86: J1 vs 3rd (assigned to slot 5=H)
+  bracket.push(W('J'), thirdFor(5) || R('J'));
+  // M87: K1 vs 3rd (assigned to slot 6=K or fallback)
+  bracket.push(W('K'), thirdFor(6) || R('K'));
+  // M88: D2 vs 3rd (assigned to slot 2=G or fallback)
+  bracket.push(R('D'), thirdFor(2) || R('D'));
 
   if (bracket.length !== 32 || new Set(bracket).size !== 32) {
     throw new Error(`Invalid KO bracket: ${bracket.length} teams, ${new Set(bracket).size} unique (comboKey=${comboKey})`);
