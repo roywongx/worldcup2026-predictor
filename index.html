@@ -3607,48 +3607,39 @@ reevaluateResults();
 runSimulation();applyLang();
 // Auto-fetch results from backup API (no key needed, always available)
 (async()=>{try{
-  const state=loadState();
-  const last=state.lastUpdate?new Date(state.lastUpdate):null;
-  const mins=last?(Date.now()-last.getTime())/60000:999;
-  // Fetch if: never fetched OR last fetch >30 min ago OR no results stored
-  if(!last||mins>30||!state.actualResults||state.actualResults.length<10){
-    const r=await fetch('/api/results-alt');
-    const d=await r.json();
-    if(!Array.isArray(d))return;
-    // Merge results into state
-    const s=loadState();if(!s.actualResults)s.actualResults=[];
-    const map={};s.actualResults.forEach((r,i)=>{map[`${r.team1}|${r.team2}`]=i;});
-    let added=0;
-    WC26.withPreTournamentElo(()=>{
-      const pf={};for(const t of Object.keys(TEAMS))pf[t]=TEAMS[t].form;
-      for(const m of d){
-        if(!m.score||!m.score.ft)continue;
-        const s1=m.score.ft[0],s2=m.score.ft[1];
-        const t1=mapTeamName(m.team1),t2=mapTeamName(m.team2);
-        if(s1==null||s2==null||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
-        const k=`${t1}|${t2}`;
-        if(map[k]!==undefined){
-          // Update existing entry's score if different
-          const ex=s.actualResults[map[k]];
-          if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
-        }else{
-          // Add new result
-          const probs=WC26.getBlendedProbs(t1,t2,pf);
-          const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,pf);
-          const pred=WC26.predictOutcome(probs,t1,t2);
-          const act=s1>s2?t1:(s2>s1?t2:'draw');
-          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},source:'auto'});
-          map[k]=s.actualResults.length-1;
-          added++;
-        }
+  const r=await fetch('/api/results-alt');
+  const d=await r.json();
+  if(!Array.isArray(d))return;
+  const s=loadState();if(!s.actualResults)s.actualResults=[];
+  const map={};s.actualResults.forEach((r,i)=>{map[`${r.team1}|${r.team2}`]=i;});
+  let added=0;
+  WC26.withPreTournamentElo(()=>{
+    const pf={};for(const t of Object.keys(TEAMS))pf[t]=TEAMS[t].form;
+    for(const m of d){
+      if(!m.score||!m.score.ft)continue;
+      const s1=m.score.ft[0],s2=m.score.ft[1];
+      const t1=mapTeamName(m.team1),t2=mapTeamName(m.team2);
+      if(s1==null||s2==null||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
+      const k=`${t1}|${t2}`;
+      if(map[k]!==undefined){
+        const ex=s.actualResults[map[k]];
+        if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
+      }else{
+        const probs=WC26.getBlendedProbs(t1,t2,pf);
+        const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,pf);
+        const pred=WC26.predictOutcome(probs,t1,t2);
+        const act=s1>s2?t1:(s2>s1?t2:'draw');
+        s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},source:'auto'});
+        map[k]=s.actualResults.length-1;
+        added++;
       }
-    });
-    if(added>0){
-      s.lastUpdate=new Date().toISOString();
-      saveState(s);
-      mcResults=null;runSimulation();renderAll();
-      console.log(`[AutoFetch] Added/updated ${added} results`);
     }
+  });
+  if(added>0){
+    s.lastUpdate=new Date().toISOString();
+    saveState(s);
+    mcResults=null;runSimulation();renderAll();
+    console.log(`[AutoFetch] Added/updated ${added} results, total: ${s.actualResults.length}`);
   }
 }catch(e){console.error('[AutoFetch] Error:',e);}})();
 // Also try primary API if key exists
