@@ -44,105 +44,75 @@ WC26.getThirdPlaceGroups = function(bestThirdTeams, rankings) {
 
 /** Build R32 bracket using FIFA Annex C 495-combination matrix */
 WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
-  // FIFA Official 2026 Bracket Structure
-  // Based on: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/knockout-stage-match-schedule-bracket
+  // FIFA 2026 Official Bracket - hardcoded for correctness
+  // Source: fifa.com knockout-stage-match-schedule-bracket
   //
-  // Top Half (Matches 73-80):
-  //   M73: A2 vs B1    M74: E1 vs 3rd(D/F)    M75: F1 vs C2    M76: C1 vs F2
-  //   M77: I1 vs F3    M78: E2 vs I2           M79: A1 vs 3rd(E) M80: L1 vs 3rd(I)
-  //
-  // Bottom Half (Matches 81-88):
-  //   M81: D1 vs 3rd(B) M82: G1 vs 3rd(A)    M83: K2 vs L2    M84: H1 vs J2
-  //   M85: B2 vs G2     M86: J1 vs 3rd(H)     M87: K1 vs 3rd   M88: D2 vs 3rd(G)
+  // 8 third-place slots: A→E, D→B, E→D, G→A, I→F, J→H, K→L, L→I
+  // M88 is special: runner-up D2 vs third-place from G
 
   const comboKey = thirdPlaceGroups ? thirdPlaceGroups.slice().sort().join("") : "";
   const matrixEntry = WC26.TPM[comboKey];
 
-  // Build third-place team map
   const thirdMap = {};
   for (const g of WC26.GROUPS) {
     if (rankings[g] && rankings[g].length >= 3) thirdMap[g] = rankings[g][2];
   }
 
-  // Assign third-place groups to winner slots using FIFA matrix
-  const W_SLOTS = ['A','B','D','E','G','I','K','L'];
-  function assignThirdGroupsToWinners() {
-    if (matrixEntry && matrixEntry.length >= 8) {
-      const mapped = matrixEntry.slice(0, 8).split('');
-      if (mapped.every((tg, i) => thirdMap[tg] && tg !== W_SLOTS[i]) && new Set(mapped).size === 8) {
-        return mapped;
-      }
-    }
-    const qualified = (thirdPlaceGroups || []).filter(g => thirdMap[g]);
-    const assigned = Array(W_SLOTS.length).fill(null);
-    const used = new Set();
-    function backtrack(slot) {
-      if (slot === W_SLOTS.length) return true;
-      const wg = W_SLOTS[slot];
-      for (const tg of qualified) {
-        if (tg === wg || used.has(tg)) continue;
-        assigned[slot] = tg;
-        used.add(tg);
-        if (backtrack(slot + 1)) return true;
-        used.delete(tg);
-        assigned[slot] = null;
-      }
-      return false;
-    }
-    return backtrack(0) ? assigned : [];
-  }
-  const thirdAssignments = assignThirdGroupsToWinners();
-  const thirdFor = (slotIdx) => {
-    const tg = thirdAssignments[slotIdx];
-    return tg && thirdMap[tg] ? thirdMap[tg] : null;
-  };
+  // FIFA Annex C: which third-place group goes to which winner slot
+  // W_SLOTS = [A, D, E, G, I, J, K, L]
+  // Default mapping (most common combo):
+  const DEFAULT_MAP = {A:'E', D:'B', E:'D', G:'A', I:'F', J:'H', K:'L', L:'I'};
 
-  // Helper: get team by group position (0=winner, 1=runner-up, 2=third)
+  function getThirdForWinner(winnerGroup) {
+    // Try TPM matrix first
+    if (matrixEntry && matrixEntry.length >= 8) {
+      const W_SLOTS = ['A','D','E','G','I','J','K','L'];
+      const idx = W_SLOTS.indexOf(winnerGroup);
+      if (idx >= 0) {
+        const tg = matrixEntry[idx];
+        if (tg && thirdMap[tg] && tg !== winnerGroup) return thirdMap[tg];
+      }
+    }
+    // Fallback to default mapping
+    const tg = DEFAULT_MAP[winnerGroup];
+    if (tg && thirdMap[tg] && tg !== winnerGroup) return thirdMap[tg];
+    // Last resort: find any available third-place team
+    for (const g of WC26.GROUPS) {
+      if (g !== winnerGroup && thirdMap[g]) return thirdMap[g];
+    }
+    return null;
+  }
+
+  // Get third-place from G for M88 (runner-up D2 vs G3)
+  function getThirdFromG() { return thirdMap['G'] || null; }
+
   const W = (g) => rankings[g][0];
   const R = (g) => rankings[g][1];
-  const T = (g) => rankings[g][2];
 
-  // FIFA official bracket order (32 teams, 16 matches)
-  // Each pair is [home, away] for one R32 match
   const bracket = [];
 
-  // ── TOP HALF ──
-  // M73: A2 vs B1
-  bracket.push(R('A'), W('B'));
-  // M74: E1 vs 3rd (assigned to slot 3=D)
-  bracket.push(W('E'), thirdFor(3) || R('E'));
-  // M75: F1 vs C2
-  bracket.push(W('F'), R('C'));
-  // M76: C1 vs F2
-  bracket.push(W('C'), R('F'));
-  // M77: I1 vs F3
-  bracket.push(W('I'), T('F') || R('I'));
-  // M78: E2 vs I2
-  bracket.push(R('E'), R('I'));
-  // M79: A1 vs 3rd (assigned to slot 3=E)
-  bracket.push(W('A'), thirdFor(3) || R('A'));
-  // M80: L1 vs 3rd (assigned to slot 7=I)
-  bracket.push(W('L'), thirdFor(7) || R('L'));
+  // ── TOP HALF (M73-M80) ──
+  bracket.push(R('A'), W('B'));              // M73: 2A vs 1B
+  bracket.push(W('E'), getThirdForWinner('E'));  // M74: 1E vs 3rd
+  bracket.push(W('F'), R('C'));              // M75: 1F vs 2C
+  bracket.push(W('C'), R('F'));              // M76: 1C vs 2F
+  bracket.push(W('I'), getThirdForWinner('I'));  // M77: 1I vs 3rd
+  bracket.push(R('E'), R('I'));              // M78: 2E vs 2I
+  bracket.push(W('A'), getThirdForWinner('A'));  // M79: 1A vs 3rd
+  bracket.push(W('L'), getThirdForWinner('L'));  // M80: 1L vs 3rd
 
-  // ── BOTTOM HALF ──
-  // M81: D1 vs 3rd (assigned to slot 1=B)
-  bracket.push(W('D'), thirdFor(1) || R('D'));
-  // M82: G1 vs 3rd (assigned to slot 4=A)
-  bracket.push(W('G'), thirdFor(4) || R('G'));
-  // M83: K2 vs L2
-  bracket.push(R('K'), R('L'));
-  // M84: H1 vs J2
-  bracket.push(W('H'), R('J'));
-  // M85: B2 vs G2
-  bracket.push(R('B'), R('G'));
-  // M86: J1 vs 3rd (assigned to slot 5=H)
-  bracket.push(W('J'), thirdFor(5) || R('J'));
-  // M87: K1 vs 3rd (assigned to slot 6=K or fallback)
-  bracket.push(W('K'), thirdFor(6) || R('K'));
-  // M88: D2 vs 3rd (assigned to slot 2=G or fallback)
-  bracket.push(R('D'), thirdFor(2) || R('D'));
+  // ── BOTTOM HALF (M81-M88) ──
+  bracket.push(W('D'), getThirdForWinner('D'));  // M81: 1D vs 3rd
+  bracket.push(W('G'), getThirdForWinner('G'));  // M82: 1G vs 3rd
+  bracket.push(R('K'), R('L'));              // M83: 2K vs 2L
+  bracket.push(W('H'), R('J'));              // M84: 1H vs 2J
+  bracket.push(R('B'), R('G'));              // M85: 2B vs 2G
+  bracket.push(W('J'), getThirdForWinner('J'));  // M86: 1J vs 3rd
+  bracket.push(W('K'), getThirdForWinner('K'));  // M87: 1K vs 3rd
+  bracket.push(R('D'), getThirdFromG());     // M88: 2D vs 3G
 
   if (bracket.length !== 32 || new Set(bracket).size !== 32) {
+    console.error(`[buildKOBracket] Invalid: ${bracket.length} teams, ${new Set(bracket).size} unique (comboKey=${comboKey})`);
     throw new Error(`Invalid KO bracket: ${bracket.length} teams, ${new Set(bracket).size} unique (comboKey=${comboKey})`);
   }
   return bracket;
