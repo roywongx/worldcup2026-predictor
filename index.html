@@ -329,14 +329,182 @@ body {
   flex-shrink: 0;
 }
 
-.bracket-wrap { overflow-x: auto; padding-bottom: 2rem; -webkit-overflow-scrolling: touch; }
+/* ── FIFA-Style Knockout Bracket ────────────────────────────────────── */
+.bracket-wrap { overflow-x: auto; padding: 1rem 0; -webkit-overflow-scrolling: touch; }
 
-.bracket {
+.ko-bracket {
   display: flex;
-  gap: 0;
-  min-width: 1200px;
-  padding: 0 1rem;
   align-items: center;
+  min-width: 1400px;
+  padding: 0 1.5rem;
+  gap: 0;
+}
+
+.ko-half {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.ko-half-left { flex-direction: row; }
+.ko-half-right { flex-direction: row-reverse; }
+
+.ko-round {
+  display: flex;
+  flex-direction: column;
+  min-width: 175px;
+  max-width: 200px;
+}
+
+.ko-round-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 0.4rem 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 0.3rem;
+}
+
+/* Vertical spacing per round: R32 dense → SF sparse */
+.ko-round[data-round="R32"] { gap: 0.15rem; }
+.ko-round[data-round="R16"] { gap: 0.5rem; }
+.ko-round[data-round="QF"]  { gap: 1.4rem; }
+.ko-round[data-round="SF"]  { gap: 0; }
+
+.ko-pair {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Connector: vertical line between paired matches, horizontal line out */
+.ko-conn {
+  position: absolute;
+  right: -12px;
+  width: 12px;
+  pointer-events: none;
+}
+.ko-conn::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 25%;
+  height: 50%;
+  width: 0;
+  border-right: 2px solid var(--border);
+}
+.ko-conn::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 12px;
+  height: 0;
+  border-top: 2px solid var(--border);
+}
+
+.ko-half-right .ko-conn {
+  left: -12px;
+  right: auto;
+}
+.ko-half-right .ko-conn::before {
+  left: 0;
+  right: auto;
+  border-left: 2px solid var(--border);
+  border-right: none;
+}
+.ko-half-right .ko-conn::after {
+  left: 0;
+  right: auto;
+}
+
+/* Match card */
+.ko-match {
+  background: var(--card);
+  border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin: 0.1rem 0;
+  transition: box-shadow 0.15s;
+}
+.ko-match:hover { box-shadow: var(--shadow); }
+.ko-match.final-match { border: 2px solid var(--gold); background: linear-gradient(135deg, rgba(202,138,4,0.06), rgba(202,138,4,0.01)); }
+
+.ko-match-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.6rem;
+  color: var(--text3);
+  background: rgba(0,0,0,0.02);
+  border-bottom: 1px solid var(--border);
+}
+.ko-match-num { font-weight: 700; color: var(--blue); }
+.ko-match-date { font-weight: 500; }
+
+.ko-team {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.ko-team:last-child { border-bottom: none; }
+.ko-team.w { color: var(--text); background: rgba(52,199,89,0.06); }
+.ko-team.l { color: var(--text3); }
+.ko-team .ko-flag img { width: 18px; height: 12px; border-radius: 2px; margin-right: 5px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1); vertical-align: middle; }
+.ko-team .ko-name { flex: 1; }
+.ko-team .ko-score { font-weight: 800; font-size: 0.9rem; min-width: 1.2rem; text-align: center; }
+
+.ko-method {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--orange);
+  text-align: center;
+  padding: 0.12rem;
+  background: rgba(217,119,6,0.06);
+  letter-spacing: 0.03em;
+}
+
+/* Center column: Final + 3rd + Champion */
+.ko-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+  gap: 0.8rem;
+  padding: 0 0.5rem;
+}
+
+.ko-champion {
+  text-align: center;
+  padding: 1rem 0.5rem;
+}
+.ko-champion .trophy { font-size: 2.5rem; margin-bottom: 0.3rem; }
+.ko-champion .name { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.ko-champion .label { font-size: 0.65rem; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+
+/* Placeholder for unfilled matches */
+.ko-placeholder {
+  color: var(--text3);
+  font-style: italic;
+  font-size: 0.68rem;
+  padding: 0.25rem 0.45rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .ko-bracket { min-width: 1000px; justify-content: flex-start; }
+  .ko-round { min-width: 140px; max-width: 160px; }
+  .ko-match-header { font-size: 0.55rem; }
+  .ko-team { font-size: 0.65rem; padding: 0.2rem 0.35rem; }
 }
 
 .bracket-col {
@@ -2197,84 +2365,90 @@ function renderMatches(){
 
 function renderBracket(){
   const{ko}=currentResults;const ch=ko.Champion;
+  // Match numbers and dates for knockout rounds
+  const R32_INFO=[
+    {num:73,date:'Jun 28'},{num:74,date:'Jun 29'},{num:75,date:'Jun 29'},{num:76,date:'Jun 29'},
+    {num:77,date:'Jun 30'},{num:78,date:'Jun 30'},{num:79,date:'Jun 30'},{num:80,date:'Jul 1'},
+    {num:81,date:'Jul 1'},{num:82,date:'Jul 1'},{num:83,date:'Jul 2'},{num:84,date:'Jul 2'},
+    {num:85,date:'Jul 2'},{num:86,date:'Jul 3'},{num:87,date:'Jul 3'},{num:88,date:'Jul 3'}
+  ];
+  const R16_INFO=[
+    {num:89,date:'Jul 4'},{num:90,date:'Jul 4'},{num:91,date:'Jul 5'},{num:92,date:'Jul 5'},
+    {num:93,date:'Jul 6'},{num:94,date:'Jul 6'},{num:95,date:'Jul 7'},{num:96,date:'Jul 7'}
+  ];
+  const QF_INFO=[{num:97,date:'Jul 9'},{num:98,date:'Jul 10'},{num:99,date:'Jul 11'},{num:100,date:'Jul 11'}];
+  const SF_INFO=[{num:101,date:'Jul 14'},{num:102,date:'Jul 15'}];
 
-  let h='';
-
-  // Two-pyramid bracket layout
-  h+='<div class="bracket-pyramid">';
-
-  // Helper: render a match card
-  function mc(m, highlight) {
+  // Render a single match card
+  function mc(m, info, extraClass){
     const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
-    const border = highlight ? 'border:2px solid var(--gold)' : '';
-    let s=`<div class="b-match" style="margin:0.4rem 0;${border}">`;
-    s+=`<div class="b-team ${wA}"><span class="b-flag">${bf(m.a)}</span><span class="b-name">${WC26.getTeamName(m.a)}</span><span class="b-score">${m.ga}</span></div>`;
-    s+=`<div class="b-team ${wB}"><span class="b-flag">${bf(m.b)}</span><span class="b-name">${WC26.getTeamName(m.b)}</span><span class="b-score">${m.gb}</span></div>`;
-    if(m.method) s+=`<div class="b-method">${m.method}</div>`;
+    let s=`<div class="ko-match ${extraClass||''}">`;
+    if(info) s+=`<div class="ko-match-header"><span class="ko-match-num">#${info.num}</span><span class="ko-match-date">${info.date}</span></div>`;
+    s+=`<div class="ko-team ${wA}"><span class="ko-flag">${bf(m.a)}</span><span class="ko-name">${WC26.getTeamName(m.a)}</span><span class="ko-score">${m.ga}</span></div>`;
+    s+=`<div class="ko-team ${wB}"><span class="ko-flag">${bf(m.b)}</span><span class="ko-name">${WC26.getTeamName(m.b)}</span><span class="ko-score">${m.gb}</span></div>`;
+    if(m.method) s+=`<div class="ko-method">${m.method}</div>`;
     s+=`</div>`;
     return s;
   }
 
-  // Split R32 into left (0-7) and right (8-15)
-  const r32L = ko.R32.slice(0, 8);
-  const r32R = ko.R32.slice(8, 16);
-  const r16L = ko.R16.slice(0, 4);
-  const r16R = ko.R16.slice(4, 8);
-  const qfL = ko.QF.slice(0, 2);
-  const qfR = ko.QF.slice(2, 4);
-  const sfL = ko.SF.slice(0, 1);
-  const sfR = ko.SF.slice(1, 2);
+  // Render a round column with paired matches and connectors
+  function roundCol(matches, infos, roundName){
+    let s=`<div class="ko-round" data-round="${roundName}">`;
+    s+=`<div class="ko-round-title">${t('ko.'+roundName.toLowerCase())}</div>`;
+    for(let i=0;i<matches.length;i+=2){
+      s+=`<div class="ko-pair">`;
+      s+=`<div class="ko-conn"></div>`;
+      s+=mc(matches[i], infos[i]);
+      if(matches[i+1]) s+=mc(matches[i+1], infos[i+1]);
+      s+=`</div>`;
+    }
+    s+=`</div>`;
+    return s;
+  }
 
-  // LEFT PYRAMID (wide base on left, tip pointing right)
-  h+=`<div class="pyramid-side pyramid-left">`;
-  h+=`<div class="pyramid-round r32"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
-  r32L.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
-  h+=`<div class="pyramid-round r16"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
-  r16L.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
-  h+=`<div class="pyramid-round qf"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
-  qfL.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
-  h+=`<div class="pyramid-round sf"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
-  sfL.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
+  const r32L=ko.R32.slice(0,8), r32R=ko.R32.slice(8,16);
+  const r16L=ko.R16.slice(0,4), r16R=ko.R16.slice(4,8);
+  const qfL=ko.QF.slice(0,2), qfR=ko.QF.slice(2,4);
+  const sfL=ko.SF.slice(0,1), sfR=ko.SF.slice(1,2);
+
+  let h='<div class="ko-bracket">';
+
+  // LEFT HALF (top bracket)
+  h+=`<div class="ko-half ko-half-left">`;
+  h+=roundCol(r32L, R32_INFO.slice(0,8), 'R32');
+  h+=roundCol(r16L, R16_INFO.slice(0,4), 'R16');
+  h+=roundCol(qfL, QF_INFO.slice(0,2), 'QF');
+  h+=roundCol(sfL, SF_INFO.slice(0,1), 'SF');
   h+=`</div>`;
 
-  // CENTER: Finals + Champion
-  h+=`<div class="pyramid-center">`;
+  // CENTER: Final + 3rd Place + Champion
+  h+=`<div class="ko-center">`;
   // 3rd place
-  h+=`<div class="b-match" style="margin-bottom:1rem;opacity:0.8">`;
-  h+=`<div style="font-size:0.65rem;font-weight:700;color:var(--orange);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div>`;
-  h+=`<div class="b-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="b-flag">${bf(ko.Third.a)}</span><span class="b-name">${WC26.getTeamName(ko.Third.a)}</span><span class="b-score">${ko.Third.ga}</span></div>`;
-  h+=`<div class="b-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="b-flag">${bf(ko.Third.b)}</span><span class="b-name">${WC26.getTeamName(ko.Third.b)}</span><span class="b-score">${ko.Third.gb}</span></div>`;
-  if(ko.Third.method) h+=`<div class="b-method">${ko.Third.method}</div>`;
+  h+=`<div class="ko-match" style="opacity:0.85">`;
+  h+=`<div class="ko-match-header"><span class="ko-match-num">#103</span><span class="ko-match-date">Jul 18</span></div>`;
+  h+=`<div style="font-size:0.6rem;font-weight:700;color:var(--orange);text-align:center;padding:0.15rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div>`;
+  h+=`<div class="ko-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="ko-flag">${bf(ko.Third.a)}</span><span class="ko-name">${WC26.getTeamName(ko.Third.a)}</span><span class="ko-score">${ko.Third.ga}</span></div>`;
+  h+=`<div class="ko-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="ko-flag">${bf(ko.Third.b)}</span><span class="ko-name">${WC26.getTeamName(ko.Third.b)}</span><span class="ko-score">${ko.Third.gb}</span></div>`;
+  if(ko.Third.method) h+=`<div class="ko-method">${ko.Third.method}</div>`;
   h+=`</div>`;
-  // FINAL
-  h+=`<div class="b-match" style="background:linear-gradient(135deg,rgba(202,138,4,0.08),rgba(202,138,4,0.02));border:2px solid var(--gold);margin-bottom:1rem">`;
-  h+=`<div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.2rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
-  h+=`<div class="b-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="b-flag">${bf(ko.Final.a)}</span><span class="b-name">${WC26.getTeamName(ko.Final.a)}</span><span class="b-score">${ko.Final.ga}</span></div>`;
-  h+=`<div class="b-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="b-flag">${bf(ko.Final.b)}</span><span class="b-name">${WC26.getTeamName(ko.Final.b)}</span><span class="b-score">${ko.Final.gb}</span></div>`;
-  if(ko.Final.method) h+=`<div class="b-method">${ko.Final.method}</div>`;
+  // Final
+  h+=`<div class="ko-match final-match">`;
+  h+=`<div class="ko-match-header"><span class="ko-match-num">#104</span><span class="ko-match-date">Jul 19</span></div>`;
+  h+=`<div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.15rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
+  h+=`<div class="ko-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="ko-flag">${bf(ko.Final.a)}</span><span class="ko-name">${WC26.getTeamName(ko.Final.a)}</span><span class="ko-score">${ko.Final.ga}</span></div>`;
+  h+=`<div class="ko-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="ko-flag">${bf(ko.Final.b)}</span><span class="ko-name">${WC26.getTeamName(ko.Final.b)}</span><span class="ko-score">${ko.Final.gb}</span></div>`;
+  if(ko.Final.method) h+=`<div class="ko-method">${ko.Final.method}</div>`;
   h+=`</div>`;
-  // CHAMPION
-  h+=`<div class="bracket-champion"><div class="trophy">🏆</div><div class="name">${fl(ch)}</div><div class="label">${t('ko.champion')}</div></div>`;
+  // Champion
+  h+=`<div class="ko-champion"><div class="trophy">🏆</div><div class="name">${fl(ch)}</div><div class="label">${t('ko.champion')}</div></div>`;
   h+=`</div>`;
 
-  // RIGHT PYRAMID (tip pointing left, wide base on right)
-  h+=`<div class="pyramid-side pyramid-right">`;
-  h+=`<div class="pyramid-round sf"><div class="pyramid-round-title">${t('ko.sf')}</div>`;
-  sfR.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
-  h+=`<div class="pyramid-round qf"><div class="pyramid-round-title">${t('ko.qf')}</div>`;
-  qfR.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
-  h+=`<div class="pyramid-round r16"><div class="pyramid-round-title">${t('ko.r16')}</div>`;
-  r16R.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
-  h+=`<div class="pyramid-round r32"><div class="pyramid-round-title">${t('ko.r32')}</div>`;
-  r32R.forEach(m => h+=`<div class="pyramid-match">${mc(m)}</div>`);
-  h+=`</div>`;
+  // RIGHT HALF (bottom bracket)
+  h+=`<div class="ko-half ko-half-right">`;
+  h+=roundCol(sfR, SF_INFO.slice(1,2), 'SF');
+  h+=roundCol(qfR, QF_INFO.slice(2,4), 'QF');
+  h+=roundCol(r16R, R16_INFO.slice(4,8), 'R16');
+  h+=roundCol(r32R, R32_INFO.slice(8,16), 'R32');
   h+=`</div>`;
 
   h+='</div>';
