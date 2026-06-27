@@ -2130,8 +2130,9 @@ function runSimulation(){
   thirds.sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF);
   bestThirds=thirds.slice(0,8).map(t=>t.team);
   const thirdPlaceGroups=thirds.slice(0,8).map(t=>t.group).sort();
-  const koBracket=WC26.buildKOBracket(rankings,bestThirds,thirdPlaceGroups);
   ko={};
+  try{
+  const koBracket=WC26.buildKOBracket(rankings,bestThirds,thirdPlaceGroups);
   function runKORound(teams,kodate){const res=[],winners=[];
     for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
       const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
@@ -2148,6 +2149,12 @@ function runSimulation(){
   ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
   ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
   ko.Champion=fa>fb?w4[0]:w4[1];
+  }catch(bracketErr){console.error('Bracket construction failed:',bracketErr);
+    ko.R32=[];ko.R16=[];ko.QF=[];ko.SF=[];
+    ko.Third={a:'?',ga:0,gb:0,b:'?',method:''};
+    ko.Final={a:'?',ga:0,gb:0,b:'?',method:''};
+    ko.Champion='?';
+  }
   }); // end withPreTournamentElo
 
   const isoParams = WC26.fitIsotonicCalibration(results);
@@ -2364,7 +2371,12 @@ function renderMatches(){
 }
 
 function renderBracket(){
-  const{ko}=currentResults;const ch=ko.Champion;
+  const{ko}=currentResults;
+  if(!ko.R32||ko.R32.length===0){
+    document.getElementById('section-bracket').innerHTML='<div style="text-align:center;padding:3rem;color:var(--text3)">Bracket data unavailable — simulation error</div>';
+    return;
+  }
+  const ch=ko.Champion;
   // Match numbers and dates for knockout rounds
   const R32_INFO=[
     {num:73,date:'Jun 28'},{num:74,date:'Jun 29'},{num:75,date:'Jun 29'},{num:76,date:'Jun 29'},
