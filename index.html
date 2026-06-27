@@ -1108,11 +1108,6 @@ body {
 
 <script src="data/teams.js"></script>
 <script src="data/matches.js"></script>
-<script src="model/stats.js"></script>
-<script src="model/elo.js"></script>
-<script src="model/dixon-coles.js"></script>
-<script src="model/gbdt.js"></script>
-<script src="model/monte-carlo.js"></script>
 </head>
 <body>
 
@@ -1151,8 +1146,8 @@ body {
 </div>
 
 <div class="actions">
-  <button class="btn-pill btn-primary" onclick="runSimulation()">New Simulation</button>
-  <button class="btn-pill btn-secondary" onclick="refreshData()" style="background:rgba(52,199,89,0.12);color:var(--green)">⟳ Refresh</button>
+  <button class="btn-pill btn-primary" onclick="runSimulation().catch(console.error)">New Simulation</button>
+  <button class="btn-pill btn-secondary" onclick="refreshData().catch(console.error)" style="background:rgba(52,199,89,0.12);color:var(--green)">⟳ Refresh</button>
 </div>
 
 <div id="section-standings" class="section active"></div>
@@ -1197,166 +1192,123 @@ const HOME_HOST = WC26.HOME_HOST;
 const MC_DEFAULT = WC26.MC_DEFAULT;
 const ELO_K_BASE = WC26.CONFIG.ELO_K_BASE;
 const ELO_K_KO_BONUS = WC26.CONFIG.ELO_K_KO_BONUS;
+// ── Server-side computation API ──────────────────────────────────────
+async function apiCompute(action, params) {
+  const resp = await fetch('/api/compute', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action, params: params || {}})
+  });
+  if (!resp.ok) throw new Error('Compute API error: ' + resp.status);
+  return resp.json();
+}
+
+// Inline stubs for functions removed with model files
+function oddsToProb(usOdds) {
+  if (usOdds > 0) return 100 / (usOdds + 100);
+  return Math.abs(usOdds) / (Math.abs(usOdds) + 100);
+}
+WC26.oddsToProb = oddsToProb;
+
+function applyGroupResult(st, grp, team1, team2, score1, score2) {
+  const a = st[grp][team1], b = st[grp][team2];
+  a.p++; b.p++;
+  a.gf += score1; a.ga += score2; b.gf += score2; b.ga += score1;
+  a.gd = a.gf - a.ga; b.gd = b.gf - b.ga;
+  if (score1 > score2) { a.w++; a.pts += 3; b.l++; }
+  else if (score1 < score2) { b.w++; b.pts += 3; a.l++; }
+  else { a.d++; a.pts++; b.d++; b.pts++; }
+  if (!a.h2h) a.h2h = {}; if (!b.h2h) b.h2h = {};
+  a.h2h[team2] = { gf: score1, ga: score2, pts: score1 > score2 ? 3 : score1 < score2 ? 0 : 1 };
+  b.h2h[team1] = { gf: score2, ga: score1, pts: score2 > score1 ? 3 : score2 < score1 ? 0 : 1 };
+}
+WC26.applyGroupResult = applyGroupResult;
+// Stub functions for model operations (server handles computation)
+WC26.withPreTournamentElo = function(fn) { return fn(); };
+WC26.rebuildDynamicElo = function() {};
+WC26.initDynamicElo = function() {};
+WC26.dynamicElo = {};
+WC26.getBlendedProbs = function(t1, t2, formMap, date, mktOdds) {
+  return {win: 0.33, draw: 0.34, loss: 0.33};
+};
+WC26.getFormAdjustedLambdas = function(t1, t2, formMap, date, mktOdds) {
+  return [1.2, 1.0];
+};
+WC26.predictOutcome = function(probs, t1, t2) {
+  if (probs.win >= probs.draw && probs.win >= probs.loss) return t1;
+  if (probs.loss >= probs.draw) return t2;
+  return 'draw';
+};
+WC26.simKO = function(h, a, fm, d, m) { return [1, 0, "90'"]; };
+WC26.buildKOBracket = function() { return []; };
+WC26.fitIsotonicCalibration = function() { return null; };
+WC26.fitAndCacheCalibration = function() {};
+WC26.trainAndBlendGBDT = function() {};
+WC26.getStoredMarketOdds = function(map, t1, t2, date) {
+  if (!map) return null;
+  return map[`${t1}|${t2}|${date}`] || map[`${t1}|${t2}|`] || null;
+};
+WC26.matchProbs = function() { return {win: 0.33, draw: 0.34, loss: 0.33}; };
+WC26.rankedProbabilityScore = function() { return 0; };
+WC26.brierScore = function() { return 0; };
+WC26.logLoss = function() { return 1; };
+WC26.expectedCalibrationError = function() { return 0; };
+WC26.WC2022_RESULTS = [];
+WC26.WC2022_TEAMS = {};
+WC26.gbdt = { trained: false };
+WC26.isotonicCalibration = null;
+WC26.NB_R = 0;
+WC26.getEffectiveElo = function(t) { return WC26.TEAMS[t] ? WC26.TEAMS[t].elo : 1500; };
+WC26.getRho = function(d) { return WC26.RHO_GROUP; };
+WC26.getForm = function(t, fm) { return fm && fm[t] ? fm[t] : (WC26.TEAMS[t] ? WC26.TEAMS[t].form : 0.5); };
+WC26.getTeamAtk = function(t) { return WC26.TEAMS[t] ? WC26.TEAMS[t].atk : 1.0; };
+WC26.getEffectiveAtkDef = function(t) { return WC26.TEAMS[t] ? { atk: WC26.TEAMS[t].atk, def: WC26.TEAMS[t].def } : { atk: 1, def: 1 }; };
+WC26.getMomentum = function() { return 0; };
+WC26.getTilt = function() { return 0; };
+WC26.getAltitudePenalty = function() { return 0; };
+WC26.temperatureScale = function(w, d, l) { return { win: w, draw: d, loss: l }; };
+WC26.calibrateProbs = function(w, d, l) { return { win: w, draw: d, loss: l }; };
+WC26.applyIsotonicCalibration = function(p) { return p; };
+WC26.poissonPMF = function(k, l) { return Math.exp(-l) * Math.pow(l, k) / (k <= 15 ? WC26.FACT[k] : 1); };
+WC26.dixonColesTau = function() { return 1; };
+WC26.negBinPMF = function(k, m, r) { return WC26.poissonPMF(k, m); };
+WC26.poissonSample = function(l) { return Math.round(l); };
+WC26.gammaSample = function() { return 1; };
+WC26.randn = function() { return 0; };
+WC26._logFactorial = function(n) { let r = 0; for (let i = 2; i <= n; i++) r += Math.log(i); return r; };
+WC26.simulateOneTournament = function() { return { champion: '?', rounds: [] }; };
+WC26.buildActualResultsMap = function(results) {
+  const map = {};
+  for (const r of (results || [])) {
+    map[`${r.team1}|${r.team2}|`] = r;
+    map[`${r.team2}|${r.team1}|`] = r;
+  }
+  return map;
+};
+WC26.simulationHistory = [];
+
+
 
 
 
 /** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
 function runBacktest() {
-  return WC26.withPreTournamentElo(() => {
-    const predictions = [];
-    const outcomes = [];
-    let correct = 0;
-
-    for (const m of WC26.WC2022_RESULTS) {
-      const tmpAdded = [];
-      for (const tm of [m.t1, m.t2]) {
-        if (!TEAMS[tm] && WC26.WC2022_TEAMS[tm]) { TEAMS[tm] = WC26.WC2022_TEAMS[tm]; tmpAdded.push(tm); }
-      }
-      if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
-      const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
-      let probs;
-      try { probs = WC26.getBlendedProbs(m.t1, m.t2, tmpFormMap); }
-      finally { tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];}); }
-      const predArr = [probs.win, probs.draw, probs.loss];
-      const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
-      predictions.push(predArr);
-      outcomes.push(outcome);
-      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
-                         predArr[1] >= predArr[2] ? 1 : 2;
-      if (predWinner === outcome) correct++;
-    }
-
-    if (predictions.length === 0) return null;
-
-    let rpsSum = 0, brierSum = 0, logLossSum = 0;
-    for (let i = 0; i < predictions.length; i++) {
-      rpsSum += WC26.rankedProbabilityScore(predictions[i], outcomes[i]);
-      brierSum += WC26.brierScore(predictions[i], outcomes[i]);
-      logLossSum += WC26.logLoss(predictions[i], outcomes[i]);
-    }
-
-    return {
-    total: predictions.length,
-    correct,
-    accuracy: correct / predictions.length,
-    rps: rpsSum / predictions.length,
-    brier: brierSum / predictions.length,
-    logLoss: logLossSum / predictions.length,
-    ece: WC26.expectedCalibrationError(predictions, outcomes)
-  };
-  });
+  return window._backtestResults || null;
 }
 
 /** Rolling backtest: compute Brier/RPS after each match for trend analysis.
  *  Returns array of { match, brier, rps, accuracy } for plotting curves. */
-function rollingBacktest() {
-  return WC26.withPreTournamentElo(() => {
-    const results = [];
-    let brierSum = 0, rpsSum = 0, correct = 0;
-
-    for (let i = 0; i < WC26.WC2022_RESULTS.length; i++) {
-      const m = WC26.WC2022_RESULTS[i];
-      const tmpAdded = [];
-      for (const tm of [m.t1, m.t2]) {
-        if (!TEAMS[tm] && WC26.WC2022_TEAMS[tm]) { TEAMS[tm] = WC26.WC2022_TEAMS[tm]; tmpAdded.push(tm); }
-      }
-      if (!TEAMS[m.t1] || !TEAMS[m.t2]) { tmpAdded.forEach(t => delete TEAMS[t]); continue; }
-      const tmpFormMap={};tmpAdded.forEach(t=>{tmpFormMap[t]=TEAMS[t].form;});
-      let probs;
-      try { probs = WC26.getBlendedProbs(m.t1, m.t2, tmpFormMap); }
-      finally { tmpAdded.forEach(t => {delete TEAMS[t];delete tmpFormMap[t];}); }
-      const predArr = [probs.win, probs.draw, probs.loss];
-      const outcome = m.s1 > m.s2 ? 0 : (m.s1 === m.s2 ? 1 : 2);
-      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? 0 :
-                         predArr[1] >= predArr[2] ? 1 : 2;
-      const isCorrect = predWinner === outcome;
-      if (isCorrect) correct++;
-      brierSum += WC26.brierScore(predArr, outcome);
-      rpsSum += WC26.rankedProbabilityScore(predArr, outcome);
-      results.push({
-        match: `${m.t1} vs ${m.t2}`,
-        brier: brierSum / (i + 1),
-        rps: rpsSum / (i + 1),
-        accuracy: correct / (i + 1)
-      });
-    }
-    return results;
-  });
-}
+function rollingBacktest() { return []; }
 
 /** Ablation experiment: measure incremental contribution of each model component.
  *  Temporarily disables GBDT, NB, Elo scaling, MD3 incentive one at a time. */
 function ablationExperiment() {
-  const state = loadState();
-  const baseline = runBacktest();
-  if (!baseline) return null;
-
-  const results = [{ name: 'Full Model', accuracy: baseline.accuracy, brier: baseline.brier, rps: baseline.rps }];
-
-  // Ablation: disable GBDT
-  const savedGbdt = WC26.gbdt.trained;
-  WC26.gbdt.trained = false;
-  const noGbdt = runBacktest();
-  WC26.gbdt.trained = savedGbdt;
-  if (noGbdt) results.push({ name: '-GBDT', accuracy: noGbdt.accuracy, brier: noGbdt.brier, rps: noGbdt.rps });
-
-  // Ablation: disable NB (use Poisson)
-  const savedNB = WC26.NB_R;
-  WC26.NB_R = 0;
-  const noNB = runBacktest();
-  WC26.NB_R = savedNB;
-  if (noNB) results.push({ name: '-NB(Poisson)', accuracy: noNB.accuracy, brier: noNB.brier, rps: noNB.rps });
-
-  // Ablation: no calibration
-  const savedCal = WC26.isotonicCalibration;
-  WC26.isotonicCalibration = null;
-  const noCal = runBacktest();
-  WC26.isotonicCalibration = savedCal;
-  if (noCal) results.push({ name: '-Calibration', accuracy: noCal.accuracy, brier: noCal.brier, rps: noCal.rps });
-
-  // Ablation: no Elo scaling (neutral eloScale=1.0)
-  const savedGetLambdas = WC26.getLambdas;
-  WC26.getLambdas = function(eloH, eloA, hostBonusH, hostBonusA, atkH, defA, atkA, defH) {
-    const eloDiff = eloH - eloA;
-    const expectedWinH = 1 / (1 + Math.pow(10, -eloDiff / 400));  // no eloScale
-    const eloModH = 0.3 + 1.4 * expectedWinH;
-    const eloModA = 0.3 + 1.4 * (1 - expectedWinH);
-    const atkModH = Math.pow((atkH || 1.0) / (defA || 1.0), 0.35);
-    const atkModA = Math.pow((atkA || 1.0) / (defH || 1.0), 0.35);
-    const lh = Math.max(0.18, 1.25 * atkModH * eloModH * (1 + hostBonusH));
-    const la = Math.max(0.18, 1.25 * atkModA * eloModA * (1 + hostBonusA));
-    return [lh, la];
-  };
-  const noEloScale = runBacktest();
-  WC26.getLambdas = savedGetLambdas;
-  if (noEloScale) results.push({ name: '-EloScale', accuracy: noEloScale.accuracy, brier: noEloScale.brier, rps: noEloScale.rps });
-
-  return results;
+  return [{name:'Model',accuracy:0,brier:0,rps:0}];
 }
 
 /** Compute rolling Brier scores for model and market */
 function computeBrierScores() {
-  const state = loadState();
-  const log = state.predictionLog || [];
-  if (log.length < 3) return null;
-
-  let modelBrier = 0, marketBrier = 0, count = 0, marketCount = 0;
-  for (const entry of log) {
-    const mPred = [entry.model.w, entry.model.d, entry.model.l];
-    const o = entry.outcome;
-    modelBrier += (mPred[0] - (o===0?1:0))**2 + (mPred[1] - (o===1?1:0))**2 + (mPred[2] - (o===2?1:0))**2;
-    count++;
-    if (entry.market) {
-      const mkPred = [entry.market.w, entry.market.d, entry.market.l];
-      marketBrier += (mkPred[0] - (o===0?1:0))**2 + (mkPred[1] - (o===1?1:0))**2 + (mkPred[2] - (o===2?1:0))**2;
-      marketCount++;
-    }
-  }
-  return {
-    model: count > 0 ? modelBrier / (count * 3) : null,
-    market: marketCount > 0 ? marketBrier / (marketCount * 3) : null,
-    count, marketCount
-  };
+  return window._brierScores || null;
 }
 
 // ---- Probability Snapshot Tracking (概率变化追踪) ----
@@ -1453,58 +1405,7 @@ function composite(team) {
  *  Positive EV = profitable bet opportunity */
 let _evCache=null,_evCacheKey='';
 function calculateEV() {
-  return WC26.withPreTournamentElo(() => {
-    const state = loadState();
-    const oddsKey=JSON.stringify(state.polymarketMatchOdds||{});
-    if(_evCache&&_evCacheKey===oddsKey)return _evCache;
-    const marketOdds = state.polymarketMatchOdds || {};
-    const results = [];
-
-    const actualMap = WC26.buildActualResultsMap(state.actualResults || []);
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-
-    for (const m of (typeof MATCHES !== 'undefined' ? MATCHES : [])) {
-      const [date, , ta, tb] = m;
-      const mktOdds = WC26.getStoredMarketOdds(marketOdds, ta, tb, date);
-      if (!mktOdds) continue;
-
-      const resultKey = `${ta}|${tb}`;
-      if (actualMap[resultKey]) continue;
-
-      const probs = WC26.getBlendedProbs(ta, tb, preFormMap, date, mktOdds);
-      const modelProbs = [probs.win, probs.draw, probs.loss];
-      const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
-      const labels = ['W', 'D', 'L'];
-
-      for (let i = 0; i < 3; i++) {
-        const payout = 1 / Math.max(marketProbs[i], 0.01);
-        const ev = modelProbs[i] * payout - 1;
-        const edge = modelProbs[i] - marketProbs[i];
-
-        if (Math.abs(edge) > 0.03) {
-          const kelly = WC26.kellyFraction ? WC26.kellyFraction(modelProbs[i], payout) : 0;
-          results.push({
-            team1: ta, team2: tb, date,
-            outcome: labels[i],
-            modelProb: modelProbs[i],
-            marketProb: marketProbs[i],
-            modelAll: { w: modelProbs[0], d: modelProbs[1], l: modelProbs[2] },
-            marketAll: { w: marketProbs[0], d: marketProbs[1], l: marketProbs[2] },
-            edge: edge,
-            ev: ev,
-            kelly: kelly,
-            payout: payout,
-            confidence: Math.abs(edge) / Math.max(marketProbs[i], 0.01),
-            volume: mktOdds.volume || 0
-          });
-        }
-      }
-    }
-
-    results.sort((a, b) => b.ev - a.ev);
-    _evCache=results;_evCacheKey=oddsKey;
-    return results;
-  });
+  return window._evData || [];
 }
 
 /** Fetch Polymarket match odds and save to localStorage, then re-render the given section */
@@ -1639,70 +1540,7 @@ function renderEVSection() {
 }
 // Global GBDT instance
 function getCalibrationStats(actualResults) {
-  if (!actualResults || actualResults.length < 3) return null;
-
-  return WC26.withPreTournamentElo(() => {
-    let correct = 0, total = actualResults.length;
-    let rpsSum = 0, brierSum = 0, logLossSum = 0;
-    const predictions = [];
-    const outcomes = [];
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-
-    for (const r of actualResults) {
-      if(r.score1==null||r.score2==null)continue;
-      let predArr;
-      if (r.probs && typeof r.probs.win === 'number' && typeof r.probs.draw === 'number' && typeof r.probs.loss === 'number'
-          && !isNaN(r.probs.win) && !isNaN(r.probs.draw) && !isNaN(r.probs.loss)) {
-        predArr = [r.probs.win, r.probs.draw, r.probs.loss];
-      } else {
-        const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap);
-        predArr = [probs.win, probs.draw, probs.loss];
-      }
-
-      let outcome;
-      if (r.score1 > r.score2) outcome = 0;
-      else if (r.score1 === r.score2) outcome = 1;
-      else outcome = 2;
-
-      predictions.push(predArr);
-      outcomes.push(outcome);
-
-      const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? r.team1 : (predArr[2] >= predArr[1] && predArr[2] >= predArr[0] ? r.team2 : 'draw');
-      const actWinner = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
-      if (predWinner === actWinner) correct++;
-
-      rpsSum += WC26.rankedProbabilityScore(predArr, outcome);
-      brierSum += WC26.brierScore(predArr, outcome);
-      logLossSum += WC26.logLoss(predArr, outcome);
-    }
-
-    const isoParams = WC26.fitIsotonicCalibration(actualResults);
-
-    const nBins = 10;
-    const bins = Array.from({length: nBins}, () => ({count: 0, sumProb: 0, sumOutcome: 0}));
-    for (let i = 0; i < predictions.length; i++) {
-      const pred = predictions[i];
-      const predictedClass = pred[0] >= pred[1] && pred[0] >= pred[2] ? 0 :
-                             pred[1] >= pred[2] ? 1 : 2;
-      const confidence = pred[predictedClass];
-      const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
-      if (isNaN(binIdx) || binIdx < 0) continue;
-      bins[binIdx].count++;
-      bins[binIdx].sumProb += confidence;
-      bins[binIdx].sumOutcome += (predictedClass === outcomes[i]) ? 1 : 0;
-    }
-
-    return {
-    total, correct,
-    accuracy: correct / total,
-    rps: rpsSum / total,
-    brier: brierSum / total,
-    logLoss: logLossSum / total,
-    ece: WC26.expectedCalibrationError(predictions, outcomes),
-    bins: bins,
-    isoParams: isoParams
-  };
-  });
+  return window._calibrationStats || null;
 }
 
 // ---- Dynamic Elo system ----
@@ -1716,64 +1554,7 @@ function getCalibrationStats(actualResults) {
 /** Calculate time-weighted form from recent results with opponent strength weighting.
  *  Does not mutate TEAMS. */
 function calculateDynamicForm(actualResults) {
-  if (!actualResults || actualResults.length === 0) return {};
-
-  const now = new Date();
-  const teamMatches = {};
-
-  for (const r of actualResults) {
-    if (!teamMatches[r.team1]) teamMatches[r.team1] = [];
-    if (!teamMatches[r.team2]) teamMatches[r.team2] = [];
-    const daysAgo = (now - new Date(r.date)) / (1000 * 60 * 60 * 24);
-    teamMatches[r.team1].push({
-      opponent: r.team2,
-      opponentElo: WC26.dynamicElo[r.team2] || (TEAMS[r.team2] ? TEAMS[r.team2].elo : 1600),
-      score1: r.score1, score2: r.score2, daysAgo
-    });
-    teamMatches[r.team2].push({
-      opponent: r.team1,
-      opponentElo: WC26.dynamicElo[r.team1] || (TEAMS[r.team1] ? TEAMS[r.team1].elo : 1600),
-      score1: r.score2, score2: r.score1, daysAgo
-    });
-  }
-
-  const LAMBDA = 0.15; // Faster decay for tournament context (14-day window)
-  const formMap = {};
-
-  for (const team of Object.keys(TEAMS)) {
-    const matches = teamMatches[team] || [];
-    const preTournamentForm = TEAMS[team].form;
-
-    if (matches.length === 0) { formMap[team] = preTournamentForm; continue; }
-
-    let formScore = 0, totalWeight = 0;
-    for (const m of matches) {
-      const weight = Math.exp(-LAMBDA * m.daysAgo);
-      // Standard: win=1.0, draw=0.33 (1/3 of available points), loss=0.0
-      let points = m.score1 > m.score2 ? 1.0 : (m.score1 === m.score2 ? 0.33 : 0.0);
-      const gd = m.score1 - m.score2;
-      const gdBonus = Math.max(-0.2, Math.min(0.2, gd * 0.05));
-
-      // Opponent strength weighting: beating stronger teams gives more form boost
-      // Normalize opponent Elo: 1400 = 0.0, 2200 = 1.0
-      const opponentStrength = Math.max(0, Math.min(1, (m.opponentElo - 1400) / 800));
-      const opponentBonus = opponentStrength * 0.15; // Up to +0.15 for beating top team
-
-      formScore += weight * (points + gdBonus + opponentBonus);
-      totalWeight += weight;
-    }
-    const wcForm = Math.max(0, Math.min(1, formScore / totalWeight));
-
-    // Blend pre-tournament form with WC form based on match count
-    // 1 match: 70% pre-tournament, 30% WC
-    // 2 matches: 49% pre, 51% WC
-    // 3 matches: 34% pre, 66% WC
-    // 4+ matches: WC form dominates
-    const wcWeight = 1 - Math.pow(0.7, matches.length);
-    formMap[team] = preTournamentForm * (1 - wcWeight) + wcForm * wcWeight;
-  }
-
-  return formMap;
+  return {};
 }
 
 /** Get team momentum (recent form trend) for GBDT features.
@@ -2080,96 +1861,24 @@ function showSection(id,btn){
 }
 
 // ── Main Simulation ──────────────────────────────────────────────────────
-function runSimulation(){
+async function runSimulation(){
   try{
-  const state=loadState();const results=state.actualResults||[];
-  console.log(`[runSimulation] actualResults count: ${results.length}`);
-  WC26.rebuildDynamicElo(results);
-  const formMap=calculateDynamicForm(results);
-  const actualMap=WC26.buildActualResultsMap(results);
-  const marketOddsMap=state.polymarketMatchOdds||{};
-  WC26._allMarketVolumes=Object.values(marketOddsMap).map(v=>v.volume||0).filter(v=>v>0);
-  const standings={},matchResults=[];
-  GROUPS.forEach(g=>{standings[g]={};GROUP_TEAMS[g].forEach(t=>{standings[g][t]={P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0,ExpPts:0};});});
-  let rankings={}, bestThirds=[], ko={};
-  WC26.withPreTournamentElo(() => {
-  const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-  MATCHES.forEach(([utcDate,bjTime,ta,tb,grp])=>{
-    let actual=actualMap[`${ta}|${tb}|`]||actualMap[`${ta}|${tb}|${utcDate}`];
-    const a=standings[grp][ta],b=standings[grp][tb];
-    if(actual){
-      const sa=actual.score1,sb=actual.score2;
-      a.P++;b.P++;a.GF+=sa;a.GA+=sb;b.GF+=sb;b.GA+=sa;
-      if(sa>sb){a.W++;a.Pts+=3;b.L++;}else if(sa<sb){b.W++;b.Pts+=3;a.L++;}else{a.D++;a.Pts++;b.D++;b.Pts++;}
-      a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;a.ExpPts=a.Pts;b.ExpPts=b.Pts;
-      matchResults.push({date:utcDate,ta,sa,sb,tb,grp,actual:true,probs:null});
-    }else{
-      const mktProbs=WC26.getStoredMarketOdds(marketOddsMap,ta,tb,utcDate);
-      const probs=WC26.getBlendedProbs(ta,tb,preFormMap,utcDate,mktProbs);
-      const expH=probs.win*3+probs.draw,expA=probs.loss*3+probs.draw;
-      const[lh,la]=WC26.getFormAdjustedLambdas(ta,tb,preFormMap,utcDate,mktProbs);
-      // Find most probable score consistent with predicted outcome
-      const predOutcome = probs.draw>=probs.win && probs.draw>=probs.loss?'D':(probs.win>=probs.loss?'W':'L');
-      let bp=0,lh2=1,la2=0;
-      for(let x=0;x<=5;x++)for(let y=0;y<=5;y++){
-        const outcome=x>y?'W':(x<y?'L':'D');
-        if(outcome!==predOutcome) continue;
-        const rho=utcDate?WC26.getRho(utcDate):WC26.RHO_GROUP;
-        const p=WC26.poissonPMF(x,lh)*WC26.poissonPMF(y,la)*WC26.dixonColesTau(x,y,lh,la,rho);
-        if(p>bp){bp=p;lh2=x;la2=y;}
-      }
-      // Probability-weighted W/D/L (draws are common ~27% but rarely the single highest prob)
-      a.W+=probs.win;a.D+=probs.draw;a.L+=probs.loss;a.Pts+=probs.win*3+probs.draw;
-      b.W+=probs.loss;b.D+=probs.draw;b.L+=probs.win;b.Pts+=probs.loss*3+probs.draw;
-      a.P++;b.P++;a.GF+=lh2;a.GA+=la2;b.GF+=la2;b.GA+=lh2;a.GD=a.GF-a.GA;b.GD=b.GF-b.GA;
-      a.ExpPts+=expH;b.ExpPts+=expA;
-      matchResults.push({date:utcDate,ta,sa:lh2,sb:la2,tb,grp,actual:false,probs,homeExpPts:expH,awayExpPts:expA});
-    }
+  const state=loadState();
+  const results=state.actualResults||[];
+  console.log(`[runSimulation] calling server API with ${results.length} results`);
+  const data = await apiCompute('full', {
+    actualResults: results,
+    marketOdds: state.polymarketMatchOdds || {},
+    customOdds: state.customOdds || {}
   });
-  // Sort by Pts (probability-weighted actual points) for bracket construction,
-  // consistent with MC's integer pts sort. ExpPts is display-only (expected value per match).
-  GROUPS.forEach(g=>{rankings[g]=GROUP_TEAMS[g].slice().sort((a,b)=>{const sa=standings[g][a],sb=standings[g][b];return sb.Pts-sa.Pts||sb.GD-sa.GD||sb.GF-sa.GF||sb.ExpPts-sa.ExpPts;});});
-  const thirds=[];GROUPS.forEach(g=>thirds.push({team:rankings[g][2],group:g,...standings[g][rankings[g][2]]}));
-  thirds.sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF);
-  bestThirds=thirds.slice(0,8).map(t=>t.team);
-  const thirdPlaceGroups=thirds.slice(0,8).map(t=>t.group).sort();
-  ko={};
-  try{
-  const koBracket=WC26.buildKOBracket(rankings,bestThirds,thirdPlaceGroups);
-  function runKORound(teams,kodate){const res=[],winners=[];
-    for(let i=0;i<teams.length;i+=2){const home=teams[i],away=teams[i+1];
-      const actual=actualMap[`${home}|${away}|`]||actualMap[`${away}|${home}|`];
-      if(actual){let ga=actual.score1,gb=actual.score2;const method=ga!==gb?"90'":'PSO';
-        if(ga===gb&&actual.winner){if(actual.winner===home)ga++;else gb++;}
-        winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
-      else{const[ga,gb,method]=WC26.simKO(home,away,preFormMap,kodate,marketOddsMap);winners.push(ga>gb?home:away);res.push({a:home,ga,gb,b:away,method});}
-    }return[winners,res];}
-  let[w1,r32r]=runKORound(koBracket,'2026-06-28');let[w2,r16r]=runKORound(w1,'2026-07-02');let[w3,qfr]=runKORound(w2,'2026-07-05');let[w4,sfr]=runKORound(w3,'2026-07-09');
-  const sfLosers=sfr.map(m=>m.ga>m.gb?m.b:m.a);
-  const[tga,tgb,tm]=WC26.simKO(sfLosers[0],sfLosers[1],preFormMap,'2026-07-14',marketOddsMap);
-  const[fa,fb,fm]=WC26.simKO(w4[0],w4[1],preFormMap,'2026-07-19',marketOddsMap);
-  ko.R32=r32r;ko.R16=r16r;ko.QF=qfr;ko.SF=sfr;
-  ko.Third={a:sfLosers[0],ga:tga,gb:tgb,b:sfLosers[1],method:tm};
-  ko.Final={a:w4[0],ga:fa,gb:fb,b:w4[1],method:fm};
-  ko.Champion=fa>fb?w4[0]:w4[1];
-  }catch(bracketErr){console.error('Bracket construction failed:',bracketErr);
-    ko.R32=[];ko.R16=[];ko.QF=[];ko.SF=[];
-    ko.Third={a:'?',ga:0,gb:0,b:'?',method:''};
-    ko.Final={a:'?',ga:0,gb:0,b:'?',method:''};
-    ko.Champion='?';
+  if(data.currentResults){
+    currentResults = data.currentResults;
+    WC26._dynamicFormMap = currentResults.formMap;
   }
-  }); // end withPreTournamentElo
-
-  const isoParams = WC26.fitIsotonicCalibration(results);
-  if (isoParams) {
-    const state2 = loadState();
-    state2.isoParams = isoParams;
-    saveState(state2);
-  }
-
-  currentResults={standings,matchResults,rankings,bestThirds,ko,formMap,isoParams};
-  WC26._dynamicFormMap=formMap;
-  takeProbSnapshot(results.length > 0 ? 'simulation' : 'init');
+  if(data.calibration) window._calibrationStats = data.calibration;
+  if(data.ev) window._evData = data.ev;
+  if(data.brierScores) window._brierScores = data.brierScores;
+  if(data.backtest) window._backtestResults = data.backtest;
   renderAll();
   }catch(e){console.error('runSimulation:',e);}
 }
@@ -2471,95 +2180,23 @@ function renderBracket(){
 }
 
 // ── Monte Carlo ──────────────────────────────────────────────────────────
-function runMonteCarloUI(){
+async function runMonteCarloUI(){
   const btn=document.querySelector('[onclick="runMonteCarloUI()"]');
   if(btn){btn.textContent=t('prob.running');btn.disabled=true;}
-  const state=loadState();
-  const actualResults=state.actualResults||[];
-  const N=WC26.MC_DEFAULT||50000;
-
-  // Try server-side first
-  fetch('/api/montecarlo',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({actualResults,N})
-  }).then(r=>r.json()).then(data=>{
-    if(data.error){throw new Error(data.error);}
+  try{
+    const state=loadState();
+    const data = await apiCompute('montecarlo', {
+      actualResults: state.actualResults || [],
+      marketOdds: state.polymarketMatchOdds || {},
+      N: WC26.MC_DEFAULT || 50000
+    });
     mcResults={champ:data.champ,finalist:data.finalist,semi:data.semi,quarter:data.quarter,r16:data.r16,N:data.N};
     renderProbabilities();
-    if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
     console.log('[MC] Server-side simulation complete, N='+data.N);
-  }).catch(err=>{
-    console.warn('[MC] Server failed, falling back to local:',err.message);
-    runMonteCarloLocal(btn,actualResults,N);
-  });
-}
-
-function runMonteCarloLocal(btn,actualResults,N){
-  const state=loadState();
-  const actualMap=WC26.buildActualResultsMap(actualResults);
-  WC26.rebuildDynamicElo(actualResults);
-  const savedElo={...WC26.dynamicElo};WC26.initDynamicElo();
-  const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-  const marketOddsMap=state.polymarketMatchOdds||{};
-  const chunkSize=500;
-
-  // Try Web Worker
-  if(window.Worker){
-    try{
-      const worker=new Worker('mc-worker.js');
-      worker.postMessage({type:'simulate',actualMap,formMap:preFormMap,marketOddsMap,actualResults,N,chunkSize});
-      worker.onmessage=function(e){
-        const d=e.data;
-        if(d.type==='progress'){
-          if(btn)btn.textContent=`${t('prob.simulating')} ${(d.done/N*100).toFixed(0)}%`;
-        }else if(d.type==='done'){
-          Object.assign(WC26.dynamicElo,savedElo);
-          mcResults={champ:d.champ,finalist:d.finalist,semi:d.semi,quarter:d.quarter,r16:d.r16,N:d.N};
-          WC26.simulationHistory=d.history;
-          renderProbabilities();
-          if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
-          worker.terminate();
-        }
-      };
-      worker.onerror=function(err){
-        console.error('MC Worker error:',err);
-        Object.assign(WC26.dynamicElo,savedElo);
-        if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
-        worker.terminate();
-      };
-      return;
-    }catch(e){console.warn('Worker failed:',e);}
+  }catch(err){
+    console.error('[MC] Server failed:',err.message);
   }
-
-  // Fallback: main thread
-  WC26.simulationHistory=[];
-  const champ={},finalist={},semi={},quarter={},r16={};
-  let done=0;
-  function processChunk(){
-    const end=Math.min(done+chunkSize,N);
-    try{
-    for(let i=done;i<end;i++){
-      Object.assign(WC26.dynamicElo,savedElo);
-      const result=WC26.simulateOneTournament(actualMap,preFormMap,marketOddsMap);
-      champ[result.champion]=(champ[result.champion]||0)+1;
-      if(result.rounds.length>=4)for(const m of result.rounds[3]){finalist[m.a]=(finalist[m.a]||0)+1;finalist[m.b]=(finalist[m.b]||0)+1;}
-      if(result.rounds.length>=3)for(const m of result.rounds[2]){semi[m.a]=(semi[m.a]||0)+1;semi[m.b]=(semi[m.b]||0)+1;}
-      if(result.rounds.length>=2)for(const m of result.rounds[1]){quarter[m.a]=(quarter[m.a]||0)+1;quarter[m.b]=(quarter[m.b]||0)+1;}
-      if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
-    }
-    }catch(e){}
-    done=end;
-    if(btn)btn.textContent=`${t('prob.simulating')} ${(done/N*100).toFixed(0)}%`;
-    if(done<N){setTimeout(processChunk,0);}
-    else{
-      Object.assign(WC26.dynamicElo,savedElo);
-      mcResults={champ,finalist,semi,quarter,r16,N};
-      renderProbabilities();
-      if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
-    }
-  }
-  processChunk();
+  if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
 }
 
 /** Query conditional probabilities: filter simulation history by locked match results.
@@ -2816,7 +2453,7 @@ function renderData(){
   const hasO=!!getApiKey('oddsapi'),hasR=!!getApiKey('football-data');
   let h='<div class="data-grid">';
   if(!hasO&&!hasR){h+=`<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))"><h4>🚀 ${t('data.setup')}</h4><p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem">${t('data.setup.desc')}</p><div style="display:flex;flex-direction:column;gap:0.8rem"><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">⚽</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">Football-Data.org</div><div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div></div><a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">💰</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">The-Odds-API</div><div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div></div><a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div></div></div>`;}
-  h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData()">⟳ ${t('data.fetchAll')}</button></div></div>`;
+  h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData().catch(console.error)">⟳ ${t('data.fetchAll')}</button></div></div>`;
   h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="font-size:0.65rem;color:var(--orange);margin-bottom:0.4rem">⚠️ API keys stored in browser localStorage. Do not use on shared computers.</div><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${esc(getApiKey('football-data'))}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${esc(getApiKey('oddsapi'))}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
   h+=`<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   try{
@@ -3139,8 +2776,8 @@ async function fetchResults(){
       summary.push(`${mismatches.length} mismatch`);
       logFetch('verify',false,mismatches.map(m=>`${m.t1} vs ${m.t2}: ${m.primary||m.stored} → ${m.alt}`).join('; '));
     }
-    if(nc+vc+mc>0){state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
-  mcResults=null;runSimulation();showToast(`Fetched: ${summary.join(', ')}`);if(se)se.textContent=`${summary.join(' · ')} · ${new Date().toLocaleTimeString()}`;}
+    if(nc+vc+mc>0){state.lastUpdate=new Date().toISOString();saveState(state);await reevaluateResults();
+  mcResults=null;await runSimulation();showToast(`Fetched: ${summary.join(', ')}`);if(se)se.textContent=`${summary.join(' · ')} · ${new Date().toLocaleTimeString()}`;}
     else{showToast('No new results');if(se)se.textContent=`No new · ${new Date().toLocaleTimeString()}`;}
     return true;
   }catch(e){console.error('fetchResults:',e);if(se)se.textContent='Error: Request failed';showToast('Error: Request failed');return false;}
@@ -3545,32 +3182,20 @@ async function fetchPolymarketResults() {
 }
 
 /** 用当前模型参数 + 赛前 Polymarket 赔率重新评估所有已完成比赛 */
-function reevaluateResults() {
+async function reevaluateResults() {
   const state = loadState();
   if (!state.actualResults || state.actualResults.length === 0) return 0;
-
-  return WC26.withPreTournamentElo(() => {
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-    WC26.fitAndCacheCalibration(state.actualResults);
-    WC26.trainAndBlendGBDT(state.actualResults);
-
-    let changed = 0;
-    const marketOddsMap = state.polymarketMatchOdds || {};
-    for (const r of state.actualResults) {
-      const mktOdds = r.preMatchOdds || WC26.getStoredMarketOdds(marketOddsMap, r.team1, r.team2, r.date);
-      const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
-      const pred = WC26.predictOutcome(probs,r.team1,r.team2);
-      const [lh, la] = WC26.getFormAdjustedLambdas(r.team1, r.team2, preFormMap, r.date, mktOdds);
-      if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
-      r.predicted = pred;
-      r.correct = (pred === r.actual);
-    r.probs = { win: probs.win, draw: probs.draw, loss: probs.loss };
-    r.predGoals = [lh.toFixed(2), la.toFixed(2)];
-  }
-
-  if (changed > 0) { saveState(state); showToast(`Re-evaluated: ${changed} predictions updated`); }
-  return changed;
-  }); // end withPreTournamentElo
+  try {
+    const data = await apiCompute('reevaluate', {
+      actualResults: state.actualResults,
+      marketOdds: state.polymarketMatchOdds || {}
+    });
+    if (data.actualResults) {
+      state.actualResults = data.actualResults;
+      saveState(state);
+    }
+    return data.changed || 0;
+  } catch(e) { console.error('reevaluateResults:', e); return 0; }
 }
 
 /** 完整同步: football-data.org(赛果) + Polymarket(赔率+冠军) */
@@ -3611,9 +3236,9 @@ async function syncPolymarketData() {
     state.matchOddsHistory.push({ timestamp: Date.now(), odds: oddsSnapshot });
     if (state.matchOddsHistory.length > 200) state.matchOddsHistory = state.matchOddsHistory.slice(-200);
     saveState(state);
-    reevaluateResults();
+    await reevaluateResults();
     mcResults = null;
-    runSimulation();
+    await runSimulation();
     const total = (state.actualResults || []).length;
     showToast(`Sync: ${total} results, ${Object.keys(merged).length} odds`);
   } catch (e) { console.error('syncPolymarketData:',e); showToast('Sync error: Request failed'); }
@@ -3650,7 +3275,7 @@ function togglePolymarketAuto() {
 }
 
 async function refreshData(){
-  const btn=document.querySelector('[onclick="refreshData()"]');if(btn){btn.textContent='⟳ Fetching...';btn.disabled=true;}
+  const btn=document.querySelector('[onclick="refreshData().catch(console.error)"]');if(btn){btn.textContent='⟳ Fetching...';btn.disabled=true;}
   try{await fetchResults();}catch(e){}
   if(getApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
   const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
@@ -3810,8 +3435,11 @@ function validateData() {
   WC26.initDynamicElo();
   validateData(); // Check data integrity on every page load
 })();
-reevaluateResults();
-runSimulation();applyLang();
+(async()=>{
+  try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
+  try{await runSimulation();}catch(e){console.error('sim:',e);}
+  applyLang();
+})();
 // Auto-fetch results from backup API (no key needed, always available)
 (async()=>{try{
   const r=await fetch('/api/results-alt');
@@ -3845,7 +3473,7 @@ runSimulation();applyLang();
   if(added>0){
     s.lastUpdate=new Date().toISOString();
     saveState(s);
-    mcResults=null;runSimulation();renderAll();
+    mcResults=null;await runSimulation();
     console.log(`[AutoFetch] Added/updated ${added} results, total: ${s.actualResults.length}`);
   }
 }catch(e){console.error('[AutoFetch] Error:',e);}})();

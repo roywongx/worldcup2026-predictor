@@ -1,16 +1,10 @@
 // Service Worker — offline cache for World Cup 2026 Predictor
-const CACHE = 'wc26-fix-1782573570' ;
+const CACHE = 'wc26-thin-v1';
 const ASSETS = [
   '/',
   '/index.html',
   '/data/teams.js',
-  '/data/matches.js',
-  '/model/stats.js',
-  '/model/elo.js',
-  '/model/dixon-coles.js',
-  '/model/gbdt.js',
-  '/model/monte-carlo.js',
-  '/mc-worker.js'
+  '/data/matches.js'
 ];
 
 self.addEventListener('install', e => {
@@ -29,13 +23,9 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Network-first for API calls
   if (url.pathname.startsWith('/api/') || url.hostname.includes('polymarket') || url.hostname.includes('football-data')) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
   } else if (url.pathname === '/' || url.pathname.endsWith('/index.html')) {
-    // Network-first for index.html — ensures updates are visible
     e.respondWith(
       fetch(e.request).then(resp => {
         const clone = resp.clone();
@@ -44,7 +34,6 @@ self.addEventListener('fetch', e => {
       }).catch(() => caches.match(e.request))
     );
   } else {
-    // Cache-first for static assets (model/, data/, sw.js)
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
         const clone = resp.clone();
