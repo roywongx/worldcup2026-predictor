@@ -144,6 +144,7 @@ WC26.expectedCalibrationError = function(predictions, outcomes, nBins) {
                            pred[1] >= pred[2] ? 1 : 2;
     const confidence = pred[predictedClass];
     const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
+    if (isNaN(binIdx) || binIdx < 0) continue;
     bins[binIdx].count++;
     bins[binIdx].sumProb += confidence;
     bins[binIdx].sumCorrect += (predictedClass === outcomes[i]) ? 1 : 0;

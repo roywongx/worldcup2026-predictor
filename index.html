@@ -1651,7 +1651,8 @@ function getCalibrationStats(actualResults) {
     for (const r of actualResults) {
       if(r.score1==null||r.score2==null)continue;
       let predArr;
-      if (r.probs && typeof r.probs.win === 'number') {
+      if (r.probs && typeof r.probs.win === 'number' && typeof r.probs.draw === 'number' && typeof r.probs.loss === 'number'
+          && !isNaN(r.probs.win) && !isNaN(r.probs.draw) && !isNaN(r.probs.loss)) {
         predArr = [r.probs.win, r.probs.draw, r.probs.loss];
       } else {
         const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap);
@@ -1685,6 +1686,7 @@ function getCalibrationStats(actualResults) {
                              pred[1] >= pred[2] ? 1 : 2;
       const confidence = pred[predictedClass];
       const binIdx = Math.min(nBins - 1, Math.floor(confidence * nBins));
+      if (isNaN(binIdx) || binIdx < 0) continue;
       bins[binIdx].count++;
       bins[binIdx].sumProb += confidence;
       bins[binIdx].sumOutcome += (predictedClass === outcomes[i]) ? 1 : 0;
@@ -2845,7 +2847,7 @@ function renderData(){
       h+=`<div style="margin-top:0.8rem"><div style="font-size:0.7rem;font-weight:700;margin-bottom:0.4rem">Reliability Diagram (predicted vs actual)</div>`;
       for(let bi=0;bi<stats.bins.length;bi++){
         const bin=stats.bins[bi];
-        if(bin.count===0)continue;
+        if(!bin||bin.count===0)continue;
         const avgConf=bin.sumProb/bin.count;
         const avgAcc=bin.sumOutcome/bin.count;
         const barW=Math.round(avgConf*100);
