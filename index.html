@@ -2472,15 +2472,37 @@ function renderBracket(){
 function runMonteCarloUI(){
   const btn=document.querySelector('[onclick="runMonteCarloUI()"]');
   if(btn){btn.textContent=t('prob.running');btn.disabled=true;}
-  const state=loadState();const actualMap=WC26.buildActualResultsMap(state.actualResults||[]);
-  WC26.rebuildDynamicElo(state.actualResults||[]);
+  const state=loadState();
+  const actualResults=state.actualResults||[];
+  const N=WC26.MC_DEFAULT||50000;
+
+  // Try server-side first
+  fetch('/api/montecarlo',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({actualResults,N})
+  }).then(r=>r.json()).then(data=>{
+    if(data.error){throw new Error(data.error);}
+    mcResults={champ:data.champ,finalist:data.finalist,semi:data.semi,quarter:data.quarter,r16:data.r16,N:data.N};
+    renderProbabilities();
+    if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
+    console.log('[MC] Server-side simulation complete, N='+data.N);
+  }).catch(err=>{
+    console.warn('[MC] Server failed, falling back to local:',err.message);
+    runMonteCarloLocal(btn,actualResults,N);
+  });
+}
+
+function runMonteCarloLocal(btn,actualResults,N){
+  const state=loadState();
+  const actualMap=WC26.buildActualResultsMap(actualResults);
+  WC26.rebuildDynamicElo(actualResults);
   const savedElo={...WC26.dynamicElo};WC26.initDynamicElo();
   const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
   const marketOddsMap=state.polymarketMatchOdds||{};
-  const actualResults=state.actualResults||[];
-  const N=WC26.MC_DEFAULT,chunkSize=500;
+  const chunkSize=500;
 
-  // Try Web Worker first, fall back to main thread
+  // Try Web Worker
   if(window.Worker){
     try{
       const worker=new Worker('mc-worker.js');
@@ -2505,29 +2527,38 @@ function runMonteCarloUI(){
         worker.terminate();
       };
       return;
-    }catch(e){
-      console.warn('Worker failed, falling back to main thread:',e);
-    }
+    }catch(e){console.warn('Worker failed:',e);}
   }
 
-  // Fallback: main thread with setTimeout
-  WC26.simulationHistory = [];
+  // Fallback: main thread
+  WC26.simulationHistory=[];
   const champ={},finalist={},semi={},quarter={},r16={};
   let done=0;
   function processChunk(){
     const end=Math.min(done+chunkSize,N);
-    try {
+    try{
     for(let i=done;i<end;i++){
+      Object.assign(WC26.dynamicElo,savedElo);
       const result=WC26.simulateOneTournament(actualMap,preFormMap,marketOddsMap);
       champ[result.champion]=(champ[result.champion]||0)+1;
       if(result.rounds.length>=4)for(const m of result.rounds[3]){finalist[m.a]=(finalist[m.a]||0)+1;finalist[m.b]=(finalist[m.b]||0)+1;}
       if(result.rounds.length>=3)for(const m of result.rounds[2]){semi[m.a]=(semi[m.a]||0)+1;semi[m.b]=(semi[m.b]||0)+1;}
       if(result.rounds.length>=2)for(const m of result.rounds[1]){quarter[m.a]=(quarter[m.a]||0)+1;quarter[m.b]=(quarter[m.b]||0)+1;}
       if(result.rounds.length>=1)for(const m of result.rounds[0]){r16[m.a]=(r16[m.a]||0)+1;r16[m.b]=(r16[m.b]||0)+1;}
-      const mr = {};
-      result.rounds.slice(0,4).forEach((round, ri) => {
-        for(const m of round) mr[`${m.a}|${m.b}`] = {ga:m.ga,gb:m.gb,round:ri+1};
-      });
+    }
+    }catch(e){}
+    done=end;
+    if(btn)btn.textContent=`${t('prob.simulating')} ${(done/N*100).toFixed(0)}%`;
+    if(done<N){setTimeout(processChunk,0);}
+    else{
+      Object.assign(WC26.dynamicElo,savedElo);
+      mcResults={champ,finalist,semi,quarter,r16,N};
+      renderProbabilities();
+      if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
+    }
+  }
+  processChunk();
+}
       WC26.simulationHistory.push({ champion: result.champion, matchResults: mr });
     }
     } catch(e) { Object.assign(WC26.dynamicElo,savedElo); console.error('MC chunk error:',e); return; }

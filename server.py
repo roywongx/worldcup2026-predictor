@@ -10,6 +10,7 @@ import sys
 import threading
 import urllib.request
 import urllib.parse
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -38,6 +39,44 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._test_key()
         else:
             super().do_GET()
+
+    def do_POST(self):
+        if self.path.startswith('/api/montecarlo'):
+            self._run_montecarlo()
+        else:
+            self.send_error(404)
+
+    def _run_montecarlo(self):
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            input_data = json.loads(body) if body else {}
+
+            mc_script = DIR / 'mc-server.js'
+            if not mc_script.exists():
+                self._json_response({'error': 'mc-server.js not found'}, 404)
+                return
+
+            result = subprocess.run(
+                ['node', str(mc_script)],
+                input=json.dumps(input_data),
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(DIR)
+            )
+
+            if result.returncode != 0:
+                self._json_response({'error': result.stderr}, 500)
+                return
+
+            data = json.loads(result.stdout)
+            self._json_response(data)
+
+        except subprocess.TimeoutExpired:
+            self._json_response({'error': 'Simulation timed out'}, 504)
+        except Exception as e:
+            self._json_response({'error': str(e)}, 500)
 
     def end_headers(self):
         if self.path.startswith('/api/'):
