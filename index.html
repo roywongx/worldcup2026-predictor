@@ -1664,7 +1664,7 @@ function mapTeamName(apiName) {
     'Iran': 'Iran', 'Scotland': 'Scotland', 'Canada': 'Canada', 'Ghana': 'Ghana',
     'Tunisia': 'Tunisia', 'Paraguay': 'Paraguay', 'Saudi Arabia': 'Saudi Arabia',
     'Czech Republic': 'Czech Republic', 'Czechia': 'Czech Republic',
-    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina', 'Bosnia-Herzegovina': 'Bosnia Herzegovina', 'Bosnia Herzegovina': 'Bosnia Herzegovina',
+    'Bosnia': 'Bosnia Herzegovina', 'Bosnia and Herzegovina': 'Bosnia Herzegovina', 'Bosnia-Herzegovina': 'Bosnia Herzegovina', 'Bosnia Herzegovina': 'Bosnia Herzegovina', 'Bosnia & Herzegovina': 'Bosnia Herzegovina',
     'Ivory Coast': 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast', "Côte d'Ivoire": 'Ivory Coast',
     'Qatar': 'Qatar', 'Panama': 'Panama', 'Algeria': 'Algeria', 'Jordan': 'Jordan',
     'Iraq': 'Iraq', 'Uzbekistan': 'Uzbekistan', 'DR Congo': 'DR Congo', 'Congo DR': 'DR Congo',
@@ -1912,6 +1912,7 @@ function showSection(id,btn){
 function runSimulation(){
   try{
   const state=loadState();const results=state.actualResults||[];
+  console.log(`[runSimulation] actualResults count: ${results.length}`);
   WC26.rebuildDynamicElo(results);
   const formMap=calculateDynamicForm(results);
   const actualMap=WC26.buildActualResultsMap(results);
@@ -2816,20 +2817,21 @@ async function testOddsKey(){
 
 async function fetchResults(){
   if(_fetchBusy)return;_fetchBusy=true;
+  console.log('[fetchResults] Called');
   try{
   const apiKey=getApiKey('football-data');const se=document.getElementById('fetch-status');
-  if(!apiKey){if(se)se.textContent='Need API key';showToast('Set Football-Data.org API key first');return false;}
   if(se)se.textContent=t('prob.fetchingResults');
   try{
     // Fetch primary source (football-data.org)
     let data=null;
-    try{
-      const r=await fetch('/api/results',{headers:{'X-API-Key':apiKey}});
-      const j=await r.json();
-      if(j.error){logFetch('results',false,j.error);}
-      else if(j.matches){data=j;logFetch('results',true,'via proxy');}
-    }catch(e){logFetch('results',false,'proxy: Request failed');}
-    if(!data){showToast('Could not fetch — check API key and server');if(se)se.textContent='Fetch failed';return false;}
+    if(apiKey){
+      try{
+        const r=await fetch('/api/results',{headers:{'X-API-Key':apiKey}});
+        const j=await r.json();
+        if(j.error){logFetch('results',false,j.error);}
+        else if(j.matches){data=j;logFetch('results',true,'via proxy');}
+      }catch(e){logFetch('results',false,'proxy: Request failed');}
+    }
 
     // Fetch verification source (worldcupjson.net, no API key needed)
     let altData=null;
@@ -2840,6 +2842,13 @@ async function fetchResults(){
       else if(j2.error){logFetch('results-alt',false,j2.error);}
     }catch(e){logFetch('results-alt',false,'Request failed');}
 
+    // If primary API failed, use alt API as primary source
+    if(!data&&altData){
+      data=altData;
+      logFetch('results',true,'via alt API');
+    }
+    if(!data){showToast('Could not fetch from any source');if(se)se.textContent='Fetch failed';return false;}
+
     // Build alt source lookup: key="t1|t2" → {s1,s2}
     // openfootball format: {team1, team2, score: {ft: [s1, s2]}}
     const altMap={};
@@ -2847,7 +2856,7 @@ async function fetchResults(){
       for(const m of altData){
         let s1,s2,t1,t2;
         if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);}
-        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);}
+        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.home_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);}
         if(s1!=null&&s2!=null&&t1&&t2&&TEAMS[t1]&&TEAMS[t2])altMap[`${t1}|${t2}`]={s1,s2};
       }
     }
@@ -2862,8 +2871,9 @@ async function fetchResults(){
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
     for(const m of matches){
       let s1,s2,t1,t2,md,winner=null;
-      if(m.score){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;}
-      else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
+      if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;}
+      else if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';}
+      else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.home_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
       const k=`${t1}|${t2}`;
 
@@ -2917,6 +2927,7 @@ async function fetchResults(){
     const summary=[`${nc} new`];
     if(vc>0)summary.push(`${vc} verified`);
     if(mc>0)summary.push(`${mc} corrected`);
+    console.log(`[fetchResults] Processed: ${nc} new, ${vc} verified, ${mc} corrected, total matches in array: ${matches.length}`);
     if(mismatches.length>0){
       summary.push(`${mismatches.length} mismatch`);
       logFetch('verify',false,mismatches.map(m=>`${m.t1} vs ${m.t2}: ${m.primary||m.stored} → ${m.alt}`).join('; '));
@@ -3594,13 +3605,55 @@ function validateData() {
 })();
 reevaluateResults();
 runSimulation();applyLang();
+// Auto-fetch results from backup API (no key needed, always available)
 (async()=>{try{
-  if(getApiKey('football-data')){
-    if(!localStorage.getItem('skipAutoFetch')){
-      if(confirm('自动获取比赛数据？(可在设置中关闭)')){localStorage.setItem('skipAutoFetch','1');await fetchResults();}
-      else{localStorage.setItem('skipAutoFetch','1');}
-    }else{await fetchResults();}
+  const state=loadState();
+  const last=state.lastUpdate?new Date(state.lastUpdate):null;
+  const mins=last?(Date.now()-last.getTime())/60000:999;
+  // Fetch if: never fetched OR last fetch >30 min ago OR no results stored
+  if(!last||mins>30||!state.actualResults||state.actualResults.length<10){
+    const r=await fetch('/api/results-alt');
+    const d=await r.json();
+    if(!Array.isArray(d))return;
+    // Merge results into state
+    const s=loadState();if(!s.actualResults)s.actualResults=[];
+    const map={};s.actualResults.forEach((r,i)=>{map[`${r.team1}|${r.team2}`]=i;});
+    let added=0;
+    WC26.withPreTournamentElo(()=>{
+      const pf={};for(const t of Object.keys(TEAMS))pf[t]=TEAMS[t].form;
+      for(const m of d){
+        if(!m.score||!m.score.ft)continue;
+        const s1=m.score.ft[0],s2=m.score.ft[1];
+        const t1=mapTeamName(m.team1),t2=mapTeamName(m.team2);
+        if(s1==null||s2==null||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
+        const k=`${t1}|${t2}`;
+        if(map[k]!==undefined){
+          // Update existing entry's score if different
+          const ex=s.actualResults[map[k]];
+          if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
+        }else{
+          // Add new result
+          const probs=WC26.getBlendedProbs(t1,t2,pf);
+          const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,pf);
+          const pred=WC26.predictOutcome(probs,t1,t2);
+          const act=s1>s2?t1:(s2>s1?t2:'draw');
+          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},source:'auto'});
+          map[k]=s.actualResults.length-1;
+          added++;
+        }
+      }
+    });
+    if(added>0){
+      s.lastUpdate=new Date().toISOString();
+      saveState(s);
+      mcResults=null;runSimulation();renderAll();
+      console.log(`[AutoFetch] Added/updated ${added} results`);
+    }
   }
+}catch(e){console.error('[AutoFetch] Error:',e);}})();
+// Also try primary API if key exists
+(async()=>{try{
+  if(getApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}
 }catch(e){}})();
 // Service Worker for offline caching
 if ('serviceWorker' in navigator) {
