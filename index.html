@@ -2559,21 +2559,6 @@ function runMonteCarloLocal(btn,actualResults,N){
   }
   processChunk();
 }
-      WC26.simulationHistory.push({ champion: result.champion, matchResults: mr });
-    }
-    } catch(e) { Object.assign(WC26.dynamicElo,savedElo); console.error('MC chunk error:',e); return; }
-    done=end;
-    if(btn)btn.textContent=`${t('prob.simulating')} ${(done/N*100).toFixed(0)}%`;
-    if(done<N){setTimeout(processChunk,0);}
-    else{
-      Object.assign(WC26.dynamicElo,savedElo);
-      mcResults={champ,finalist,semi,quarter,r16,N};
-      renderProbabilities();
-      if(btn){btn.textContent='🎲 Monte Carlo (50,000x)';btn.disabled=false;}
-    }
-  }
-  setTimeout(processChunk,50);
-}
 
 /** Query conditional probabilities: filter simulation history by locked match results.
  *  Returns conditional champion/finalist/semi probabilities.
