@@ -92,6 +92,8 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 - MC market odds lookup — `simMatch()`/`simKO()` now use `getStoredMarketOdds()` (10 fallback strategies) instead of fragile direct map lookup (2 exact matches)
 - EV date-aware dedup — knockout matches between repeat opponents no longer silently skipped
 - mc-server.js odds passthrough — fallback MC path now receives market odds (was hardcoded `{}`)
+- Completed matches display — `buildActualResultsMap` now stores dateless fallback keys, fixing UTC vs Beijing date mismatch
+- R32 match numbering — `renderMatches()` now uses bracket-position→match-number mapping, fixing wrong date/venue for all R32 matches
 
 **Frontend cleanup:**
 - Removed ~60 lines of dead stub functions
@@ -195,6 +197,8 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 - MC 赔率查找 — `simMatch()`/`simKO()` 改用 `getStoredMarketOdds()`（10 种回退策略），替代脆弱的直接 map 查找（2 种精确匹配）
 - EV 日期感知去重 — 同组再遇的淘汰赛不再被静默跳过
 - mc-server.js 赔率透传 — 回退 MC 路径现在接收市场赔率（原硬编码 `{}`）
+- 已完赛显示 — `buildActualResultsMap` 现在存储无日期回退 key，修复 UTC vs 北京时间不匹配
+- R32 比赛编号 — `renderMatches()` 使用对阵位置→比赛编号映射，修复所有 R32 比赛的日期/场馆/编号错误
 
 **前端清理：**
 - 删除 ~60 行死代码 stub 函数
