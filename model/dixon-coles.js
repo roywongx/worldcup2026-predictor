@@ -236,7 +236,7 @@ WC26.getMarketBlend = function(matchDate, volume) {
 
 /** Simulate a single match score using Poisson sampling */
 WC26.simMatch = function(home, away, formMap, matchDate, marketOddsMap, incentiveFactor) {
-  const marketProbs = marketOddsMap ? (marketOddsMap[`${home}|${away}|${matchDate}`] || marketOddsMap[`${home}|${away}|`]) : null;
+  const marketProbs = WC26.getStoredMarketOdds ? WC26.getStoredMarketOdds(marketOddsMap, home, away, matchDate) : null;
   const [lh, la] = WC26.getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
   const f = incentiveFactor || 1.0;
   return [WC26.poissonSample(lh * f), WC26.poissonSample(la * f)];
@@ -244,7 +244,7 @@ WC26.simMatch = function(home, away, formMap, matchDate, marketOddsMap, incentiv
 
 /** Simulate a knockout match with extra time and penalties if needed */
 WC26.simKO = function(home, away, formMap, matchDate, marketOddsMap) {
-  const marketProbs = marketOddsMap ? (marketOddsMap[`${home}|${away}|${matchDate}`] || marketOddsMap[`${home}|${away}|`]) : null;
+  const marketProbs = WC26.getStoredMarketOdds ? WC26.getStoredMarketOdds(marketOddsMap, home, away, matchDate) : null;
   const [lh90, la90] = WC26.getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
   const ga90 = WC26.poissonSample(lh90), gb90 = WC26.poissonSample(la90);

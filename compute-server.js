@@ -387,8 +387,10 @@ function runEV(params) {
     const covered = new Set();
 
     function addEV(ta, tb, date, mktOdds) {
-      const resultKey = `${ta}|${tb}`;
-      if (actualMap[resultKey]) return;
+      const dateStr = date ? String(date).substring(0, 10) : '';
+      const resultKey1 = `${ta}|${tb}|${dateStr}`;
+      const resultKey2 = `${tb}|${ta}|${dateStr}`;
+      if (actualMap[resultKey1] || actualMap[resultKey2]) return;
       const probs = WC26.getBlendedProbs(ta, tb, preFormMap, date, mktOdds);
       const modelProbs = [probs.win, probs.draw, probs.loss];
       const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
@@ -415,7 +417,8 @@ function runEV(params) {
       const [date, , ta, tb] = m;
       const mktOdds = WC26.getStoredMarketOdds(marketOdds, ta, tb, date);
       if (!mktOdds) continue;
-      covered.add(`${ta}|${tb}`);
+      const dateStr = String(date).substring(0, 10);
+      covered.add(`${ta}|${tb}|${dateStr}`);
       addEV(ta, tb, date, mktOdds);
     }
 
@@ -426,8 +429,9 @@ function runEV(params) {
       if (parts.length < 2) continue;
       const ta = parts[0], tb = parts[1];
       if (!ta || !tb || !TEAMS[ta] || !TEAMS[tb]) continue;
-      if (covered.has(`${ta}|${tb}`) || covered.has(`${tb}|${ta}`)) continue;
       const date = parts[2] || '';
+      const dateStr = date ? String(date).substring(0, 10) : '';
+      if (covered.has(`${ta}|${tb}|${dateStr}`) || covered.has(`${tb}|${ta}|${dateStr}`)) continue;
       addEV(ta, tb, date, mktOdds);
     }
 

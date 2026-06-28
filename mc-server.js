@@ -20,9 +20,10 @@ eval(fs.readFileSync(path.join(dir, 'model/monte-carlo.js'), 'utf8'));
 const TEAMS = globalThis.TEAMS;
 
 async function runMC(input) {
-  const { actualResults, N } = input;
+  const { actualResults, N, marketOdds } = input;
   const n = N || 10000;
   const results = actualResults || [];
+  const oddsMap = marketOdds || {};
 
   try {
     WC26.initDynamicElo();
@@ -44,7 +45,7 @@ async function runMC(input) {
   for (let i = 0; i < n; i++) {
     Object.assign(WC26.dynamicElo, savedElo);
     try {
-      const result = WC26.simulateOneTournament(actualMap, preFormMap, {});
+      const result = WC26.simulateOneTournament(actualMap, preFormMap, oddsMap);
       if (!result || !result.champion) continue;
       champ[result.champion] = (champ[result.champion] || 0) + 1;
       if (result.rounds && result.rounds.length >= 4) for (const m of result.rounds[3]) { finalist[m.a] = (finalist[m.a]||0)+1; finalist[m.b] = (finalist[m.b]||0)+1; }
