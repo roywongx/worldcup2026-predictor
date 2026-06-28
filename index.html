@@ -2949,7 +2949,7 @@ async function fetchPolymarketMatchOdds() {
         const team1 = mapTeamName(tm[1].trim());
         const team2 = mapTeamName(tm[2].trim());
         if (!team1 || !team2 || !TEAMS[team1] || !TEAMS[team2]) continue;
-        const date = ev.eventDate || '';
+        const date = ev.startDate || ev.eventDate || '';
         if (!date) continue;
         // Skip matches already in progress (only use pre-match odds, not live odds)
         // A WC match is ~2h (90min + stoppage + possible ET/PK)

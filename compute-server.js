@@ -384,37 +384,53 @@ function runEV(params) {
     const preFormMap = {};
     for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
     const results = [];
+    const covered = new Set();
 
-    for (const m of MATCHES) {
-      const [date, , ta, tb] = m;
-      const mktOdds = WC26.getStoredMarketOdds(marketOdds, ta, tb, date);
-      if (!mktOdds) continue;
+    function addEV(ta, tb, date, mktOdds) {
       const resultKey = `${ta}|${tb}`;
-      if (actualMap[resultKey]) continue;
-
+      if (actualMap[resultKey]) return;
       const probs = WC26.getBlendedProbs(ta, tb, preFormMap, date, mktOdds);
       const modelProbs = [probs.win, probs.draw, probs.loss];
       const marketProbs = [mktOdds.win, mktOdds.draw, mktOdds.loss];
       const labels = ['W', 'D', 'L'];
-
       for (let i = 0; i < 3; i++) {
         const payout = 1 / Math.max(marketProbs[i], 0.01);
         const ev = modelProbs[i] * payout - 1;
         const edge = modelProbs[i] - marketProbs[i];
-        if (Math.abs(edge) > 0.03) {
-          const kelly = WC26.kellyFraction ? WC26.kellyFraction(modelProbs[i], payout) : 0;
-          results.push({
-            team1: ta, team2: tb, date, outcome: labels[i],
-            modelProb: modelProbs[i], marketProb: marketProbs[i],
-            modelAll: { w: probs.win, d: probs.draw, l: probs.loss },
-            marketAll: { w: mktOdds.win, d: mktOdds.draw, l: mktOdds.loss },
-            edge, ev, kelly, payout,
-            confidence: Math.abs(edge) / Math.max(marketProbs[i], 0.01),
-            volume: mktOdds.volume || 0
-          });
-        }
+        const kelly = WC26.kellyFraction ? WC26.kellyFraction(modelProbs[i], payout) : 0;
+        results.push({
+          team1: ta, team2: tb, date, outcome: labels[i],
+          modelProb: modelProbs[i], marketProb: marketProbs[i],
+          modelAll: { w: probs.win, d: probs.draw, l: probs.loss },
+          marketAll: { w: mktOdds.win, d: mktOdds.draw, l: mktOdds.loss },
+          edge, ev, kelly, payout,
+          confidence: Math.abs(edge) / Math.max(marketProbs[i], 0.01),
+          volume: mktOdds.volume || 0
+        });
       }
     }
+
+    // Group stage matches (from MATCHES array)
+    for (const m of MATCHES) {
+      const [date, , ta, tb] = m;
+      const mktOdds = WC26.getStoredMarketOdds(marketOdds, ta, tb, date);
+      if (!mktOdds) continue;
+      covered.add(`${ta}|${tb}`);
+      addEV(ta, tb, date, mktOdds);
+    }
+
+    // Knockout / any other matches from marketOdds not in MATCHES
+    for (const [key, mktOdds] of Object.entries(marketOdds)) {
+      if (!mktOdds || !mktOdds.win) continue;
+      const parts = key.split('|');
+      if (parts.length < 2) continue;
+      const ta = parts[0], tb = parts[1];
+      if (!ta || !tb || !TEAMS[ta] || !TEAMS[tb]) continue;
+      if (covered.has(`${ta}|${tb}`) || covered.has(`${tb}|${ta}`)) continue;
+      const date = parts[2] || '';
+      addEV(ta, tb, date, mktOdds);
+    }
+
     results.sort((a, b) => b.ev - a.ev);
     return results;
   });

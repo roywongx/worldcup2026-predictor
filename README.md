@@ -86,6 +86,10 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 - Request logging with elapsed time and result size
 - New API action `caldiag` for calibration diagnostics
 
+**Bug Fixes:**
+- EV Analysis knockout support — `runEV()` now iterates marketOdds for all unplayed matches (R32/R16/QF/SF/Final), not just group stage `MATCHES`
+- Polymarket API field rename — `ev.eventDate` → `ev.startDate` (Polymarket removed `eventDate` field, odds sync was silently returning empty)
+
 **Frontend cleanup:**
 - Removed ~60 lines of dead stub functions
 - All computation delegated to compute-server.js
@@ -181,6 +185,10 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 - 请求限流（20次/10秒窗口）
 - 请求日志（耗时、结果大小）
 - 新增 `caldiag` API 用于校准诊断
+
+**Bug 修复：**
+- EV 分析支持淘汰赛 — `runEV()` 现在遍历 marketOdds 中所有未踢比赛（R32/R16/QF/SF/决赛），不再局限于小组赛 `MATCHES`
+- Polymarket API 字段变更 — `ev.eventDate` → `ev.startDate`（Polymarket 移除了 `eventDate` 字段，赔率同步静默返回空数据）
 
 **前端清理：**
 - 删除 ~60 行死代码 stub 函数
