@@ -2371,7 +2371,7 @@ function renderProbabilities(){
     const be=TEAMS[t].elo,de=WC26.dynamicElo[t]||be,ed=de-be;
     const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
     const op=WC26.oddsToProb(TEAMS[t].odds);
-    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp>=99.9?'✓':rp.toFixed(1)+'%'}</td></tr>`;
+    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
   });
   h+='</table></div>';
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
