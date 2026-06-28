@@ -236,20 +236,13 @@ function runSimulation(params) {
         return [winners, res];
       }
       // R32: sequential pairs from bracket (16 matches → 16 winners)
+      // Bracket is ordered so sequential pairing produces correct R16 cross-pairing
       const r32pairs = [];
       for (let i = 0; i < koBracket.length; i += 2) r32pairs.push([koBracket[i], koBracket[i+1]]);
       let [w1, r32r] = runKORound(r32pairs, '2026-06-28');
-      // R16: FIFA cross-pairing (from actual schedule)
-      const r16pairs = [
-        [w1[1], w1[4]],   // M89: W(M74) vs W(M77)
-        [w1[0], w1[2]],   // M90: W(M73) vs W(M75)
-        [w1[3], w1[5]],   // M91: W(M76) vs W(M78)
-        [w1[6], w1[7]],   // M92: W(M79) vs W(M80)
-        [w1[10], w1[11]], // M93: W(M83) vs W(M84)
-        [w1[8], w1[9]],   // M94: W(M81) vs W(M82)
-        [w1[13], w1[15]], // M95: W(M86) vs W(M88)
-        [w1[12], w1[14]], // M96: W(M85) vs W(M87)
-      ];
+      // R16: sequential pairs from R32 winners
+      const r16pairs = [];
+      for (let i = 0; i < w1.length; i += 2) r16pairs.push([w1[i], w1[i+1]]);
       let [w2, r16r] = runKORound(r16pairs, '2026-07-04');
       // QF: sequential pairs from R16 winners
       const qfpairs = [[w2[0],w2[1]],[w2[2],w2[3]],[w2[4],w2[5]],[w2[6],w2[7]]];

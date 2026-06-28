@@ -100,23 +100,26 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
   }
   function getThirdAt(idx) { return T3[idx] || null; }
 
+  // FIFA R32 bracket — ordered so sequential pairing produces correct R16
+  // R16: [0]+[1]→M89, [2]+[3]→M90, [4]+[5]→M91, [6]+[7]→M92
+  //      [8]+[9]→M93, [10]+[11]→M94, [12]+[13]→M95, [14]+[15]→M96
   return [
-    R('A'), R('B'),                       // [0]  M73: South Africa vs Canada
-    W('C'), R('F'),                       // [1]  M74: Brazil vs Japan
-    W('E'), getThirdAt(2),                // [2]  M75: Germany vs 3rd
-    W('F'), R('C'),                       // [3]  M76: Netherlands vs Morocco
-    W('I'), getThirdAt(4),                // [4]  M77: France vs 3rd
+    W('C'), R('F'),                       // [0]  M74: Brazil vs Japan
+    W('I'), getThirdAt(4),                // [1]  M77: France vs Sweden
+    R('A'), R('B'),                       // [2]  M73: South Africa vs Canada
+    W('E'), getThirdAt(2),                // [3]  M75: Germany vs Paraguay
+    W('F'), R('C'),                       // [4]  M76: Netherlands vs Morocco
     R('E'), R('I'),                       // [5]  M78: Ivory Coast vs Norway
-    W('A'), getThirdAt(6),                // [6]  M79: Mexico vs 3rd
-    W('L'), getThirdAt(7),                // [7]  M80: England vs 3rd
-    W('D'), getThirdAt(8),                // [8]  M81: USA vs 3rd
-    W('G'), getThirdAt(9),                // [9]  M82: Belgium vs 3rd
-    R('K'), R('L'),                       // [10] M83: Portugal vs Croatia
-    W('H'), R('J'),                       // [11] M84: Spain vs Austria
-    W('B'), getThirdAt(12),               // [12] M85: Switzerland vs 3rd
-    W('J'), R('H'),                       // [13] M86: Argentina vs Cape Verde
-    W('K'), getThirdAt(14),               // [14] M87: Colombia vs 3rd
-    R('D'), R('G'),                       // [15] M88: Australia vs Egypt
+    W('A'), getThirdAt(6),                // [6]  M79: Mexico vs Ecuador
+    W('L'), getThirdAt(7),                // [7]  M80: England vs DR Congo
+    W('K'), R('L'),                       // [8]  M83: Portugal vs Croatia
+    W('H'), R('J'),                       // [9]  M84: Spain vs Austria
+    W('D'), getThirdAt(8),                // [10] M81: USA vs Bosnia
+    W('G'), getThirdAt(9),                // [11] M82: Belgium vs Senegal
+    W('J'), R('H'),                       // [12] M86: Argentina vs Cape Verde
+    R('D'), R('G'),                       // [13] M88: Australia vs Egypt
+    W('B'), getThirdAt(12),               // [14] M85: Switzerland vs Algeria
+    W('K'), getThirdAt(14),               // [15] M87: Colombia vs Ghana
   ];
 };
 
