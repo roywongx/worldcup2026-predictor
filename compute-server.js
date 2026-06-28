@@ -167,10 +167,14 @@ function runSimulation(params) {
     try {
       const koBracket = WC26.buildKOBracket(rankings, bestThirds, thirdPlaceGroups);
       // Seeded PRNG for deterministic Poisson sampling (same as MC, but seeded)
+      // Uses FNV-1a 32-bit hash — better distribution than DJB2
       function seedHash(str) {
-        let h = 0;
-        for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-        return Math.abs(h);
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = (h * 0x01000193) >>> 0;
+        }
+        return h;
       }
       function seededRandom(seed) {
         let s = seed % 2147483647; if (s <= 0) s += 2147483646;
