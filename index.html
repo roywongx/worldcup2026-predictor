@@ -1229,39 +1229,19 @@ function applyGroupResult(st, grp, team1, team2, score1, score2) {
   b.h2h[team1] = { gf: score2, ga: score1, pts: score2 > score1 ? 3 : score2 < score1 ? 0 : 1 };
 }
 WC26.applyGroupResult = applyGroupResult;
-// Stub functions for model operations (server handles computation)
-WC26.withPreTournamentElo = function(fn) { return fn(); };
-WC26.rebuildDynamicElo = function() {};
-WC26.initDynamicElo = function() {};
+// Frontend-only: data properties and UI helpers
 WC26.dynamicElo = {};
-// getBlendedProbs and getFormAdjustedLambdas removed — all computation on server
+// Frontend helpers (used by rendering code only):
 WC26.predictOutcome = function(probs, t1, t2) {
   if (probs.win >= probs.draw && probs.win >= probs.loss) return t1;
   if (probs.loss >= probs.draw) return t2;
   return 'draw';
 };
-// Server-side only: getBlendedProbs, getFormAdjustedLambdas, simKO, matchProbs,
-// buildKOBracket, fitIsotonicCalibration, fitAndCacheCalibration, trainAndBlendGBDT,
-// rankedProbabilityScore, brierScore, logLoss, expectedCalibrationError,
-// temperatureScale, calibrateProbs, applyIsotonicCalibration
-// Frontend helpers (used by rendering code):
-WC26.getStoredMarketOdds = function(map, t1, t2, date) {
-  if (!map) return null;
-  return map[`${t1}|${t2}|${date}`] || map[`${t1}|${t2}|`] || null;
-};
-WC26.getEffectiveElo = function(t) { return WC26.TEAMS[t] ? WC26.TEAMS[t].elo : 1500; };
-WC26.getRho = function(d) { return WC26.RHO_GROUP; };
 WC26.getForm = function(t, fm) { return fm && fm[t] ? fm[t] : (WC26.TEAMS[t] ? WC26.TEAMS[t].form : 0.5); };
 WC26.getTeamAtk = function(t) { return WC26.TEAMS[t] ? WC26.TEAMS[t].atk : 1.0; };
-WC26.FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800,87178291200,1307674368000];
-WC26.poissonPMF = function(k, l) { if (k < 0) return 0; return Math.exp(-l) * Math.pow(l, k) / (k <= 15 ? WC26.FACT[k] : 1); };
-WC26.dixonColesTau = function() { return 1; };
-WC26.negBinPMF = function(k, m, r) { return WC26.poissonPMF(k, m); };
-WC26.poissonSample = function(l) { return Math.round(l); };
-WC26.gammaSample = function() { return 1; };
-WC26.randn = function() { return 0; };
-WC26._logFactorial = function(n) { let r = 0; for (let i = 2; i <= n; i++) r += Math.log(i); return r; };
-// simulateOneTournament stub removed — all simulation on server
+// All model computation (getBlendedProbs, getFormAdjustedLambdas, simKO, matchProbs,
+// buildKOBracket, calibration, scoring, simulation, etc.) lives in compute-server.js
+// buildActualResultsMap lives in model/monte-carlo.js (loaded by compute-server.js)
 WC26.buildActualResultsMap = function(results) {
   const map = {};
   for (const r of (results || [])) {
@@ -1279,16 +1259,6 @@ WC26.simulationHistory = [];
 /** Run backtest on 2022 WC data. Returns accuracy, RPS, ECE. */
 function runBacktest() {
   return window._backtestResults || null;
-}
-
-/** Rolling backtest: compute Brier/RPS after each match for trend analysis.
- *  Returns array of { match, brier, rps, accuracy } for plotting curves. */
-function rollingBacktest() { return []; }
-
-/** Ablation experiment: measure incremental contribution of each model component.
- *  Temporarily disables GBDT, NB, Elo scaling, MD3 incentive one at a time. */
-function ablationExperiment() {
-  return [{name:'Model',accuracy:0,brier:0,rps:0}];
 }
 
 /** Compute rolling Brier scores for model and market */
@@ -1535,30 +1505,6 @@ function getCalibrationStats(actualResults) {
 // Fitted from historical predictions+outcomes, applied to new predictions
 // Replaces temperature scaling with data-driven probability calibration
 // ---- Dynamic form calculation ----
-
-/** Calculate time-weighted form from recent results with opponent strength weighting.
- *  Does not mutate TEAMS. */
-function calculateDynamicForm(actualResults) {
-  return {};
-}
-
-/** Get team momentum (recent form trend) for GBDT features.
- *  Returns -1..+1: positive = improving, negative = declining.
- *  Compares win rate of last 5 matches vs previous 5. */
-function getMomentum(team) {
-  const state = loadState();
-  const results = state.actualResults || [];
-  const teamMatches = [];
-  for (const r of results) {
-    if (r.team1 === team) teamMatches.push({ gd: r.score1 - r.score2 });
-    else if (r.team2 === team) teamMatches.push({ gd: r.score2 - r.score1 });
-  }
-  if (teamMatches.length < 3) return 0;
-  const recent = teamMatches.slice(-5);
-  const prev = teamMatches.slice(-10, -5);
-  const winRate = ms => ms.length === 0 ? 0.5 : ms.reduce((s, m) => s + (m.gd > 0 ? 1 : m.gd === 0 ? 0.33 : 0), 0) / ms.length;
-  return Math.max(-1, Math.min(1, (winRate(recent) - (prev.length ? winRate(prev) : 0.5)) * 1.5));
-}
 
 // ---- Actual results map (cached) ----
 
