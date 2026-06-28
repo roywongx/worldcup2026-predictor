@@ -102,7 +102,8 @@ WC26._logFactorial = function(n) {
 
 /** Sample from Poisson or Negative Binomial (when NB_R > 0, consistent with matchProbs) */
 WC26.poissonSample = function(lam) {
-  if (WC26.NB_R > 0) return WC26.negBinSample(lam, WC26.NB_R);
+  const nbR = (WC26.CONFIG && WC26.CONFIG.NB_R) || WC26.NB_R || 0;
+  if (nbR > 0) return WC26.negBinSample(lam, nbR);
   return WC26._poissonSampleRaw(lam);
 };
 

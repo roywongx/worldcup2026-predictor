@@ -39,13 +39,29 @@ WC26.SimpleGBDT = class SimpleGBDT {
     }
     this.trees = [];
 
+    // Temporal split: for each match, compute Elo from prior matches only
+    // to avoid data leakage (match N's features include match N's result)
     const X = [], y = [];
-    for (const r of actualResults) {
+    const savedElo = WC26.dynamicElo ? { ...WC26.dynamicElo } : {};
+    for (let i = 0; i < actualResults.length; i++) {
+      const r = actualResults[i];
+      // Compute Elo from matches 0..i-1 only
+      if (WC26.dynamicElo) {
+        for (const t of Object.keys(WC26.TEAMS)) WC26.dynamicElo[t] = WC26.TEAMS[t].elo;
+        for (let j = 0; j < i; j++) {
+          const pr = actualResults[j];
+          if (pr.score1 != null && pr.score2 != null) {
+            WC26.updateElo(pr.team1, pr.team2, pr.score1, pr.score2, pr.date);
+          }
+        }
+      }
       const features = this.extractFeatures(r.team1, r.team2);
       const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
       X.push(features);
       y.push(outcome);
     }
+    // Restore original Elo
+    if (WC26.dynamicElo) Object.assign(WC26.dynamicElo, savedElo);
 
     const n = X.length;
     const F = Array.from({ length: n }, () => [0, 0, 0]);

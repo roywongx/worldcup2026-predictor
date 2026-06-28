@@ -90,9 +90,9 @@ function runSimulation(params) {
   return WC26.withPreTournamentElo(() => {
     WC26.rebuildDynamicElo(actualResults);
     // Compute optimal temperature from calibration data (cached)
-    // Recompute optimal T when result count changes significantly
+    // Recompute optimal T when result count changes by 3+
     const resultCount = actualResults.length;
-    if (resultCount >= 30 && (!WC26._optimalT || Math.abs(resultCount - (WC26._optimalTCount || 0)) >= 5)) {
+    if (resultCount >= 30 && (!WC26._optimalT || Math.abs(resultCount - (WC26._optimalTCount || 0)) >= 3)) {
       WC26._optimalT = WC26.findOptimalTemperature(actualResults);
       WC26._optimalTCount = resultCount;
       console.log(`[Model] Optimal T: ${WC26._optimalT} (from ${resultCount} results)`);

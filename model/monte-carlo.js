@@ -375,11 +375,6 @@ WC26.buildActualResultsMap = function(actualResults) {
     map[key1] = val;
     map[key2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
     if(r.winner)map[key2].winner=r.winner;
-
-    const ndKey1 = `${r.team1}|${r.team2}|`;
-    const ndKey2 = `${r.team2}|${r.team1}|`;
-    if (!map[ndKey1]) map[ndKey1] = val;
-    if (!map[ndKey2]) map[ndKey2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
   }
 
   WC26._cachedActualMap = map;
