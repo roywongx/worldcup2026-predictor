@@ -406,6 +406,8 @@ function runEV(params) {
           results.push({
             team1: ta, team2: tb, date, outcome: labels[i],
             modelProb: modelProbs[i], marketProb: marketProbs[i],
+            modelAll: { w: probs.win, d: probs.draw, l: probs.loss },
+            marketAll: { w: mktOdds.win, d: mktOdds.draw, l: mktOdds.loss },
             edge, ev, kelly, payout,
             confidence: Math.abs(edge) / Math.max(marketProbs[i], 0.01),
             volume: mktOdds.volume || 0

@@ -2650,7 +2650,14 @@ function renderRadar(){
     h+=`</div>`;
   }
 
-  if(!hc){h+=`<div style="text-align:center;padding:3rem;color:var(--text3)">${t('prob.clickFetch')}</div>`;document.getElementById('section-radar').innerHTML=h;return;}
+  if(!hc){
+    h+=`<div style="text-align:center;padding:3rem;color:var(--text3)">${t('prob.clickFetch')}</div>`;
+    h+=`<div style="text-align:center;margin-top:0.5rem"><button class="data-btn data-btn-primary" onclick="syncPolymarketData()">🔄 Sync Polymarket</button></div>`;
+    document.getElementById('section-radar').innerHTML=h;
+    // Auto-fetch Polymarket data if not synced yet
+    if(!sd.lastFetch) { setTimeout(()=>syncPolymarketData(), 1000); }
+    return;
+  }
 
   // Champion probability comparison
   h+=`<div style="margin-top:1rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.champion')}</h4><div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>${t('radar.model')}</th><th>${t('radar.market')}</th><th>${t('radar.diff')}</th></tr>`;
