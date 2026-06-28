@@ -63,10 +63,11 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 ### Recent Changes (2026-06-28)
 
 **Bracket & Schedule:**
-- FIFA R32 bracket — Correct match order (M73-M88) per official schedule
+- FIFA R32 bracket — Correct match order per Wikipedia official schedule
+- R16 cross-pairing — Verified 8/8 correct against FIFA bracket
 - Third-place assignment — Backtracking with FIFA Annex C constraints
-- R16 cross-pairing — Correct FIFA bracket progression
 - Beijing time — All knockout match times converted ET→UTC+8
+- clear.html — Utility page to clear localStorage for data reset
 
 **Predictions:**
 - xG (expected goals) + W/D/L probabilities for all knockout matches
@@ -155,10 +156,11 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 ### 近期更新 (2026-06-28)
 
 **对阵与赛程：**
-- R32 对阵图 — 修正为 FIFA 官方赛程顺序（M73-M88）
+- R32 对阵图 — 按 Wikipedia 官方赛程顺序排列
+- R16 交叉配对 — 验证 8/8 正确（对照 FIFA 官方）
 - 第三名分配 — 回溯算法 + FIFA Annex C 约束
-- R16 交叉配对 — 正确的 FIFA 淘汰赛对阵
 - 北京时间 — 所有淘汰赛时间 ET→UTC+8 转换
+- clear.html — 清除 localStorage 重置数据的工具页面
 
 **预测功能：**
 - xG（期望进球）+ W/D/L 胜率显示
