@@ -137,7 +137,7 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
   const MD3_DATE = '2026-06-24';
   for (const [utcDate, bjTime, home, away, grp] of WC26.MATCHES) {
     let sa, sb;
-    const actual = actualMap[`${home}|${away}|`] || actualMap[`${home}|${away}|${utcDate}`];
+    const actual = actualMap[`${home}|${away}|${utcDate}`] || actualMap[`${home}|${away}|`];
     if (actual) {
       sa = actual.score1; sb = actual.score2;
     } else {

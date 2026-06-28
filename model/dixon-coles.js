@@ -291,7 +291,8 @@ WC26.koAdvanceProbs = function(home, away, formMap, matchDate, marketOddsMap) {
 
   const eloH=WC26.getEffectiveElo(home), eloA=WC26.getEffectiveElo(away), eloDiff=eloH-eloA;
   const gammaH=Math.max(0.10,0.70+0.05*(eloDiff/400)), gammaA=Math.max(0.10,0.70-0.05*(eloDiff/400));
-  const lhET=lh90*(30/90)*gammaH, laET=la90*(30/90)*gammaA;
+  const ET_FATIGUE = 0.85;
+  const lhET=lh90*(30/90)*gammaH*ET_FATIGUE, laET=la90*(30/90)*gammaA*ET_FATIGUE;
 
   let pW_ET=0,pD_ET=0,pL_ET=0;
   for(let i=0;i<=5;i++)for(let j=0;j<=5;j++){

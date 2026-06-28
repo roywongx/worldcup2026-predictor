@@ -181,7 +181,11 @@ WC26.temperatureScale = function(pW, pD, pL, T) {
  *  Pipeline order: Dixon-Coles → GBDT blend → Temperature scaling → Isotonic calibration.
  *  T is optimized BEFORE isotonic calibration. */
 WC26.findOptimalTemperature = function(actualResults) {
-  if (!actualResults || actualResults.length < 30) return 1.15; // fallback
+  // NOTE: r.probs are already temperature-scaled by getBlendedProbs.
+  // This function finds the optimal T by re-scaling the stored probs.
+  // Ideally, we should use raw DC+GBDT probs (before temperature), but
+  // those are not stored. This is a known limitation.
+  if (!actualResults || actualResults.length < 30) return 1.15;
   const candidates = [0.8, 0.9, 1.0, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.40, 1.50];
   let bestT = 1.15, bestLoss = Infinity;
   for (const T of candidates) {
@@ -199,32 +203,47 @@ WC26.findOptimalTemperature = function(actualResults) {
 };
 
 /** Export reliability diagram data for calibration diagnostics.
- *  Returns {bins: [{pred, actual, count}, ...], ece, mce} */
+ *  Returns {bins: [{pred, actual, count}, ...], ece, mce}
+ *  For each bin: pred = avg predicted probability, actual = fraction of outcomes in that class */
 WC26.reliabilityDiagram = function(actualResults, nBins) {
   nBins = nBins || 10;
-  const bins = Array.from({length: nBins}, () => ({pred:0, actual:0, count:0}));
+  // Track per-class bins: [win, draw, loss]
+  const classBins = [
+    Array.from({length: nBins}, () => ({pred:0, actual:0, count:0})),
+    Array.from({length: nBins}, () => ({pred:0, actual:0, count:0})),
+    Array.from({length: nBins}, () => ({pred:0, actual:0, count:0})),
+  ];
   let ece = 0, total = 0;
   for (const r of actualResults) {
     if (r.score1 == null || !r.probs) continue;
     const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
-    const p = [r.probs.win, r.probs.draw, r.probs.loss][outcome];
-    const binIdx = Math.min(nBins-1, Math.floor(p * nBins));
-    bins[binIdx].pred += p;
-    bins[binIdx].actual += (outcome === 0 && r.probs.win > r.probs.draw && r.probs.win > r.probs.loss) ? 1 :
-                            (outcome === 1 && r.probs.draw >= r.probs.win && r.probs.draw >= r.probs.loss) ? 1 :
-                            (outcome === 2 && r.probs.loss > r.probs.draw && r.probs.loss > r.probs.win) ? 1 : 0;
-    bins[binIdx].count++;
+    const probs = [r.probs.win, r.probs.draw, r.probs.loss];
+    // For each class, bin by that class's predicted probability
+    for (let cls = 0; cls < 3; cls++) {
+      const p = probs[cls];
+      const binIdx = Math.min(nBins-1, Math.floor(p * nBins));
+      classBins[cls][binIdx].pred += p;
+      classBins[cls][binIdx].actual += (outcome === cls) ? 1 : 0;
+      classBins[cls][binIdx].count++;
+    }
     total++;
   }
-  for (const b of bins) {
-    if (b.count > 0) {
-      b.pred /= b.count;
-      b.actual /= b.count;
-      ece += Math.abs(b.pred - b.actual) * b.count / total;
+  // Compute ECE across all classes
+  let eceSum = 0;
+  for (let cls = 0; cls < 3; cls++) {
+    for (const bin of classBins[cls]) {
+      if (bin.count > 0) {
+        bin.pred /= bin.count;
+        bin.actual /= bin.count;
+        eceSum += bin.count * Math.abs(bin.pred - bin.actual);
+      }
     }
   }
+  ece = total > 0 ? eceSum / (total * 3) : 0;
+  // Aggregate bins for display (use class 0 = win)
+  const bins = classBins[0];
   const mce = Math.max(...bins.filter(b=>b.count>0).map(b => Math.abs(b.pred - b.actual)));
-  return { bins, ece, mce, total };
+  return { bins, ece, mce, total, classBins };
 };
 
 /** Fit isotonic calibration using PAVA (Pool Adjacent Violators Algorithm).

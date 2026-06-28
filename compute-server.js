@@ -90,9 +90,12 @@ function runSimulation(params) {
   return WC26.withPreTournamentElo(() => {
     WC26.rebuildDynamicElo(actualResults);
     // Compute optimal temperature from calibration data (cached)
-    if (actualResults.length >= 30 && !WC26._optimalT) {
+    // Recompute optimal T when result count changes significantly
+    const resultCount = actualResults.length;
+    if (resultCount >= 30 && (!WC26._optimalT || Math.abs(resultCount - (WC26._optimalTCount || 0)) >= 5)) {
       WC26._optimalT = WC26.findOptimalTemperature(actualResults);
-      console.log(`[Model] Optimal T: ${WC26._optimalT}`);
+      WC26._optimalTCount = resultCount;
+      console.log(`[Model] Optimal T: ${WC26._optimalT} (from ${resultCount} results)`);
     }
     const formMap = calculateDynamicForm(actualResults);
     const actualMap = WC26.buildActualResultsMap(actualResults);
@@ -498,13 +501,14 @@ function runMonteCarloSingle(actualResults, N, marketOdds, savedElo) {
       });
       history.push({ champion: result.champion, matchResults: mr });
       successCount++;
-    } catch (e) { /* skip failed */ }
+    } catch (e) { console.warn('[MC] Simulation failed:', e.message); }
   }
 
   Object.assign(WC26.dynamicElo, savedElo);
+  if (successCount < N * 0.5) console.warn(`[MC] Only ${successCount}/${N} simulations succeeded`);
   mcResults = { champ, finalist, semi, quarter, r16, N: successCount };
   simulationHistory = history;
-  return { ...mcResults, simulationHistory: history };
+  return { ...mcResults, simulationHistory: history, _meta: { requested: N, succeeded: successCount, failed: N - successCount } };
 }
 
 // ── Action: montecarlo (parallel via worker_threads) ────────────────

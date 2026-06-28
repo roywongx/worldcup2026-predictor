@@ -48,7 +48,7 @@ for (let i = 0; i < batchSize; i++) {
     });
     history.push({ champion: result.champion, matchResults: mr });
     successCount++;
-  } catch (e) { /* skip failed */ }
+  } catch (e) { console.warn('[MC Worker] Simulation failed:', e.message); }
 }
 
 parentPort.postMessage({ champ, finalist, semi, quarter, r16, successCount, history });
