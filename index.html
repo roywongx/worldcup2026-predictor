@@ -2128,15 +2128,16 @@ function renderBracket(){
   const ch=ko.Champion;
   // Match info for knockout rounds (num, date, venue)
   // Beijing time (ET+12h) — bracket position order for correct R16 pairing
+  // Source: https://zh.wikipedia.org/wiki/2026年國際足協世界盃
   const R32_INFO=[
-    {num:74,date:'6/30 01:00',venue:'NRG, Houston'},{num:77,date:'7/1 05:00',venue:'MetLife, NY'},
-    {num:73,date:'6/29 03:00',venue:'SoFi, LA'},{num:75,date:'6/30 04:30',venue:'Gillette, Boston'},
-    {num:76,date:'6/30 09:00',venue:'BBVA, Monterrey'},{num:78,date:'7/1 01:00',venue:'AT&T, Dallas'},
+    {num:74,date:'6/30 04:30',venue:'Gillette, Boston'},{num:77,date:'7/1 05:00',venue:'MetLife, NY'},
+    {num:73,date:'6/29 03:00',venue:'SoFi, LA'},{num:75,date:'6/30 09:00',venue:'BBVA, Monterrey'},
+    {num:76,date:'6/30 01:00',venue:'NRG, Houston'},{num:78,date:'7/1 01:00',venue:'AT&T, Dallas'},
     {num:79,date:'7/1 09:00',venue:'Azteca, CDMX'},{num:80,date:'7/2 00:00',venue:'Mercedes-Benz, ATL'},
-    {num:83,date:'7/3 03:00',venue:'BMO, Toronto'},{num:84,date:'7/3 07:00',venue:'SoFi, LA'},
+    {num:83,date:'7/3 07:00',venue:'BMO, Toronto'},{num:84,date:'7/3 03:00',venue:'SoFi, LA'},
     {num:81,date:'7/2 08:00',venue:"Levi's, SF"},{num:82,date:'7/2 04:00',venue:'Lumen, Seattle'},
-    {num:86,date:'7/4 02:00',venue:'Hard Rock, MIA'},{num:88,date:'7/4 09:30',venue:'AT&T, Dallas'},
-    {num:85,date:'7/3 11:00',venue:'BC Place, VAN'},{num:87,date:'7/4 06:00',venue:'Arrowhead, KC'}
+    {num:86,date:'7/4 06:00',venue:'Hard Rock, MIA'},{num:88,date:'7/4 02:00',venue:'AT&T, Dallas'},
+    {num:85,date:'7/3 11:00',venue:'BC Place, VAN'},{num:87,date:'7/4 09:30',venue:'Arrowhead, KC'}
   ];
   // R16 bracket order: [0]=M89,[1]=M90,...[7]=M96
   const R16_INFO=[

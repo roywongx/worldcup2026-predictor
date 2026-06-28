@@ -101,14 +101,15 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
   function getThirdAt(idx) { return T3[idx] || null; }
 
   // FIFA R32 bracket — ordered so sequential pairing produces correct R16
+  // Source: https://zh.wikipedia.org/wiki/2026年國際足協世界盃
   // R16: [0]+[1]→M89, [2]+[3]→M90, [4]+[5]→M91, [6]+[7]→M92
   //      [8]+[9]→M93, [10]+[11]→M94, [12]+[13]→M95, [14]+[15]→M96
   return [
-    W('C'), R('F'),                       // [0]  M74: Brazil vs Japan
+    W('E'), getThirdAt(2),                // [0]  M74: Germany vs Paraguay
     W('I'), getThirdAt(4),                // [1]  M77: France vs Sweden
     R('A'), R('B'),                       // [2]  M73: South Africa vs Canada
-    W('E'), getThirdAt(2),                // [3]  M75: Germany vs Paraguay
-    W('F'), R('C'),                       // [4]  M76: Netherlands vs Morocco
+    W('F'), R('C'),                       // [3]  M75: Netherlands vs Morocco
+    W('C'), R('F'),                       // [4]  M76: Brazil vs Japan
     R('E'), R('I'),                       // [5]  M78: Ivory Coast vs Norway
     W('A'), getThirdAt(6),                // [6]  M79: Mexico vs Ecuador
     W('L'), getThirdAt(7),                // [7]  M80: England vs DR Congo
@@ -117,7 +118,7 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
     W('D'), getThirdAt(8),                // [10] M81: USA vs Bosnia
     W('G'), getThirdAt(9),                // [11] M82: Belgium vs Senegal
     W('J'), R('H'),                       // [12] M86: Argentina vs Cape Verde
-    R('D'), R('G'),                       // [13] M88: Australia vs Egypt
+    R('D'), getThirdAt(15),               // [13] M88: Australia vs Egypt
     W('B'), getThirdAt(12),               // [14] M85: Switzerland vs Algeria
     W('K'), getThirdAt(14),               // [15] M87: Colombia vs Ghana
   ];
