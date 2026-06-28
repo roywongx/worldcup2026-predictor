@@ -84,7 +84,7 @@ WC26.rebuildDynamicElo = function(results, regressRate) {
 
 /** Get effective Elo for a team (dynamic if available, else static) */
 WC26.getEffectiveElo = function(team) {
-  if (WC26.dynamicElo && WC26.dynamicElo[team]) return WC26.dynamicElo[team];
+  if (WC26.dynamicElo && WC26.dynamicElo[team] !== undefined) return WC26.dynamicElo[team];
   return WC26.TEAMS[team] ? WC26.TEAMS[team].elo : 1500;
 };
 

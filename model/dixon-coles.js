@@ -255,8 +255,9 @@ WC26.simKO = function(home, away, formMap, matchDate, marketOddsMap) {
     const eloDiff = eloH - eloA;
     const gammaH = Math.max(0.10, 0.70 + 0.05 * (eloDiff / 400));
     const gammaA = Math.max(0.10, 0.70 - 0.05 * (eloDiff / 400));
-    const lhET = lh90 * (30 / 90) * gammaH;
-    const laET = la90 * (30 / 90) * gammaA;
+    const ET_FATIGUE = 0.85; // Extra time goal rate decay (fatigue factor)
+    const lhET = lh90 * (30 / 90) * gammaH * ET_FATIGUE;
+    const laET = la90 * (30 / 90) * gammaA * ET_FATIGUE;
     const etH = WC26.poissonSample(lhET), etA = WC26.poissonSample(laET);
     ga += etH; gb += etA;
     if (ga !== gb) {
@@ -277,10 +278,10 @@ WC26.koAdvanceProbs = function(home, away, formMap, matchDate, marketOddsMap) {
   const [lh90, la90] = WC26.getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
   let pW90=0, pD90=0, pL90=0;
-  const useNB = WC26.NB_R > 0;
+  const useNB = WC26.CONFIG.NB_R > 0;
   for (let i=0;i<=10;i++) for (let j=0;j<=10;j++) {
-    const pi = useNB ? WC26.negBinPMF(i, lh90, WC26.NB_R) : WC26.poissonPMF(i, lh90);
-    const pj = useNB ? WC26.negBinPMF(j, la90, WC26.NB_R) : WC26.poissonPMF(j, la90);
+    const pi = useNB ? WC26.negBinPMF(i, lh90, WC26.CONFIG.NB_R) : WC26.poissonPMF(i, lh90);
+    const pj = useNB ? WC26.negBinPMF(j, la90, WC26.CONFIG.NB_R) : WC26.poissonPMF(j, la90);
     const p=pi*pj*WC26.dixonColesTau(i,j,lh90,la90,rho);
     if(i>j)pW90+=p;else if(i===j)pD90+=p;else pL90+=p;
   }
@@ -292,8 +293,8 @@ WC26.koAdvanceProbs = function(home, away, formMap, matchDate, marketOddsMap) {
 
   let pW_ET=0,pD_ET=0,pL_ET=0;
   for(let i=0;i<=5;i++)for(let j=0;j<=5;j++){
-    const pi = useNB ? WC26.negBinPMF(i, lhET, WC26.NB_R) : WC26.poissonPMF(i, lhET);
-    const pj = useNB ? WC26.negBinPMF(j, laET, WC26.NB_R) : WC26.poissonPMF(j, laET);
+    const pi = useNB ? WC26.negBinPMF(i, lhET, WC26.CONFIG.NB_R) : WC26.poissonPMF(i, lhET);
+    const pj = useNB ? WC26.negBinPMF(j, laET, WC26.CONFIG.NB_R) : WC26.poissonPMF(j, laET);
     const p=pi*pj*WC26.dixonColesTau(i,j,lhET,laET,rho);
     if(i>j)pW_ET+=p;else if(i===j)pD_ET+=p;else pL_ET+=p;
   }

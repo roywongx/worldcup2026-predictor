@@ -105,7 +105,7 @@ function runSimulation(params) {
     for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
 
     MATCHES.forEach(([utcDate, bjTime, ta, tb, grp]) => {
-      let actual = actualMap[`${ta}|${tb}|`] || actualMap[`${ta}|${tb}|${utcDate}`];
+      let actual = actualMap[`${ta}|${tb}|${utcDate}`] || actualMap[`${ta}|${tb}|`];
       const a = standings[grp][ta], b = standings[grp][tb];
 
       if (actual) {
@@ -173,7 +173,7 @@ function runSimulation(params) {
         for (const [home, away] of pairs) {
           const mktProbs = WC26.getStoredMarketOdds(marketOddsMap, home, away, kodate);
           const probs = WC26.getBlendedProbs(home, away, preFormMap, kodate, mktProbs);
-          const actual = actualMap[`${home}|${away}|`] || actualMap[`${away}|${home}|`];
+          const actual = actualMap[`${home}|${away}|${kodate}`] || actualMap[`${home}|${away}|`] || actualMap[`${away}|${home}|${kodate}`] || actualMap[`${away}|${home}|`];
           if (actual) {
             let ga = actual.score1, gb = actual.score2;
             const method = ga !== gb ? "90'" : 'PSO';
@@ -468,10 +468,11 @@ function runMonteCarlo(params) {
       });
       history.push({ champion: result.champion, matchResults: mr });
       successCount++;
-    } catch (e) { /* skip failed */ }
+    } catch (e) { console.warn('[MC] Sim failed:', e.message); }
   }
 
   Object.assign(WC26.dynamicElo, savedElo);
+  if (successCount < N * 0.5) console.warn(`[MC] Only ${successCount}/${N} simulations succeeded`);
   mcResults = { champ, finalist, semi, quarter, r16, N: successCount };
   simulationHistory = history;
 

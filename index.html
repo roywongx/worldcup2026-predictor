@@ -1234,18 +1234,13 @@ WC26.withPreTournamentElo = function(fn) { return fn(); };
 WC26.rebuildDynamicElo = function() {};
 WC26.initDynamicElo = function() {};
 WC26.dynamicElo = {};
-WC26.getBlendedProbs = function(t1, t2, formMap, date, mktOdds) {
-  return {win: 0.33, draw: 0.34, loss: 0.33};
-};
-WC26.getFormAdjustedLambdas = function(t1, t2, formMap, date, mktOdds) {
-  return [1.2, 1.0];
-};
+// getBlendedProbs and getFormAdjustedLambdas removed — all computation on server
 WC26.predictOutcome = function(probs, t1, t2) {
   if (probs.win >= probs.draw && probs.win >= probs.loss) return t1;
   if (probs.loss >= probs.draw) return t2;
   return 'draw';
 };
-WC26.simKO = function(h, a, fm, d, m) { return [1, 0, "90'"]; };
+// simKO stub removed — all simulation on server
 WC26.buildKOBracket = function() { return []; };
 WC26.fitIsotonicCalibration = function() { return null; };
 WC26.fitAndCacheCalibration = function() {};
@@ -1254,7 +1249,7 @@ WC26.getStoredMarketOdds = function(map, t1, t2, date) {
   if (!map) return null;
   return map[`${t1}|${t2}|${date}`] || map[`${t1}|${t2}|`] || null;
 };
-WC26.matchProbs = function() { return {win: 0.33, draw: 0.34, loss: 0.33}; };
+// matchProbs stub removed — all computation on server
 WC26.rankedProbabilityScore = function() { return 0; };
 WC26.brierScore = function() { return 0; };
 WC26.logLoss = function() { return 1; };
@@ -1275,14 +1270,15 @@ WC26.getAltitudePenalty = function() { return 0; };
 WC26.temperatureScale = function(w, d, l) { return { win: w, draw: d, loss: l }; };
 WC26.calibrateProbs = function(w, d, l) { return { win: w, draw: d, loss: l }; };
 WC26.applyIsotonicCalibration = function(p) { return p; };
-WC26.poissonPMF = function(k, l) { return Math.exp(-l) * Math.pow(l, k) / (k <= 15 ? WC26.FACT[k] : 1); };
+WC26.FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800,87178291200,1307674368000];
+WC26.poissonPMF = function(k, l) { if (k < 0) return 0; return Math.exp(-l) * Math.pow(l, k) / (k <= 15 ? WC26.FACT[k] : 1); };
 WC26.dixonColesTau = function() { return 1; };
 WC26.negBinPMF = function(k, m, r) { return WC26.poissonPMF(k, m); };
 WC26.poissonSample = function(l) { return Math.round(l); };
 WC26.gammaSample = function() { return 1; };
 WC26.randn = function() { return 0; };
 WC26._logFactorial = function(n) { let r = 0; for (let i = 2; i <= n; i++) r += Math.log(i); return r; };
-WC26.simulateOneTournament = function() { return { champion: '?', rounds: [] }; };
+// simulateOneTournament stub removed — all simulation on server
 WC26.buildActualResultsMap = function(results) {
   const map = {};
   for (const r of (results || [])) {
