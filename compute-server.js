@@ -3,6 +3,8 @@
 // Pre-loads all model files once, serves computation requests via HTTP on port 9091
 
 const http = require('http');
+const { Worker } = require('worker_threads');
+const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
@@ -459,8 +461,8 @@ function runBacktest() {
   });
 }
 
-// ── Action: montecarlo ───────────────────────────────────────────────
-function runMonteCarlo(params) {
+// ── Action: montecarlo (parallel via worker_threads) ────────────────
+async function runMonteCarlo(params) {
   const actualResults = params.actualResults || cachedActualResults;
   const N = params.N || 50000;
   const marketOdds = params.marketOdds || cachedMarketOdds;
@@ -468,32 +470,41 @@ function runMonteCarlo(params) {
   WC26.rebuildDynamicElo(actualResults);
   WC26.trainAndBlendGBDT(actualResults);
   const savedElo = { ...WC26.dynamicElo };
-  const actualMap = WC26.buildActualResultsMap(actualResults);
-  const preFormMap = {};
-  for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
 
+  // Determine worker count (use available CPUs, max 8, min 1)
+  const numWorkers = Math.max(1, Math.min(8, os.cpus().length));
+  const batchSize = Math.ceil(N / numWorkers);
+
+  console.log(`[MC] Running ${N} sims across ${numWorkers} workers (${batchSize} each)`);
+
+  // Spawn workers
+  const workers = [];
+  for (let w = 0; w < numWorkers; w++) {
+    const wN = (w === numWorkers - 1) ? N - batchSize * (numWorkers - 1) : batchSize;
+    if (wN <= 0) continue;
+    workers.push(new Promise((resolve, reject) => {
+      const worker = new Worker(path.join(__dirname, 'mc-worker.js'), {
+        workerData: { batchSize: wN, actualResults, marketOdds, savedElo }
+      });
+      worker.on('message', resolve);
+      worker.on('error', reject);
+    }));
+  }
+
+  // Collect results
+  const results = await Promise.all(workers);
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
   let successCount = 0;
   const history = [];
 
-  for (let i = 0; i < N; i++) {
-    Object.assign(WC26.dynamicElo, savedElo);
-    try {
-      const result = WC26.simulateOneTournament(actualMap, preFormMap, marketOdds);
-      if (!result || !result.champion) continue;
-      champ[result.champion] = (champ[result.champion] || 0) + 1;
-      if (result.rounds && result.rounds.length >= 4) for (const m of result.rounds[3]) { finalist[m.a] = (finalist[m.a] || 0) + 1; finalist[m.b] = (finalist[m.b] || 0) + 1; }
-      if (result.rounds && result.rounds.length >= 3) for (const m of result.rounds[2]) { semi[m.a] = (semi[m.a] || 0) + 1; semi[m.b] = (semi[m.b] || 0) + 1; }
-      if (result.rounds && result.rounds.length >= 2) for (const m of result.rounds[1]) { quarter[m.a] = (quarter[m.a] || 0) + 1; quarter[m.b] = (quarter[m.b] || 0) + 1; }
-      if (result.rounds && result.rounds.length >= 1) for (const m of result.rounds[0]) { r16[m.a] = (r16[m.a] || 0) + 1; r16[m.b] = (r16[m.b] || 0) + 1; }
-      // Store history for what-if queries
-      const mr = {};
-      result.rounds.slice(0, 4).forEach((round, ri) => {
-        for (const m of round) mr[`${m.a}|${m.b}`] = { ga: m.ga, gb: m.gb, round: ri + 1 };
-      });
-      history.push({ champion: result.champion, matchResults: mr });
-      successCount++;
-    } catch (e) { console.warn('[MC] Sim failed:', e.message); }
+  for (const r of results) {
+    successCount += r.successCount;
+    for (const [k, v] of Object.entries(r.champ)) champ[k] = (champ[k] || 0) + v;
+    for (const [k, v] of Object.entries(r.finalist)) finalist[k] = (finalist[k] || 0) + v;
+    for (const [k, v] of Object.entries(r.semi)) semi[k] = (semi[k] || 0) + v;
+    for (const [k, v] of Object.entries(r.quarter)) quarter[k] = (quarter[k] || 0) + v;
+    for (const [k, v] of Object.entries(r.r16)) r16[k] = (r16[k] || 0) + v;
+    history.push(...r.history);
   }
 
   Object.assign(WC26.dynamicElo, savedElo);
@@ -533,7 +544,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/compute') {
     let body = '';
     req.on('data', chunk => body += chunk);
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const input = JSON.parse(body);
         const action = input.action;
@@ -548,8 +559,8 @@ const server = http.createServer((req, res) => {
           case 'ev': result = runEV(params); break;
           case 'brier': result = runBrier(params); break;
           case 'backtest': result = runBacktest(); break;
-          case 'montecarlo': result = runMonteCarlo(params); break;
-          case 'full': result = runFull(params); break;
+          case 'montecarlo': result = await runMonteCarlo(params); break;
+          case 'full': result = await runFull(params); break;
           default:
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: `Unknown action: ${action}` }));
