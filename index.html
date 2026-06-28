@@ -2047,8 +2047,15 @@ function renderMatches(){
     // Show 90-min score for PSO matches, final score otherwise
     const scoreDisplay = (m.method==='PSO' && m.ga90!=null) ? `${m.ga90}-${m.gb90}` : `${m.ga}-${m.gb}`;
     const psoNote = (m.method==='PSO' && m.ga90!=null) ? ` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>` : '';
-    // Expected goals prediction (for betting reference)
-    const xgLine = (m.lh!=null && m.la!=null) ? `<div style="font-size:0.6rem;color:var(--text3);padding-left:2.5rem;margin-top:0.1rem">xG: ${m.lh.toFixed(2)} - ${m.la.toFixed(2)}</div>` : '';
+    // Expected goals + top-3 most probable scores (for betting reference)
+    let xgLine = '';
+    if (m.lh!=null && m.la!=null) {
+      xgLine += `<div style="font-size:0.6rem;color:var(--text3);padding-left:2.5rem;margin-top:0.1rem">xG: ${m.lh.toFixed(2)} - ${m.la.toFixed(2)}`;
+      if (m.top3 && m.top3.length > 0) {
+        xgLine += ` · ${m.top3.map(s => s.s + ' ' + (s.p*100).toFixed(0) + '%').join(' / ')}`;
+      }
+      xgLine += '</div>';
+    }
     h+=`<div class="match-card${m.label==='FIN'?' final-match':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}</div>`;
   });
   h+='</div>';document.getElementById('section-matches').innerHTML=h;
@@ -2099,6 +2106,7 @@ function renderBracket(){
     s+=`<div class="ko-team ${wA}"><span class="ko-flag">${bf(m.a)}</span><span class="ko-name">${WC26.getTeamName(m.a)}</span><span class="ko-score">${sA}</span></div>`;
     s+=`<div class="ko-team ${wB}"><span class="ko-flag">${bf(m.b)}</span><span class="ko-name">${WC26.getTeamName(m.b)}</span><span class="ko-score">${sB}</span></div>`;
     if(m.probs){const p=m.probs;s+=`<div class="ko-probs"><span class="kp w">${(p.win*100).toFixed(0)}%</span><span class="kp d">${(p.draw*100).toFixed(0)}%</span><span class="kp l">${(p.loss*100).toFixed(0)}%</span></div>`;}
+    if(m.top3&&m.top3.length>0){s+=`<div style="font-size:0.5rem;color:var(--text3);padding:0 0.45rem">${m.top3.map(s=>s.s+' '+(s.p*100).toFixed(0)+'%').join(' / ')}</div>`;}
     if(m.method) s+=`<div class="ko-method">${m.method==='PSO'?`PSO ${m.ga}-${m.gb}`:m.method}</div>`;
     s+=`</div>`;
     return s;

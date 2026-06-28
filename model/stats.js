@@ -177,6 +177,56 @@ WC26.temperatureScale = function(pW, pD, pL, T) {
   return { win: rW / rSum, draw: rD / rSum, loss: rL / rSum };
 };
 
+/** Find optimal temperature T by grid search minimizing log loss on calibration data.
+ *  Pipeline order: Dixon-Coles → GBDT blend → Temperature scaling → Isotonic calibration.
+ *  T is optimized BEFORE isotonic calibration. */
+WC26.findOptimalTemperature = function(actualResults) {
+  if (!actualResults || actualResults.length < 30) return 1.15; // fallback
+  const candidates = [0.8, 0.9, 1.0, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.40, 1.50];
+  let bestT = 1.15, bestLoss = Infinity;
+  for (const T of candidates) {
+    let loss = 0;
+    for (const r of actualResults) {
+      if (r.score1 == null || r.score2 == null || !r.probs) continue;
+      const scaled = WC26.temperatureScale(r.probs.win, r.probs.draw, r.probs.loss, T);
+      const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
+      const p = [scaled.win, scaled.draw, scaled.loss][outcome];
+      loss -= Math.log(Math.max(0.001, p));
+    }
+    if (loss < bestLoss) { bestLoss = loss; bestT = T; }
+  }
+  return bestT;
+};
+
+/** Export reliability diagram data for calibration diagnostics.
+ *  Returns {bins: [{pred, actual, count}, ...], ece, mce} */
+WC26.reliabilityDiagram = function(actualResults, nBins) {
+  nBins = nBins || 10;
+  const bins = Array.from({length: nBins}, () => ({pred:0, actual:0, count:0}));
+  let ece = 0, total = 0;
+  for (const r of actualResults) {
+    if (r.score1 == null || !r.probs) continue;
+    const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
+    const p = [r.probs.win, r.probs.draw, r.probs.loss][outcome];
+    const binIdx = Math.min(nBins-1, Math.floor(p * nBins));
+    bins[binIdx].pred += p;
+    bins[binIdx].actual += (outcome === 0 && r.probs.win > r.probs.draw && r.probs.win > r.probs.loss) ? 1 :
+                            (outcome === 1 && r.probs.draw >= r.probs.win && r.probs.draw >= r.probs.loss) ? 1 :
+                            (outcome === 2 && r.probs.loss > r.probs.draw && r.probs.loss > r.probs.win) ? 1 : 0;
+    bins[binIdx].count++;
+    total++;
+  }
+  for (const b of bins) {
+    if (b.count > 0) {
+      b.pred /= b.count;
+      b.actual /= b.count;
+      ece += Math.abs(b.pred - b.actual) * b.count / total;
+    }
+  }
+  const mce = Math.max(...bins.filter(b=>b.count>0).map(b => Math.abs(b.pred - b.actual)));
+  return { bins, ece, mce, total };
+};
+
 /** Fit isotonic calibration using PAVA (Pool Adjacent Violators Algorithm).
  *  Recomputes raw DC probabilities to avoid double-calibrating on stored probs. */
 WC26.fitIsotonicCalibration = function(actualResults) {

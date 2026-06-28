@@ -89,6 +89,11 @@ function runSimulation(params) {
 
   return WC26.withPreTournamentElo(() => {
     WC26.rebuildDynamicElo(actualResults);
+    // Compute optimal temperature from calibration data (cached)
+    if (actualResults.length >= 30 && !WC26._optimalT) {
+      WC26._optimalT = WC26.findOptimalTemperature(actualResults);
+      console.log(`[Model] Optimal T: ${WC26._optimalT}`);
+    }
     const formMap = calculateDynamicForm(actualResults);
     const actualMap = WC26.buildActualResultsMap(actualResults);
     const marketOddsMap = marketOdds;
@@ -175,11 +180,24 @@ function runSimulation(params) {
         do { k++; p *= rng(); } while (p > L);
         return k - 1;
       }
+      // Top-N most probable scores with probabilities (for confidence display)
+      function topScores(lh, la, n) {
+        const rho = WC26.RHO_GROUP || -0.20;
+        const scores = [];
+        for (let x = 0; x <= 5; x++) for (let y = 0; y <= 5; y++) {
+          const p = WC26.poissonPMF(x, lh) * WC26.poissonPMF(y, la) * WC26.dixonColesTau(x, y, lh, la, rho);
+          scores.push({s:`${x}-${y}`, p});
+        }
+        scores.sort((a,b) => b.p - a.p);
+        return scores.slice(0, n);
+      }
+
       // KO score: seeded Poisson + ET/PK if draw (deterministic per match)
       function detScore(home, away, lh, la, kodate) {
         const rng = seededRandom(seedHash(`${home}|${away}|${kodate}`));
         const ga90 = seededPoisson(lh, rng), gb90 = seededPoisson(la, rng);
-        if (ga90 !== gb90) return { ga90, gb90, ga: ga90, gb: gb90, method: "90'", lh, la };
+        const top3 = topScores(lh, la, 3);
+        if (ga90 !== gb90) return { ga90, gb90, ga: ga90, gb: gb90, method: "90'", lh, la, top3 };
         // Draw → extra time
         const eloH = WC26.getEffectiveElo ? WC26.getEffectiveElo(home) : 1500;
         const eloA = WC26.getEffectiveElo ? WC26.getEffectiveElo(away) : 1500;
@@ -188,12 +206,12 @@ function runSimulation(params) {
         const ET_FATIGUE = 0.85;
         const etH = seededPoisson(lh * (30/90) * gammaH * ET_FATIGUE, rng);
         const etA = seededPoisson(la * (30/90) * gammaA * ET_FATIGUE, rng);
-        if (ga90 + etH !== gb90 + etA) return { ga90, gb90, ga: ga90+etH, gb: gb90+etA, method: 'AET', lh, la };
+        if (ga90 + etH !== gb90 + etA) return { ga90, gb90, ga: ga90+etH, gb: gb90+etA, method: 'AET', lh, la, top3 };
         // Still draw → penalties
         const pHome = Math.max(0.40, Math.min(0.60, 0.50 + 0.05 * ((eloH - eloA) / 400)));
         const ga = rng() < pHome ? ga90 + 1 : ga90;
         const gb = ga === ga90 ? gb90 + 1 : gb90;
-        return { ga90, gb90, ga, gb, method: 'PSO', lh, la };
+        return { ga90, gb90, ga, gb, method: 'PSO', lh, la, top3 };
       }
       function runKORound(pairs, kodate) {
         const res = [], winners = [];
@@ -212,7 +230,7 @@ function runSimulation(params) {
             const [lh, la] = WC26.getFormAdjustedLambdas(home, away, preFormMap, kodate, mktProbs);
             const sc = detScore(home, away, lh, la, kodate);
             winners.push(sc.ga > sc.gb ? home : away);
-            res.push({ a: home, ga: sc.ga, gb: sc.gb, b: away, method: sc.method, probs, mkt: mktProbs || null, ga90: sc.ga90, gb90: sc.gb90, lh: sc.lh, la: sc.la });
+            res.push({ a: home, ga: sc.ga, gb: sc.gb, b: away, method: sc.method, probs, mkt: mktProbs || null, ga90: sc.ga90, gb90: sc.gb90, lh: sc.lh, la: sc.la, top3: sc.top3 || null });
           }
         }
         return [winners, res];
@@ -555,6 +573,15 @@ async function runMonteCarlo(params) {
   return { ...mcResults, simulationHistory: history };
 }
 
+// ── Action: calibration diagnostics (reliability diagram + optimal T) ──
+function runCalibrationDiag(params) {
+  const actualResults = params.actualResults || cachedActualResults;
+  const nBins = params.nBins || 10;
+  const reliability = WC26.reliabilityDiagram(actualResults, nBins);
+  const optimalT = WC26.findOptimalTemperature(actualResults);
+  return { reliability, optimalT, pipeline: 'Dixon-Coles → GBDT(20%) → Temperature → Isotonic' };
+}
+
 // ── Action: full (simulation + calibration + ev + brier + backtest) ──
 function runFull(params) {
   const simResult = runSimulation(params);
@@ -572,6 +599,16 @@ function runFull(params) {
   };
 }
 
+// ── Rate limiting ────────────────────────────────────────────────────
+const requestLog = []; // {action, t0, elapsed, size, error}
+const RATE_WINDOW = 10000; // 10s window
+const RATE_LIMIT = 20; // max 20 requests per window
+function checkRateLimit() {
+  const now = Date.now();
+  while (requestLog.length > 0 && requestLog[0].t0 < now - RATE_WINDOW) requestLog.shift();
+  return requestLog.length < RATE_LIMIT;
+}
+
 // ── HTTP Server ──────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   // CORS
@@ -582,20 +619,31 @@ const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
   if (req.method === 'POST' && req.url === '/compute') {
+    // Rate limit check
+    if (!checkRateLimit()) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Rate limited', type: 'RATE_LIMIT', retryAfter: 5 }));
+      return;
+    }
+
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
+      const input = JSON.parse(body);
+      const action = input.action;
+      const params = input.params || {};
+      const t0 = Date.now();
+      const logEntry = { action, t0, elapsed: 0, size: 0, error: null };
+      requestLog.push(logEntry);
+
       try {
-        const input = JSON.parse(body);
-        const action = input.action;
-        const params = input.params || {};
-        const t0 = Date.now();
         let result;
 
         switch (action) {
           case 'simulation': result = runSimulation(params); break;
           case 'reevaluate': result = runReevaluate(params); break;
           case 'calibration': result = runCalibration(params); break;
+          case 'caldiag': result = runCalibrationDiag(params); break;
           case 'ev': result = runEV(params); break;
           case 'brier': result = runBrier(params); break;
           case 'backtest': result = runBacktest(); break;
@@ -603,19 +651,29 @@ const server = http.createServer((req, res) => {
           case 'full': result = await runFull(params); break;
           default:
             res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: `Unknown action: ${action}` }));
+            res.end(JSON.stringify({ error: `Unknown action: ${action}`, type: 'INVALID_ACTION' }));
             return;
         }
 
         const elapsed = Date.now() - t0;
-        console.log(`[Compute] ${action} completed in ${elapsed}ms`);
         const output = JSON.stringify(result);
+        logEntry.elapsed = elapsed;
+        logEntry.size = output.length;
+        console.log(`[Compute] ${action} completed in ${elapsed}ms (${(output.length/1024).toFixed(1)}KB)`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(output);
       } catch (e) {
-        console.error('[Compute] Error:', e.message);
+        logEntry.error = e.message;
+        const elapsed = Date.now() - t0;
+        logEntry.elapsed = elapsed;
+        console.error(`[Compute] ${action} FAILED in ${elapsed}ms:`, e.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
+        res.end(JSON.stringify({
+          error: e.message,
+          type: 'COMPUTE_ERROR',
+          action,
+          suggestion: 'Check server logs for details'
+        }));
       }
     });
   } else if (req.method === 'GET' && req.url === '/health') {
