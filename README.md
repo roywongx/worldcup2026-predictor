@@ -89,6 +89,9 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 **Bug Fixes:**
 - EV Analysis knockout support — `runEV()` now iterates marketOdds for all unplayed matches (R32/R16/QF/SF/Final), not just group stage `MATCHES`
 - Polymarket API field rename — `ev.eventDate` → `ev.startDate` (Polymarket removed `eventDate` field, odds sync was silently returning empty)
+- MC market odds lookup — `simMatch()`/`simKO()` now use `getStoredMarketOdds()` (10 fallback strategies) instead of fragile direct map lookup (2 exact matches)
+- EV date-aware dedup — knockout matches between repeat opponents no longer silently skipped
+- mc-server.js odds passthrough — fallback MC path now receives market odds (was hardcoded `{}`)
 
 **Frontend cleanup:**
 - Removed ~60 lines of dead stub functions
@@ -189,6 +192,9 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 **Bug 修复：**
 - EV 分析支持淘汰赛 — `runEV()` 现在遍历 marketOdds 中所有未踢比赛（R32/R16/QF/SF/决赛），不再局限于小组赛 `MATCHES`
 - Polymarket API 字段变更 — `ev.eventDate` → `ev.startDate`（Polymarket 移除了 `eventDate` 字段，赔率同步静默返回空数据）
+- MC 赔率查找 — `simMatch()`/`simKO()` 改用 `getStoredMarketOdds()`（10 种回退策略），替代脆弱的直接 map 查找（2 种精确匹配）
+- EV 日期感知去重 — 同组再遇的淘汰赛不再被静默跳过
+- mc-server.js 赔率透传 — 回退 MC 路径现在接收市场赔率（原硬编码 `{}`）
 
 **前端清理：**
 - 删除 ~60 行死代码 stub 函数
