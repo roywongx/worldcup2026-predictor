@@ -278,7 +278,8 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
       const home = currentRound[i];
       const away = currentRound[i + 1];
 
-      const actual = actualMap[`${home}|${away}|`] || actualMap[`${away}|${home}|`];
+      const actual = actualMap[`${home}|${away}|${koDate}`] || actualMap[`${home}|${away}|`]
+        || actualMap[`${away}|${home}|${koDate}`] || actualMap[`${away}|${home}|`];
       let ga, gb, method;
       if (actual) {
         ga = actual.score1; gb = actual.score2;

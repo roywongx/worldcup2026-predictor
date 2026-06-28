@@ -596,7 +596,7 @@ async function runMonteCarlo(params) {
   mcResults = { champ, finalist, semi, quarter, r16, N: successCount };
   simulationHistory = history;
 
-  return { ...mcResults, simulationHistory: history };
+  return { ...mcResults, simulationHistory: history, _meta: { requested: N, succeeded: successCount, failed: N - successCount } };
 }
 
 // ── Action: calibration diagnostics (reliability diagram + optimal T) ──

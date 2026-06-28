@@ -276,7 +276,7 @@ WC26.simKO = function(home, away, formMap, matchDate, marketOddsMap) {
 /** Analytical knockout advance probabilities (3-stage: 90min + ET + PK) */
 WC26.koAdvanceProbs = function(home, away, formMap, matchDate, marketOddsMap) {
   const rho = WC26.getRho(matchDate);
-  const marketProbs = marketOddsMap ? (marketOddsMap[`${home}|${away}|${matchDate}`] || marketOddsMap[`${home}|${away}|`]) : null;
+  const marketProbs = WC26.getStoredMarketOdds ? WC26.getStoredMarketOdds(marketOddsMap, home, away, matchDate) : null;
   const [lh90, la90] = WC26.getFormAdjustedLambdas(home, away, formMap, matchDate, marketProbs);
 
   let pW90=0, pD90=0, pL90=0;

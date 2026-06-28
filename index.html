@@ -1598,7 +1598,7 @@ function mapTeamName(apiName) {
     'England': 'England', 'Germany': 'Germany', 'Portugal': 'Portugal', 'Netherlands': 'Netherlands',
     'Belgium': 'Belgium', 'Colombia': 'Colombia', 'Uruguay': 'Uruguay', 'Croatia': 'Croatia',
     'Japan': 'Japan', 'Morocco': 'Morocco', 'Mexico': 'Mexico', 'USA': 'United States',
-    'United States': 'United States', 'USMNT': 'United States', 'Senegal': 'Senegal',
+    'United States': 'United States', 'the United States': 'United States', 'USMNT': 'United States', 'Senegal': 'Senegal',
     'Ecuador': 'Ecuador', 'Switzerland': 'Switzerland', 'Turkey': 'Turkey', 'Türkiye': 'Turkey',
     'South Korea': 'South Korea', 'Korea Republic': 'South Korea', 'Korea': 'South Korea',
     'Australia': 'Australia', 'Norway': 'Norway', 'Austria': 'Austria', 'Egypt': 'Egypt',
@@ -2371,7 +2371,7 @@ function displayWhatIfResults() {
 
 function renderProbabilities(){
   try{
-  if(!mcResults){document.getElementById('section-probabilities').innerHTML=`<div style="text-align:center;padding:3rem"><div style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">${t('prob.click')}</div><button class="btn-pill btn-primary" onclick="runMonteCarloUI()" style="font-size:1rem;padding:0.8rem 2rem">${t('prob.btn')}</button><div style="font-size:0.72rem;color:var(--text3);margin-top:1rem">${t('prob.desc')}</div></div>`;return;}
+  if(!mcResults||!mcResults.N){document.getElementById('section-probabilities').innerHTML=`<div style="text-align:center;padding:3rem"><div style="font-size:0.9rem;color:var(--text2);margin-bottom:1rem">${t('prob.click')}</div><button class="btn-pill btn-primary" onclick="runMonteCarloUI()" style="font-size:1rem;padding:0.8rem 2rem">${t('prob.btn')}</button><div style="font-size:0.72rem;color:var(--text3);margin-top:1rem">${t('prob.desc')}</div></div>`;return;}
   const{champ,finalist,semi,quarter,r16,N}=mcResults;
   const teams=Object.keys(TEAMS).sort((a,b)=>(champ[b]||0)-(champ[a]||0));
   let h=`<div class="stats-row">`;
@@ -2773,7 +2773,7 @@ async function fetchResults(){
       for(const m of altData){
         let s1,s2,t1,t2;
         if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);}
-        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.home_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);}
+        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);}
         if(s1!=null&&s2!=null&&t1&&t2&&TEAMS[t1]&&TEAMS[t2])altMap[`${t1}|${t2}`]={s1,s2};
       }
     }
@@ -2788,7 +2788,7 @@ async function fetchResults(){
       let s1,s2,t1,t2,md,winner=null;
       if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;}
       else if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';}
-      else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.home_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
+      else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
       const k=`${t1}|${t2}`;
 
