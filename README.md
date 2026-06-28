@@ -63,10 +63,12 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 ### Recent Changes (2026-06-28)
 
 **Bracket & Schedule:**
-- FIFA R32 bracket — Correct match order per Wikipedia official schedule
+- FIFA R32 bracket — 16/16 matches verified correct against actual results
 - R16 cross-pairing — Verified 8/8 correct against FIFA bracket
 - Third-place assignment — Backtracking with FIFA Annex C constraints
 - Beijing time — All knockout match times converted ET→UTC+8
+- M83 fix — R(K) vs R(L) = Portugal vs Croatia (was incorrectly W(K))
+- M88 fix — R(D) vs R(G) = Australia vs Egypt (was incorrectly 3rd(G))
 - clear.html — Utility page to clear localStorage for data reset
 
 **Predictions:**
@@ -156,10 +158,12 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 ### 近期更新 (2026-06-28)
 
 **对阵与赛程：**
-- R32 对阵图 — 按 Wikipedia 官方赛程顺序排列
+- R32 对阵图 — 16/16 场比赛验证正确（对照实际赛果）
 - R16 交叉配对 — 验证 8/8 正确（对照 FIFA 官方）
 - 第三名分配 — 回溯算法 + FIFA Annex C 约束
 - 北京时间 — 所有淘汰赛时间 ET→UTC+8 转换
+- M83 修正 — R(K) vs R(L) = 葡萄牙 vs 克罗地亚（原错误为 W(K)）
+- M88 修正 — R(D) vs R(G) = 澳大利亚 vs 埃及（原错误为 3rd(G)）
 - clear.html — 清除 localStorage 重置数据的工具页面
 
 **预测功能：**
