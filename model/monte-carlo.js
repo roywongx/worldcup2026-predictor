@@ -368,13 +368,20 @@ WC26.buildActualResultsMap = function(actualResults) {
   const map = {};
   for (const r of actualResults || []) {
     const dateStr = r.date ? r.date.substring(0, 10) : '';
-    const key1 = `${r.team1}|${r.team2}|${dateStr}`;
-    const key2 = `${r.team2}|${r.team1}|${dateStr}`;
     const val = { score1: r.score1, score2: r.score2, team1: r.team1, team2: r.team2 };
     if(r.winner)val.winner=r.winner;
-    map[key1] = val;
-    map[key2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
-    if(r.winner)map[key2].winner=r.winner;
+    // Date-specific key
+    if (dateStr) {
+      map[`${r.team1}|${r.team2}|${dateStr}`] = val;
+      map[`${r.team2}|${r.team1}|${dateStr}`] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
+      if(r.winner)map[`${r.team2}|${r.team1}|${dateStr}`].winner=r.winner;
+    }
+    // Dateless fallback (handles date format mismatches: UTC vs Beijing time)
+    const dlKey1 = `${r.team1}|${r.team2}|`;
+    const dlKey2 = `${r.team2}|${r.team1}|`;
+    if (!map[dlKey1]) map[dlKey1] = val;
+    if (!map[dlKey2]) map[dlKey2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
+    if(r.winner){if(!map[dlKey1].winner)map[dlKey1].winner=r.winner;if(!map[dlKey2].winner)map[dlKey2].winner=r.winner;}
   }
 
   WC26._cachedActualMap = map;

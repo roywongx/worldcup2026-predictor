@@ -2082,8 +2082,12 @@ function renderMatches(){
     101:{d:'7/15',t:'03:00',v:'AT&T, Dallas'},102:{d:'7/16',t:'03:00',v:'Mercedes-Benz, ATL'},
     103:{d:'7/19',t:'03:00',v:'Hard Rock, MIA'},104:{d:'7/20',t:'02:00',v:'MetLife, NY'}
   };
-  let n=73;
-  ['R32','R16','QF','SF'].forEach(r=>{ko[r].forEach(m=>{const i=KO_INFOS[n]||{};KO_ALL.push({n,d:i.d||'',t:i.t||'',v:i.v||'',...m});n++;});});
+  // R32 bracket position → FIFA match number (matches buildKOBracket order)
+  const R32_NUMS=[74,77,73,75,76,78,79,80,83,84,81,82,86,88,85,87];
+  let ri=0;
+  ko.R32.forEach(m=>{const n=R32_NUMS[ri]||73+ri;const i=KO_INFOS[n]||{};KO_ALL.push({n,d:i.d||'',t:i.t||'',v:i.v||'',...m});ri++;});
+  let n=89;
+  ['R16','QF','SF'].forEach(r=>{ko[r].forEach(m=>{const i=KO_INFOS[n]||{};KO_ALL.push({n,d:i.d||'',t:i.t||'',v:i.v||'',...m});n++;});});
   KO_ALL.push({n:103,d:'7/19',t:'03:00',v:'Hard Rock, MIA',...ko.Third,label:'3rd'});
   KO_ALL.push({n:104,d:'7/20',t:'02:00',v:'MetLife, NY',...ko.Final,label:'FIN'});
   // Zero-pad date for correct string sorting: "7/1" → "07/01", "7/10" → "07/10"
