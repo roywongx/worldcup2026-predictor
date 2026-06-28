@@ -96,6 +96,7 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
         break;
       }
     }
+    if (!assigned) console.warn(`[Bracket] No third-place team for slot M${73+s.m}`);
   }
   function getThirdAt(idx) { return T3[idx] || null; }
 

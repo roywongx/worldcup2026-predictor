@@ -1240,36 +1240,19 @@ WC26.predictOutcome = function(probs, t1, t2) {
   if (probs.loss >= probs.draw) return t2;
   return 'draw';
 };
-// simKO stub removed — all simulation on server
-WC26.buildKOBracket = function() { return []; };
-WC26.fitIsotonicCalibration = function() { return null; };
-WC26.fitAndCacheCalibration = function() {};
-WC26.trainAndBlendGBDT = function() {};
+// Server-side only: getBlendedProbs, getFormAdjustedLambdas, simKO, matchProbs,
+// buildKOBracket, fitIsotonicCalibration, fitAndCacheCalibration, trainAndBlendGBDT,
+// rankedProbabilityScore, brierScore, logLoss, expectedCalibrationError,
+// temperatureScale, calibrateProbs, applyIsotonicCalibration
+// Frontend helpers (used by rendering code):
 WC26.getStoredMarketOdds = function(map, t1, t2, date) {
   if (!map) return null;
   return map[`${t1}|${t2}|${date}`] || map[`${t1}|${t2}|`] || null;
 };
-// matchProbs stub removed — all computation on server
-WC26.rankedProbabilityScore = function() { return 0; };
-WC26.brierScore = function() { return 0; };
-WC26.logLoss = function() { return 1; };
-WC26.expectedCalibrationError = function() { return 0; };
-WC26.WC2022_RESULTS = [];
-WC26.WC2022_TEAMS = {};
-WC26.gbdt = { trained: false };
-WC26.isotonicCalibration = null;
-WC26.NB_R = 0;
 WC26.getEffectiveElo = function(t) { return WC26.TEAMS[t] ? WC26.TEAMS[t].elo : 1500; };
 WC26.getRho = function(d) { return WC26.RHO_GROUP; };
 WC26.getForm = function(t, fm) { return fm && fm[t] ? fm[t] : (WC26.TEAMS[t] ? WC26.TEAMS[t].form : 0.5); };
 WC26.getTeamAtk = function(t) { return WC26.TEAMS[t] ? WC26.TEAMS[t].atk : 1.0; };
-WC26.getEffectiveAtkDef = function(t) { return WC26.TEAMS[t] ? { atk: WC26.TEAMS[t].atk, def: WC26.TEAMS[t].def } : { atk: 1, def: 1 }; };
-WC26.getMomentum = function() { return 0; };
-WC26.getTilt = function() { return 0; };
-WC26.getAltitudePenalty = function() { return 0; };
-WC26.temperatureScale = function(w, d, l) { return { win: w, draw: d, loss: l }; };
-WC26.calibrateProbs = function(w, d, l) { return { win: w, draw: d, loss: l }; };
-WC26.applyIsotonicCalibration = function(p) { return p; };
 WC26.FACT = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800,87178291200,1307674368000];
 WC26.poissonPMF = function(k, l) { if (k < 0) return 0; return Math.exp(-l) * Math.pow(l, k) / (k <= 15 ? WC26.FACT[k] : 1); };
 WC26.dixonColesTau = function() { return 1; };

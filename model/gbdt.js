@@ -176,6 +176,7 @@ WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
   }
 
   // Step 3: Temperature scaling (smooths overconfidence)
+  // TODO: Compute optimal T from calibration data instead of hardcoded 1.15
   probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, 1.15);
 
   return probs;

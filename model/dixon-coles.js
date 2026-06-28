@@ -193,13 +193,14 @@ WC26.calculateHedge = function(myBet, otherOdds) {
 /** Kelly criterion: optimal bet fraction for +EV bets.
  *  f = (b*p - q) / b where b = decimal odds - 1, p = model prob, q = 1-p.
  *  Returns fraction of bankroll (0 = don't bet, negative = don't bet).
- *  Uses fractional Kelly (half-Kelly) for safety. */
+ *  Uses configurable fractional Kelly (default: half-Kelly for safety). */
 WC26.kellyFraction = function(pModel, decimalOdds) {
   if (!pModel || !decimalOdds || decimalOdds <= 1) return 0;
   const b = decimalOdds - 1;  // net payout per $1
   const q = 1 - pModel;
   const f = (b * pModel - q) / b;
-  return Math.max(0, f * 0.5);  // Half-Kelly for safety
+  const kellyMult = (WC26.CONFIG && WC26.CONFIG.kellyMultiplier) || 0.5;
+  return Math.max(0, f * kellyMult);
 };
 
 /** 交易量排名百分位 */
@@ -216,6 +217,7 @@ WC26.getMarketBlend = function(matchDate, volume) {
   if (!matchDate) return 0.20;
   const now = new Date();
   const match = new Date(matchDate);
+  if (isNaN(match.getTime())) return 0.20; // Invalid date fallback
   const hoursUntil = (match - now) / (1000 * 60 * 60);
   if (hoursUntil < 0) return 0;
   let blend;

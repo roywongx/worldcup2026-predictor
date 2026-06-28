@@ -156,16 +156,41 @@ function runSimulation(params) {
     ko = {};
     try {
       const koBracket = WC26.buildKOBracket(rankings, bestThirds, thirdPlaceGroups);
-      // KO predicted score: expected goals (lambda) from Dixon-Coles model
-      // Stores exact lambdas for display, rounded for bracket advancement
-      function detScore(home, away, lh, la) {
-        const ga90 = Math.round(lh), gb90 = Math.round(la);
+      // Seeded PRNG for deterministic Poisson sampling (same as MC, but seeded)
+      function seedHash(str) {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+        return Math.abs(h);
+      }
+      function seededRandom(seed) {
+        let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+        return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+      }
+      function seededPoisson(lambda, rng) {
+        if (lambda <= 0) return 0;
+        const L = Math.exp(-lambda);
+        let k = 0, p = 1;
+        do { k++; p *= rng(); } while (p > L);
+        return k - 1;
+      }
+      // KO score: seeded Poisson + ET/PK if draw (deterministic per match)
+      function detScore(home, away, lh, la, kodate) {
+        const rng = seededRandom(seedHash(`${home}|${away}|${kodate}`));
+        const ga90 = seededPoisson(lh, rng), gb90 = seededPoisson(la, rng);
         if (ga90 !== gb90) return { ga90, gb90, ga: ga90, gb: gb90, method: "90'", lh, la };
-        // Draw → Elo-based penalty winner
+        // Draw → extra time
         const eloH = WC26.getEffectiveElo ? WC26.getEffectiveElo(home) : 1500;
         const eloA = WC26.getEffectiveElo ? WC26.getEffectiveElo(away) : 1500;
-        const ga = eloH >= eloA ? ga90 + 1 : ga90;
-        const gb = eloH < eloA ? gb90 + 1 : gb90;
+        const gammaH = Math.max(0.10, 0.70 + 0.05 * ((eloH - eloA) / 400));
+        const gammaA = Math.max(0.10, 0.70 - 0.05 * ((eloH - eloA) / 400));
+        const ET_FATIGUE = 0.85;
+        const etH = seededPoisson(lh * (30/90) * gammaH * ET_FATIGUE, rng);
+        const etA = seededPoisson(la * (30/90) * gammaA * ET_FATIGUE, rng);
+        if (ga90 + etH !== gb90 + etA) return { ga90, gb90, ga: ga90+etH, gb: gb90+etA, method: 'AET', lh, la };
+        // Still draw → penalties
+        const pHome = Math.max(0.40, Math.min(0.60, 0.50 + 0.05 * ((eloH - eloA) / 400)));
+        const ga = rng() < pHome ? ga90 + 1 : ga90;
+        const gb = ga === ga90 ? gb90 + 1 : gb90;
         return { ga90, gb90, ga, gb, method: 'PSO', lh, la };
       }
       function runKORound(pairs, kodate) {
@@ -183,7 +208,7 @@ function runSimulation(params) {
           } else {
             // Deterministic: use model lambdas (rounded) instead of random simKO
             const [lh, la] = WC26.getFormAdjustedLambdas(home, away, preFormMap, kodate, mktProbs);
-            const sc = detScore(home, away, lh, la);
+            const sc = detScore(home, away, lh, la, kodate);
             winners.push(sc.ga > sc.gb ? home : away);
             res.push({ a: home, ga: sc.ga, gb: sc.gb, b: away, method: sc.method, probs, mkt: mktProbs || null, ga90: sc.ga90, gb90: sc.gb90, lh: sc.lh, la: sc.la });
           }

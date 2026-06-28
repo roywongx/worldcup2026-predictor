@@ -31,6 +31,8 @@ WC26.CONFIG = {
   HOME_HOST: 0.30,              // home advantage in expected goals
   // Simulation
   MC_DEFAULT: 50000,            // default Monte Carlo iterations
+  // Betting
+  KELLY_MULTIPLIER: 0.5,        // fractional Kelly (0.5 = half-Kelly for safety)
 };
 
 // Backward-compatible aliases → WC26.CONFIG.*
