@@ -246,20 +246,20 @@ function runSimulation(params) {
       // Bracket is ordered so sequential pairing produces correct R16 cross-pairing
       const r32pairs = [];
       for (let i = 0; i < koBracket.length; i += 2) r32pairs.push([koBracket[i], koBracket[i+1]]);
-      let [w1, r32r] = runKORound(r32pairs, '2026-06-28');
+      let [w1, r32r] = runKORound(r32pairs, '2026-06-29');
       // R16: sequential pairs from R32 winners
       const r16pairs = [];
       for (let i = 0; i < w1.length; i += 2) r16pairs.push([w1[i], w1[i+1]]);
-      let [w2, r16r] = runKORound(r16pairs, '2026-07-04');
+      let [w2, r16r] = runKORound(r16pairs, '2026-07-05');
       // QF: sequential pairs from R16 winners
       const qfpairs = [[w2[0],w2[1]],[w2[2],w2[3]],[w2[4],w2[5]],[w2[6],w2[7]]];
-      let [w3, qfr] = runKORound(qfpairs, '2026-07-09');
+      let [w3, qfr] = runKORound(qfpairs, '2026-07-10');
       // SF: sequential pairs from QF winners
       const sfpairs = [[w3[0],w3[1]],[w3[2],w3[3]]];
-      let [w4, sfr] = runKORound(sfpairs, '2026-07-14');
+      let [w4, sfr] = runKORound(sfpairs, '2026-07-15');
       const sfLosers = sfr.map(m => m.ga > m.gb ? m.b : m.a);
-      const [tga, tgb, tm] = WC26.simKO(sfLosers[0], sfLosers[1], preFormMap, '2026-07-14', marketOddsMap);
-      const [fa, fb, fm] = WC26.simKO(w4[0], w4[1], preFormMap, '2026-07-19', marketOddsMap);
+      const [tga, tgb, tm] = WC26.simKO(sfLosers[0], sfLosers[1], preFormMap, '2026-07-19', marketOddsMap);
+      const [fa, fb, fm] = WC26.simKO(w4[0], w4[1], preFormMap, '2026-07-20', marketOddsMap);
       ko.R32 = r32r; ko.R16 = r16r; ko.QF = qfr; ko.SF = sfr;
       ko.Third = { a: sfLosers[0], ga: tga, gb: tgb, b: sfLosers[1], method: tm };
       ko.Final = { a: w4[0], ga: fa, gb: fb, b: w4[1], method: fm };

@@ -267,7 +267,7 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
 
   let currentRound = bracket;
   const rounds = [];
-  const koDates = ['2026-06-28','2026-07-02','2026-07-05','2026-07-09','2026-07-14','2026-07-19'];
+  const koDates = ['2026-06-29','2026-07-05','2026-07-10','2026-07-15','2026-07-19','2026-07-20'];
   let koRoundIdx = 0;
 
   while (currentRound.length > 1) {
