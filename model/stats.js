@@ -181,18 +181,19 @@ WC26.temperatureScale = function(pW, pD, pL, T) {
  *  Pipeline order: Dixon-Coles → GBDT blend → Temperature scaling → Isotonic calibration.
  *  T is optimized BEFORE isotonic calibration. */
 WC26.findOptimalTemperature = function(actualResults) {
-  // NOTE: r.probs are already temperature-scaled by getBlendedProbs.
-  // This function finds the optimal T by re-scaling the stored probs.
-  // Ideally, we should use raw DC+GBDT probs (before temperature), but
-  // those are not stored. This is a known limitation.
+  // Uses r.rawProbs (DC+GBDT without temperature) when available,
+  // falls back to r.probs (already temperature-scaled).
   if (!actualResults || actualResults.length < 30) return 1.15;
   const candidates = [0.8, 0.9, 1.0, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.40, 1.50];
   let bestT = 1.15, bestLoss = Infinity;
   for (const T of candidates) {
     let loss = 0;
     for (const r of actualResults) {
-      if (r.score1 == null || r.score2 == null || !r.probs) continue;
-      const scaled = WC26.temperatureScale(r.probs.win, r.probs.draw, r.probs.loss, T);
+      if (r.score1 == null || r.score2 == null) continue;
+      // Prefer rawProbs (no temperature), fall back to probs
+      const base = r.rawProbs || r.probs;
+      if (!base) continue;
+      const scaled = WC26.temperatureScale(base.win, base.draw, base.loss, T);
       const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
       const p = [scaled.win, scaled.draw, scaled.loss][outcome];
       loss -= Math.log(Math.max(0.001, p));

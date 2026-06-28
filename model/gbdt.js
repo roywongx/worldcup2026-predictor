@@ -158,11 +158,10 @@ WC26.trainAndBlendGBDT = function(actualResults) {
 
 /** Full probability pipeline: DC → GBDT blend → temperature scaling.
  *  Single entry point for all predictions. */
-WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
-  // Step 1: Pure Dixon-Coles (with market-adjusted lambdas)
+/** Get raw probabilities (DC + GBDT blend) WITHOUT temperature scaling.
+ *  Used by findOptimalTemperature to avoid double-calibration. */
+WC26.getRawProbs = function(home, away, formMap, matchDate, marketProbs) {
   let probs = WC26.matchProbs(home, away, formMap, matchDate, marketProbs);
-
-  // Step 2: GBDT blend (20%)
   if (WC26.gbdt && WC26.gbdt.trained) {
     const gbdtProbs = WC26.gbdt.predict(home, away);
     if (gbdtProbs) {
@@ -174,11 +173,13 @@ WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
       };
     }
   }
+  return probs;
+};
 
-  // Step 3: Temperature scaling (smooths overconfidence)
-  // Uses cached optimal T from findOptimalTemperature() if available, else 1.15
+WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
+  let probs = WC26.getRawProbs(home, away, formMap, matchDate, marketProbs);
+  // Temperature scaling
   const T = WC26._optimalT || 1.15;
   probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, T);
-
   return probs;
 };

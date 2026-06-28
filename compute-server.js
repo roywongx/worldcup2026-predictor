@@ -184,8 +184,8 @@ function runSimulation(params) {
         return k - 1;
       }
       // Top-N most probable scores with probabilities (for confidence display)
-      function topScores(lh, la, n) {
-        const rho = WC26.RHO_GROUP || -0.20;
+      function topScores(lh, la, n, kodate) {
+        const rho = kodate ? WC26.getRho(kodate) : (WC26.RHO_GROUP || -0.20);
         const scores = [];
         for (let x = 0; x <= 5; x++) for (let y = 0; y <= 5; y++) {
           const p = WC26.poissonPMF(x, lh) * WC26.poissonPMF(y, la) * WC26.dixonColesTau(x, y, lh, la, rho);
@@ -199,7 +199,7 @@ function runSimulation(params) {
       function detScore(home, away, lh, la, kodate) {
         const rng = seededRandom(seedHash(`${home}|${away}|${kodate}`));
         const ga90 = seededPoisson(lh, rng), gb90 = seededPoisson(la, rng);
-        const top3 = topScores(lh, la, 3);
+        const top3 = topScores(lh, la, 3, kodate);
         if (ga90 !== gb90) return { ga90, gb90, ga: ga90, gb: gb90, method: "90'", lh, la, top3 };
         // Draw → extra time
         const eloH = WC26.getEffectiveElo ? WC26.getEffectiveElo(home) : 1500;
@@ -291,6 +291,9 @@ function runReevaluate(params) {
     const marketOddsMap = marketOdds;
     for (const r of actualResults) {
       const mktOdds = r.preMatchOdds || WC26.getStoredMarketOdds(marketOddsMap, r.team1, r.team2, r.date);
+      // Store raw probs (DC+GBDT, no temperature) for calibration optimization
+      const rawProbs = WC26.getRawProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
+      r.rawProbs = { win: rawProbs.win, draw: rawProbs.draw, loss: rawProbs.loss };
       const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
       const pred = WC26.predictOutcome(probs, r.team1, r.team2);
       const [lh, la] = WC26.getFormAdjustedLambdas(r.team1, r.team2, preFormMap, r.date, mktOdds);
@@ -539,7 +542,7 @@ async function runMonteCarlo(params) {
     if (wN <= 0) continue;
     workers.push(new Promise((resolve, reject) => {
       const worker = new Worker(path.join(__dirname, 'mc-worker.js'), {
-        workerData: { batchSize: wN, actualResults, marketOdds, savedElo }
+        workerData: { batchSize: wN, actualResults, marketOdds, savedElo, optimalT: WC26._optimalT || 1.15 }
       });
       worker.on('message', resolve);
       worker.on('error', reject);

@@ -18,9 +18,10 @@ eval(fs.readFileSync(path.join(dir, 'model/monte-carlo.js'), 'utf8'));
 
 const TEAMS = globalThis.TEAMS || WC26.TEAMS;
 
-const { batchSize, actualResults, marketOdds, savedElo } = workerData;
+const { batchSize, actualResults, marketOdds, savedElo, optimalT } = workerData;
 
 // Setup
+WC26._optimalT = optimalT || 1.15;
 WC26.rebuildDynamicElo(actualResults);
 WC26.trainAndBlendGBDT(actualResults);
 const actualMap = WC26.buildActualResultsMap(actualResults);
