@@ -60,16 +60,32 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 # Open http://localhost:9090
 ```
 
-### Recent Fixes (2026-06-28)
+### Recent Changes (2026-06-28)
 
-- **FIFA R32 bracket** — Correct match order (M73-M88) per official schedule
-- **Third-place assignment** — Backtracking with FIFA Annex C constraints
-- **R16 cross-pairing** — Correct FIFA bracket progression
-- **Beijing time** — All knockout match times converted ET→UTC+8
-- **Knockout predictions** — xG (expected goals) from Dixon-Coles model + W/D/L probabilities
-- **Race conditions** — All async operations properly awaited
-- **What-If simulation** — simulationHistory returned from server
-- **Dynamic Elo** — Elo delta displayed in standings
+**Bracket & Schedule:**
+- FIFA R32 bracket — Correct match order (M73-M88) per official schedule
+- Third-place assignment — Backtracking with FIFA Annex C constraints
+- R16 cross-pairing — Correct FIFA bracket progression
+- Beijing time — All knockout match times converted ET→UTC+8
+
+**Predictions:**
+- xG (expected goals) + W/D/L probabilities for all knockout matches
+- Top-3 most probable scores with confidence percentages
+- Deterministic Poisson sampling (seeded, same result per match)
+- Extra time fatigue factor (ET_FATIGUE=0.85)
+- Temperature auto-optimization via grid search
+
+**Server:**
+- Parallel Monte Carlo via worker_threads (up to 16 workers)
+- Structured error responses with type/suggestion
+- Rate limiting (20 req/10s window)
+- Request logging with elapsed time and result size
+- New API action `caldiag` for calibration diagnostics
+
+**Frontend cleanup:**
+- Removed ~60 lines of dead stub functions
+- All computation delegated to compute-server.js
+- Fixed async race conditions (all operations properly awaited)
 
 ### Features
 
@@ -136,16 +152,32 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 # 打开 http://localhost:9090
 ```
 
-### 近期修复 (2026-06-28)
+### 近期更新 (2026-06-28)
 
-- **R32 对阵图** — 修正为 FIFA 官方赛程顺序（M73-M88）
-- **第三名分配** — 回溯算法 + FIFA Annex C 约束
-- **R16 交叉配对** — 正确的 FIFA 淘汰赛对阵
-- **北京时间** — 所有淘汰赛时间 ET→UTC+8 转换
-- **淘汰赛预测** — xG（期望进球）+ W/D/L 胜率显示
-- **异步竞态** — 所有 async 操作正确 await
-- **What-If 模拟** — simulationHistory 从服务器返回
-- **动态 Elo** — 积分榜显示 Elo 变化
+**对阵与赛程：**
+- R32 对阵图 — 修正为 FIFA 官方赛程顺序（M73-M88）
+- 第三名分配 — 回溯算法 + FIFA Annex C 约束
+- R16 交叉配对 — 正确的 FIFA 淘汰赛对阵
+- 北京时间 — 所有淘汰赛时间 ET→UTC+8 转换
+
+**预测功能：**
+- xG（期望进球）+ W/D/L 胜率显示
+- 每场比赛最可能的 3 个比分及概率
+- 确定性 Poisson 采样（种子化，同一对阵结果固定）
+- 加时赛疲劳因子（ET_FATIGUE=0.85）
+- 温度参数自动优化（网格搜索）
+
+**服务器优化：**
+- 并行 Monte Carlo（worker_threads，最多 16 个 worker）
+- 结构化错误响应（error/type/action/suggestion）
+- 请求限流（20次/10秒窗口）
+- 请求日志（耗时、结果大小）
+- 新增 `caldiag` API 用于校准诊断
+
+**前端清理：**
+- 删除 ~60 行死代码 stub 函数
+- 所有计算委托给 compute-server.js
+- 修复异步竞态条件
 
 ### 功能
 
