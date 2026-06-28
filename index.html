@@ -1653,7 +1653,7 @@ const I18N = {
     'prob.stopAuto':'⏹ 停止自动','prob.auto5min':'▶ 自动 5分钟',
     'prob.clickFetch':'点击获取 Polymarket 数据',
     'prob.fetchingResults':'获取赛果中...','prob.fetchingOdds':'获取赔率中...',
-    'prob.champion':'冠军','prob.final':'决赛','prob.semi':'四强','prob.quarter':'八强','prob.r16':'32强',
+    'prob.champion':'冠军','prob.final':'决赛','prob.semi':'四强','prob.quarter':'八强','prob.r16':'16强',
     'prob.odds':'赔率%','prob.composite':'综合评分',
     'prob.matchday':'比赛日','prob.matchday1':'第一轮','prob.matchday2':'第二轮','prob.matchday3':'第三轮',
     // Model
@@ -1729,7 +1729,7 @@ const I18N = {
     'prob.stopAuto':'⏹ Stop Auto','prob.auto5min':'▶ Auto 5min',
     'prob.clickFetch':'Click fetch to load Polymarket data',
     'prob.fetchingResults':'Fetching results...','prob.fetchingOdds':'Fetching odds...',
-    'prob.champion':'Champion','prob.final':'Final','prob.semi':'Semi','prob.quarter':'QF','prob.r16':'R32',
+    'prob.champion':'Champion','prob.final':'Final','prob.semi':'Semi','prob.quarter':'QF','prob.r16':'R16',
     'prob.odds':'Odds%','prob.composite':'Composite',
     'prob.matchday':'Matchday','prob.matchday1':'Matchday 1','prob.matchday2':'Matchday 2','prob.matchday3':'Matchday 3',
     // Model
@@ -2362,16 +2362,18 @@ function renderProbabilities(){
   h+=`<div class="stat-pill"><div class="stat-num">${fl(teams[0])}</div><div class="stat-lbl">${t('prob.fav')}</div></div>`;
   h+=`<div class="stat-pill"><div class="stat-num">${((champ[teams[0]]||0)/N*100).toFixed(1)}%</div><div class="stat-lbl">${t('prob.winrate')}</div></div>`;
   h+=`</div>`;
-  // Note: rounds[0]=R32, rounds[1]=R16, rounds[2]=QF, rounds[3]=SF
-  // r16 = teams in R32 (always 100% for qualified teams), quarter = teams in R16
-  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>QF</th></tr>`;
+  // MC rounds: [0]=R32(32队), [1]=R16(16队), [2]=QF(8队), [3]=SF(4队)
+  // Display: Champion | 决赛→champ | 四强→finalist | 八强→semi | 16强→quarter
+  // r16=R32参赛队(永远100%), quarter=16强, semi=8强, finalist=4强, champ=冠军
+  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>${t('prob.final')}</th><th>${t('prob.semi')}</th><th>${t('prob.quarter')}</th><th>${t('prob.r16')}</th></tr>`;
   teams.forEach(t=>{
     const cp=(champ[t]||0)/N*100,fp=(finalist[t]||0)/N*100,sp=(semi[t]||0)/N*100,qp=(quarter[t]||0)/N*100,rp=(r16[t]||0)/N*100;
     if(cp<0.05&&fp<0.3)return;
     const be=TEAMS[t].elo,de=WC26.dynamicElo[t]||be,ed=de-be;
     const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
     const op=WC26.oddsToProb(TEAMS[t].odds);
-    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td></tr>`;
+    // Column data: Champion=cp, 决赛=cp, 四强=fp, 八强=sp, 16强=qp
+    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${cp.toFixed(1)}%</td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td></tr>`;
   });
   h+='</table></div>';
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
