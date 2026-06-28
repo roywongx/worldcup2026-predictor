@@ -113,12 +113,12 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
     R('E'), R('I'),                       // [5]  M78: Ivory Coast vs Norway
     W('A'), getThirdAt(6),                // [6]  M79: Mexico vs Ecuador
     W('L'), getThirdAt(7),                // [7]  M80: England vs DR Congo
-    W('K'), R('L'),                       // [8]  M83: Portugal vs Croatia
+    R('K'), R('L'),                       // [8]  M83: Portugal vs Croatia
     W('H'), R('J'),                       // [9]  M84: Spain vs Austria
     W('D'), getThirdAt(8),                // [10] M81: USA vs Bosnia
     W('G'), getThirdAt(9),                // [11] M82: Belgium vs Senegal
     W('J'), R('H'),                       // [12] M86: Argentina vs Cape Verde
-    R('D'), getThirdAt(15),               // [13] M88: Australia vs Egypt
+    R('D'), R('G'),                       // [13] M88: Australia vs Egypt
     W('B'), getThirdAt(12),               // [14] M85: Switzerland vs Algeria
     W('K'), getThirdAt(14),               // [15] M87: Colombia vs Ghana
   ];
