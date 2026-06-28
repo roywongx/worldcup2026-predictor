@@ -2364,14 +2364,14 @@ function renderProbabilities(){
   h+=`</div>`;
   // Note: rounds[0]=R32, rounds[1]=R16, rounds[2]=QF, rounds[3]=SF
   // r16 = teams in R32 (always 100% for qualified teams), quarter = teams in R16
-  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>QF</th><th>R16</th></tr>`;
+  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>QF</th></tr>`;
   teams.forEach(t=>{
     const cp=(champ[t]||0)/N*100,fp=(finalist[t]||0)/N*100,sp=(semi[t]||0)/N*100,qp=(quarter[t]||0)/N*100,rp=(r16[t]||0)/N*100;
     if(cp<0.05&&fp<0.3)return;
     const be=TEAMS[t].elo,de=WC26.dynamicElo[t]||be,ed=de-be;
     const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
     const op=WC26.oddsToProb(TEAMS[t].odds);
-    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
+    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td></tr>`;
   });
   h+='</table></div>';
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
