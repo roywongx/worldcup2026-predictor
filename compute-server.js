@@ -156,29 +156,62 @@ function runSimulation(params) {
     ko = {};
     try {
       const koBracket = WC26.buildKOBracket(rankings, bestThirds, thirdPlaceGroups);
-      function runKORound(teams, kodate) {
+      // KO predicted score: expected goals (lambda) from Dixon-Coles model
+      // Stores exact lambdas for display, rounded for bracket advancement
+      function detScore(home, away, lh, la) {
+        const ga90 = Math.round(lh), gb90 = Math.round(la);
+        if (ga90 !== gb90) return { ga90, gb90, ga: ga90, gb: gb90, method: "90'", lh, la };
+        // Draw → Elo-based penalty winner
+        const eloH = WC26.getEffectiveElo ? WC26.getEffectiveElo(home) : 1500;
+        const eloA = WC26.getEffectiveElo ? WC26.getEffectiveElo(away) : 1500;
+        const ga = eloH >= eloA ? ga90 + 1 : ga90;
+        const gb = eloH < eloA ? gb90 + 1 : gb90;
+        return { ga90, gb90, ga, gb, method: 'PSO', lh, la };
+      }
+      function runKORound(pairs, kodate) {
         const res = [], winners = [];
-        for (let i = 0; i < teams.length; i += 2) {
-          const home = teams[i], away = teams[i + 1];
+        for (const [home, away] of pairs) {
+          const mktProbs = WC26.getStoredMarketOdds(marketOddsMap, home, away, kodate);
+          const probs = WC26.getBlendedProbs(home, away, preFormMap, kodate, mktProbs);
           const actual = actualMap[`${home}|${away}|`] || actualMap[`${away}|${home}|`];
           if (actual) {
             let ga = actual.score1, gb = actual.score2;
             const method = ga !== gb ? "90'" : 'PSO';
             if (ga === gb && actual.winner) { if (actual.winner === home) ga++; else gb++; }
             winners.push(ga > gb ? home : away);
-            res.push({ a: home, ga, gb, b: away, method });
+            res.push({ a: home, ga, gb, b: away, method, probs, mkt: mktProbs || null });
           } else {
-            const [ga, gb, method] = WC26.simKO(home, away, preFormMap, kodate, marketOddsMap);
-            winners.push(ga > gb ? home : away);
-            res.push({ a: home, ga, gb, b: away, method });
+            // Deterministic: use model lambdas (rounded) instead of random simKO
+            const [lh, la] = WC26.getFormAdjustedLambdas(home, away, preFormMap, kodate, mktProbs);
+            const sc = detScore(home, away, lh, la);
+            winners.push(sc.ga > sc.gb ? home : away);
+            res.push({ a: home, ga: sc.ga, gb: sc.gb, b: away, method: sc.method, probs, mkt: mktProbs || null, ga90: sc.ga90, gb90: sc.gb90, lh: sc.lh, la: sc.la });
           }
         }
         return [winners, res];
       }
-      let [w1, r32r] = runKORound(koBracket, '2026-06-28');
-      let [w2, r16r] = runKORound(w1, '2026-07-02');
-      let [w3, qfr] = runKORound(w2, '2026-07-05');
-      let [w4, sfr] = runKORound(w3, '2026-07-09');
+      // R32: sequential pairs from bracket (16 matches → 16 winners)
+      const r32pairs = [];
+      for (let i = 0; i < koBracket.length; i += 2) r32pairs.push([koBracket[i], koBracket[i+1]]);
+      let [w1, r32r] = runKORound(r32pairs, '2026-06-28');
+      // R16: FIFA cross-pairing (from actual schedule)
+      const r16pairs = [
+        [w1[1], w1[4]],   // M89: W(M74) vs W(M77)
+        [w1[0], w1[2]],   // M90: W(M73) vs W(M75)
+        [w1[3], w1[5]],   // M91: W(M76) vs W(M78)
+        [w1[6], w1[7]],   // M92: W(M79) vs W(M80)
+        [w1[10], w1[11]], // M93: W(M83) vs W(M84)
+        [w1[8], w1[9]],   // M94: W(M81) vs W(M82)
+        [w1[13], w1[15]], // M95: W(M86) vs W(M88)
+        [w1[12], w1[14]], // M96: W(M85) vs W(M87)
+      ];
+      let [w2, r16r] = runKORound(r16pairs, '2026-07-04');
+      // QF: sequential pairs from R16 winners
+      const qfpairs = [[w2[0],w2[1]],[w2[2],w2[3]],[w2[4],w2[5]],[w2[6],w2[7]]];
+      let [w3, qfr] = runKORound(qfpairs, '2026-07-09');
+      // SF: sequential pairs from QF winners
+      const sfpairs = [[w3[0],w3[1]],[w3[2],w3[3]]];
+      let [w4, sfr] = runKORound(sfpairs, '2026-07-14');
       const sfLosers = sfr.map(m => m.ga > m.gb ? m.b : m.a);
       const [tga, tgb, tm] = WC26.simKO(sfLosers[0], sfLosers[1], preFormMap, '2026-07-14', marketOddsMap);
       const [fa, fb, fm] = WC26.simKO(w4[0], w4[1], preFormMap, '2026-07-19', marketOddsMap);
@@ -196,7 +229,7 @@ function runSimulation(params) {
 
     const isoParams = WC26.fitIsotonicCalibration(actualResults);
 
-    return { standings, matchResults, rankings, bestThirds, ko, formMap, isoParams };
+    return { standings, matchResults, rankings, bestThirds, ko, formMap, isoParams, dynamicElo: { ...WC26.dynamicElo } };
   });
 }
 
@@ -442,7 +475,7 @@ function runMonteCarlo(params) {
   mcResults = { champ, finalist, semi, quarter, r16, N: successCount };
   simulationHistory = history;
 
-  return mcResults;
+  return { ...mcResults, simulationHistory: history };
 }
 
 // ── Action: full (simulation + calibration + ev + brier + backtest) ──

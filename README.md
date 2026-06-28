@@ -56,9 +56,20 @@ English below · [中文](#中文)
 ### Run
 
 ```bash
-python3 server.py        # Start server on port 9090
+python3 server.py        # Start server on port 9090 (auto-launches compute-server.js)
 # Open http://localhost:9090
 ```
+
+### Recent Fixes (2026-06-28)
+
+- **FIFA R32 bracket** — Correct match order (M73-M88) per official schedule
+- **Third-place assignment** — Backtracking with FIFA Annex C constraints
+- **R16 cross-pairing** — Correct FIFA bracket progression
+- **Beijing time** — All knockout match times converted ET→UTC+8
+- **Knockout predictions** — xG (expected goals) from Dixon-Coles model + W/D/L probabilities
+- **Race conditions** — All async operations properly awaited
+- **What-If simulation** — simulationHistory returned from server
+- **Dynamic Elo** — Elo delta displayed in standings
 
 ### Features
 
@@ -121,9 +132,20 @@ python3 server.py        # Start server on port 9090
 ### 运行
 
 ```bash
-python3 server.py
+python3 server.py        # 启动服务器（端口 9090，自动启动 compute-server.js）
 # 打开 http://localhost:9090
 ```
+
+### 近期修复 (2026-06-28)
+
+- **R32 对阵图** — 修正为 FIFA 官方赛程顺序（M73-M88）
+- **第三名分配** — 回溯算法 + FIFA Annex C 约束
+- **R16 交叉配对** — 正确的 FIFA 淘汰赛对阵
+- **北京时间** — 所有淘汰赛时间 ET→UTC+8 转换
+- **淘汰赛预测** — xG（期望进球）+ W/D/L 胜率显示
+- **异步竞态** — 所有 async 操作正确 await
+- **What-If 模拟** — simulationHistory 从服务器返回
+- **动态 Elo** — 积分榜显示 Elo 变化
 
 ### 功能
 

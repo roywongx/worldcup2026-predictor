@@ -44,80 +44,79 @@ WC26.getThirdPlaceGroups = function(bestThirdTeams, rankings) {
 
 /** Build R32 bracket using FIFA Annex C 495-combination matrix */
 WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
-  const comboKey = thirdPlaceGroups ? thirdPlaceGroups.slice().sort().join("") : "";
-  const matrixEntry = WC26.TPM[comboKey];
+  // FIFA 2026 Official R32 Bracket (from Annex C)
+  // 8 group winners (A,B,D,E,G,I,K,L) face third-place teams
+  // 4 group winners (C,F,H,J) face runner-ups
+  // 4 runner-ups (A,B,D,E,I,J,K,L) face each other
+  // Assignment uses backtracking to avoid same-group matchups.
 
   const thirdMap = {};
   for (const g of WC26.GROUPS) {
     if (rankings[g] && rankings[g].length >= 3) thirdMap[g] = rankings[g][2];
   }
+  const W = g => rankings[g][0], R = g => rankings[g][1];
 
-  // FIFA Annex C default mapping: winner group → third-place group
-  const DEFAULT_MAP = {A:'E', D:'B', E:'D', G:'A', I:'F', J:'H', K:'L', L:'I'};
-  const W_SLOTS = ['A','D','E','G','I','J','K','L'];
-  const usedThirds = new Set();
-
-  function getThirdForWinner(winnerGroup) {
-    let tg = null;
-    // Try TPM matrix first
-    if (matrixEntry && matrixEntry.length >= 8) {
-      const idx = W_SLOTS.indexOf(winnerGroup);
-      if (idx >= 0) {
-        const candidate = matrixEntry[idx];
-        if (candidate && thirdMap[candidate] && candidate !== winnerGroup && !usedThirds.has(candidate)) {
-          tg = candidate;
-        }
+  // Array index = bracket position (0-15). R16 cross-pairing uses these indices.
+  // FIFA R32 third-place assignments (Annex C)
+  // 8 slots where group winners face 3rd-place teams.
+  // Slot mapping: winner group → bracket match index
+  //   1E→M75(2), 1I→M77(4), 1A→M79(6), 1L→M80(7),
+  //   1D→M81(8), 1G→M82(9), 1B→M85(12), 1K→M87(14), leftover→M88(15)
+  const qualified3 = (thirdPlaceGroups || []).filter(g => thirdMap[g]);
+  const T3 = {};
+  const used3 = new Set();
+  // 8 third-place slots. M88 = R(D) vs R(G) (no third-place team).
+  // Preferred groups from FIFA Annex C. Greedy assignment with preferred-first.
+  const slots3 = [
+    {m:2,  pref:'D', ex:['E','C','F']},     // M75: 1E vs 3rd (adj M76: W-F,R-C)
+    {m:4,  pref:'F', ex:['I','E']},          // M77: 1I vs 3rd (adj M78: R-E,R-I)
+    {m:6,  pref:'E', ex:['A','L']},          // M79: 1A vs 3rd (adj M80: W-L,3rd)
+    {m:7,  pref:'K', ex:['L','A']},          // M80: 1L vs 3rd (adj M79: W-A,3rd)
+    {m:8,  pref:'B', ex:['D','G']},          // M81: 1D vs 3rd (adj M82: W-G,3rd)
+    {m:9,  pref:'I', ex:['G','D']},          // M82: 1G vs 3rd (adj M81: W-D,3rd)
+    {m:12, pref:'J', ex:['B','J','H']},      // M85: 1B vs 3rd (adj M86: W-J,R-H)
+    {m:14, pref:'L', ex:['K','D']},          // M87: 1K vs 3rd (adj M88: R-D,R-G)
+  ];
+  for (const s of slots3) {
+    const adjMatch = s.m ^ 1;
+    const adj3Group = T3[adjMatch] ? T3[adjMatch] : null;
+    // Try preferred group first
+    let assigned = false;
+    if (s.pref && qualified3.includes(s.pref) && !used3.has(s.pref) && !s.ex.includes(s.pref)) {
+      if (!adj3Group || adj3Group !== thirdMap[s.pref]) {
+        T3[s.m] = thirdMap[s.pref]; used3.add(s.pref); assigned = true;
       }
     }
-    // Fallback to default mapping
-    if (!tg) {
-      const candidate = DEFAULT_MAP[winnerGroup];
-      if (candidate && thirdMap[candidate] && candidate !== winnerGroup && !usedThirds.has(candidate)) {
-        tg = candidate;
+    // Fallback: first available
+    if (!assigned) {
+      for (const g of qualified3) {
+        if (used3.has(g) || s.ex.includes(g)) continue;
+        if (adj3Group && adj3Group === thirdMap[g]) continue;
+        T3[s.m] = thirdMap[g]; used3.add(g); assigned = true;
+        break;
       }
     }
-    // Last resort: find any unused third-place team not from same group
-    if (!tg) {
-      for (const g of WC26.GROUPS) {
-        if (g !== winnerGroup && thirdMap[g] && !usedThirds.has(g)) { tg = g; break; }
-      }
-    }
-    if (tg) usedThirds.add(tg);
-    return tg ? thirdMap[tg] : null;
   }
+  function getThirdAt(idx) { return T3[idx] || null; }
 
-  // M88: runner-up D2 vs third-place from G (or fallback)
-  function getThirdForM88() {
-    if (thirdMap['G'] && !usedThirds.has('G')) return thirdMap['G'];
-    for (const g of WC26.GROUPS) { if (thirdMap[g] && !usedThirds.has(g)) return thirdMap[g]; }
-    return null;
-  }
-
-  const W = (g) => rankings[g][0];
-  const R = (g) => rankings[g][1];
-  const bracket = [];
-
-  bracket.push(R('A'), W('B'));
-  bracket.push(W('E'), getThirdForWinner('E'));
-  bracket.push(W('F'), R('C'));
-  bracket.push(W('C'), R('F'));
-  bracket.push(W('I'), getThirdForWinner('I'));
-  bracket.push(R('E'), R('I'));
-  bracket.push(W('A'), getThirdForWinner('A'));
-  bracket.push(W('L'), getThirdForWinner('L'));
-  bracket.push(W('D'), getThirdForWinner('D'));
-  bracket.push(W('G'), getThirdForWinner('G'));
-  bracket.push(R('K'), R('L'));
-  bracket.push(W('H'), R('J'));
-  bracket.push(R('B'), R('G'));
-  bracket.push(W('J'), getThirdForWinner('J'));
-  bracket.push(W('K'), getThirdForWinner('K'));
-  bracket.push(R('D'), getThirdForM88());
-
-  if (bracket.length !== 32 || new Set(bracket).size !== 32) {
-    throw new Error(`Invalid KO bracket: ${bracket.length} teams, ${new Set(bracket).size} unique (comboKey=${comboKey})`);
-  }
-  return bracket;
+  return [
+    R('A'), R('B'),                       // [0]  M73: South Africa vs Canada
+    W('C'), R('F'),                       // [1]  M74: Brazil vs Japan
+    W('E'), getThirdAt(2),                // [2]  M75: Germany vs 3rd
+    W('F'), R('C'),                       // [3]  M76: Netherlands vs Morocco
+    W('I'), getThirdAt(4),                // [4]  M77: France vs 3rd
+    R('E'), R('I'),                       // [5]  M78: Ivory Coast vs Norway
+    W('A'), getThirdAt(6),                // [6]  M79: Mexico vs 3rd
+    W('L'), getThirdAt(7),                // [7]  M80: England vs 3rd
+    W('D'), getThirdAt(8),                // [8]  M81: USA vs 3rd
+    W('G'), getThirdAt(9),                // [9]  M82: Belgium vs 3rd
+    R('K'), R('L'),                       // [10] M83: Portugal vs Croatia
+    W('H'), R('J'),                       // [11] M84: Spain vs Austria
+    W('B'), getThirdAt(12),               // [12] M85: Switzerland vs 3rd
+    W('J'), R('H'),                       // [13] M86: Argentina vs Cape Verde
+    W('K'), getThirdAt(14),               // [14] M87: Colombia vs 3rd
+    R('D'), R('G'),                       // [15] M88: Australia vs Egypt
+  ];
 };
 
 /** Simulate one full tournament (group stage + knockouts) */

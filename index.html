@@ -446,6 +446,12 @@ body {
 }
 .ko-match-num { font-weight: 700; color: var(--blue); }
 .ko-match-date { font-weight: 500; }
+.ko-match-venue { font-weight: 400; font-size: 0.55rem; color: var(--text3); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.ko-probs { display: flex; gap: 0.2rem; padding: 0.15rem 0.45rem; font-size: 0.55rem; }
+.kp { padding: 0.05rem 0.25rem; border-radius: 3px; font-weight: 600; }
+.kp.w { background: rgba(52,199,89,0.12); color: var(--green); }
+.kp.d { background: rgba(0,0,0,0.05); color: var(--text2); }
+.kp.l { background: rgba(255,59,48,0.1); color: var(--red); }
 
 .ko-team {
   display: flex;
@@ -1668,7 +1674,7 @@ const I18N = {
     'prob.stopAuto':'⏹ 停止自动','prob.auto5min':'▶ 自动 5分钟',
     'prob.clickFetch':'点击获取 Polymarket 数据',
     'prob.fetchingResults':'获取赛果中...','prob.fetchingOdds':'获取赔率中...',
-    'prob.champion':'冠军','prob.final':'决赛','prob.semi':'四强','prob.quarter':'八强','prob.r16':'十六强',
+    'prob.champion':'冠军','prob.final':'决赛','prob.semi':'四强','prob.quarter':'八强','prob.r16':'32强',
     'prob.odds':'赔率%','prob.composite':'综合评分',
     'prob.matchday':'比赛日','prob.matchday1':'第一轮','prob.matchday2':'第二轮','prob.matchday3':'第三轮',
     // Model
@@ -1744,7 +1750,7 @@ const I18N = {
     'prob.stopAuto':'⏹ Stop Auto','prob.auto5min':'▶ Auto 5min',
     'prob.clickFetch':'Click fetch to load Polymarket data',
     'prob.fetchingResults':'Fetching results...','prob.fetchingOdds':'Fetching odds...',
-    'prob.champion':'Champion','prob.final':'Final','prob.semi':'Semi','prob.quarter':'Quarter','prob.r16':'R16',
+    'prob.champion':'Champion','prob.final':'Final','prob.semi':'Semi','prob.quarter':'QF','prob.r16':'R32',
     'prob.odds':'Odds%','prob.composite':'Composite',
     'prob.matchday':'Matchday','prob.matchday1':'Matchday 1','prob.matchday2':'Matchday 2','prob.matchday3':'Matchday 3',
     // Model
@@ -1874,6 +1880,7 @@ async function runSimulation(){
   if(data.currentResults){
     currentResults = data.currentResults;
     WC26._dynamicFormMap = currentResults.formMap;
+    if(currentResults.dynamicElo) WC26.dynamicElo = currentResults.dynamicElo;
   }
   if(data.calibration) window._calibrationStats = data.calibration;
   if(data.ev) window._evData = data.ev;
@@ -2071,14 +2078,54 @@ function renderMatches(){
       h+=`<div class="match-card" style="flex-wrap:wrap"><span class="m-group">${m.grp}</span>${bjTimeHtml}<span class="m-team home ${wA}">${fl(m.ta)}</span><span class="m-score">${m.sa} - ${m.sb}</span><span class="m-team away ${wB}">${fl(m.tb)}</span>${venueHtml}${probLine}</div>`;
     }
   });
-  [{k:'R32',l:t('ko.r32date')},{k:'R16',l:t('ko.r16date')},{k:'QF',l:t('ko.qfdate')},{k:'SF',l:t('ko.sfdate')}].forEach(r=>{
-    h+=`<div class="match-date">${r.l}</div>`;
-    ko[r.k].forEach(m=>{const wA=m.ga>m.gb?'winner':'loser',wB=m.gb>m.ga?'winner':'loser';
-      h+=`<div class="match-card"><span class="m-group">KO</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${m.ga} - ${m.gb}</span><span class="m-team away ${wB}">${fl(m.b)}</span><span class="m-method">${m.method}</span></div>`;
-    });
+  // Collect all KO matches with info, sort by date
+  const KO_ALL=[];
+  // Beijing time (UTC+8) — all ET+12h
+  const KO_INFOS={
+    73:{d:'6/29',t:'03:00',v:'SoFi, LA'},74:{d:'6/30',t:'01:00',v:'NRG, Houston'},
+    75:{d:'6/30',t:'04:30',v:'Gillette, Boston'},76:{d:'6/30',t:'09:00',v:'BBVA, Monterrey'},
+    77:{d:'7/1',t:'05:00',v:'MetLife, NY'},78:{d:'7/1',t:'01:00',v:'AT&T, Dallas'},
+    79:{d:'7/1',t:'09:00',v:'Azteca, CDMX'},80:{d:'7/2',t:'00:00',v:'Mercedes-Benz, ATL'},
+    81:{d:'7/2',t:'08:00',v:"Levi's, SF"},82:{d:'7/2',t:'04:00',v:'Lumen, Seattle'},
+    83:{d:'7/3',t:'03:00',v:'BMO, Toronto'},84:{d:'7/3',t:'07:00',v:'SoFi, LA'},
+    85:{d:'7/3',t:'11:00',v:'BC Place, VAN'},86:{d:'7/4',t:'02:00',v:'Hard Rock, MIA'},
+    87:{d:'7/4',t:'06:00',v:'Arrowhead, KC'},88:{d:'7/4',t:'09:30',v:'AT&T, Dallas'},
+    89:{d:'7/5',t:'05:00',v:'Lincoln, PHI'},90:{d:'7/5',t:'01:00',v:'NRG, Houston'},
+    91:{d:'7/6',t:'04:00',v:'MetLife, NY'},92:{d:'7/6',t:'08:00',v:'Azteca, CDMX'},
+    93:{d:'7/7',t:'03:00',v:'AT&T, Dallas'},94:{d:'7/7',t:'08:00',v:'Lumen, Seattle'},
+    95:{d:'7/8',t:'00:00',v:'Mercedes-Benz, ATL'},96:{d:'7/8',t:'04:00',v:'BC Place, VAN'},
+    97:{d:'7/10',t:'03:00',v:'Gillette, Boston'},98:{d:'7/11',t:'03:00',v:'SoFi, LA'},
+    99:{d:'7/12',t:'05:00',v:'Hard Rock, MIA'},100:{d:'7/12',t:'03:00',v:'Arrowhead, KC'},
+    101:{d:'7/15',t:'03:00',v:'AT&T, Dallas'},102:{d:'7/16',t:'03:00',v:'Mercedes-Benz, ATL'},
+    103:{d:'7/19',t:'03:00',v:'Hard Rock, MIA'},104:{d:'7/20',t:'02:00',v:'MetLife, NY'}
+  };
+  let n=73;
+  ['R32','R16','QF','SF'].forEach(r=>{ko[r].forEach(m=>{const i=KO_INFOS[n]||{};KO_ALL.push({n,d:i.d||'',t:i.t||'',v:i.v||'',...m});n++;});});
+  KO_ALL.push({n:103,d:'7/19',t:'03:00',v:'Hard Rock, MIA',...ko.Third,label:'3rd'});
+  KO_ALL.push({n:104,d:'7/20',t:'02:00',v:'MetLife, NY',...ko.Final,label:'FIN'});
+  // Zero-pad date for correct string sorting: "7/1" → "07/01", "7/10" → "07/10"
+  const pad=d=>{const[m,dd]=d.split('/');return m.padStart(2,'0')+'/'+dd.padStart(2,'0');};
+  KO_ALL.sort((a,b)=>(pad(a.d)+a.t).localeCompare(pad(b.d)+b.t));
+  let lastD='';
+  KO_ALL.forEach(m=>{
+    if(m.d!==lastD){lastD=m.d;h+=`<div class="match-date">📅 ${m.d}</div>`;}
+    const wA=m.ga>m.gb?'winner':'loser',wB=m.gb>m.ga?'winner':'loser';
+    // Model probability
+    let probHtml='';
+    if(m.probs){probHtml+=`<span style="font-size:0.65rem;margin-left:0.5rem"><span style="color:var(--green);font-weight:600">W:${(m.probs.win*100).toFixed(0)}%</span> <span style="color:var(--text3)">D:${(m.probs.draw*100).toFixed(0)}%</span> <span style="color:var(--red)">L:${(m.probs.loss*100).toFixed(0)}%</span></span>`;}
+    // Market odds: from server response or local lookup
+    const mktKey1=`${m.a}|${m.b}|`, mktKey2=`${m.a}|${m.b}`;
+    const mkt=m.mkt||marketOdds[mktKey1]||marketOdds[mktKey2]||null;
+    if(mkt&&mkt.win){const mw=(mkt.win*100).toFixed(0),md=(mkt.draw*100).toFixed(0),ml=(mkt.loss*100).toFixed(0);
+      probHtml+=` <span style="font-size:0.65rem;color:var(--purple)">│ Mkt W:${mw}% D:${md}% L:${ml}%</span>`;}
+    const label=m.label||'KO',labelColor=m.label==='FIN'?'var(--gold)':m.label==='3rd'?'var(--orange)':'var(--blue)';
+    // Show 90-min score for PSO matches, final score otherwise
+    const scoreDisplay = (m.method==='PSO' && m.ga90!=null) ? `${m.ga90}-${m.gb90}` : `${m.ga}-${m.gb}`;
+    const psoNote = (m.method==='PSO' && m.ga90!=null) ? ` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>` : '';
+    // Expected goals prediction (for betting reference)
+    const xgLine = (m.lh!=null && m.la!=null) ? `<div style="font-size:0.6rem;color:var(--text3);padding-left:2.5rem;margin-top:0.1rem">xG: ${m.lh.toFixed(2)} - ${m.la.toFixed(2)}</div>` : '';
+    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}</div>`;
   });
-  const tp=ko.Third;h+=`<div class="match-date">${t('ko.third')}</div><div class="match-card"><span class="m-group">3rd</span><span class="m-team home ${tp.ga>tp.gb?'winner':'loser'}">${fl(tp.a)}</span><span class="m-score">${tp.ga} - ${tp.gb}</span><span class="m-team away ${tp.gb>tp.ga?'winner':'loser'}">${fl(tp.b)}</span><span class="m-method">${tp.method}</span></div>`;
-  const f=ko.Final;h+=`<div class="match-date">${t('ko.final')}</div><div class="match-card final-match"><span class="m-group" style="color:var(--gold)">FIN</span><span class="m-team home ${f.ga>f.gb?'winner':'loser'}">${fl(f.a)}</span><span class="m-score">${f.ga} - ${f.gb}</span><span class="m-team away ${f.gb>f.ga?'winner':'loser'}">${fl(f.b)}</span><span class="m-method">${f.method}</span></div>`;
   h+='</div>';document.getElementById('section-matches').innerHTML=h;
 }
 
@@ -2089,28 +2136,45 @@ function renderBracket(){
     return;
   }
   const ch=ko.Champion;
-  // Match numbers and dates for knockout rounds
+  // Match info for knockout rounds (num, date, venue)
+  // Beijing time (ET+12h) — bracket position order [0]-[15] = M73-M88
   const R32_INFO=[
-    {num:73,date:'Jun 28'},{num:74,date:'Jun 29'},{num:75,date:'Jun 29'},{num:76,date:'Jun 29'},
-    {num:77,date:'Jun 30'},{num:78,date:'Jun 30'},{num:79,date:'Jun 30'},{num:80,date:'Jul 1'},
-    {num:81,date:'Jul 1'},{num:82,date:'Jul 1'},{num:83,date:'Jul 2'},{num:84,date:'Jul 2'},
-    {num:85,date:'Jul 2'},{num:86,date:'Jul 3'},{num:87,date:'Jul 3'},{num:88,date:'Jul 3'}
+    {num:73,date:'6/29 03:00',venue:'SoFi, LA'},{num:74,date:'6/30 01:00',venue:'NRG, Houston'},
+    {num:75,date:'6/30 04:30',venue:'Gillette, Boston'},{num:76,date:'6/30 09:00',venue:'BBVA, Monterrey'},
+    {num:77,date:'7/1 05:00',venue:'MetLife, NY'},{num:78,date:'7/1 01:00',venue:'AT&T, Dallas'},
+    {num:79,date:'7/1 09:00',venue:'Azteca, CDMX'},{num:80,date:'7/2 00:00',venue:'Mercedes-Benz, ATL'},
+    {num:81,date:'7/2 08:00',venue:"Levi's, SF"},{num:82,date:'7/2 04:00',venue:'Lumen, Seattle'},
+    {num:83,date:'7/3 03:00',venue:'BMO, Toronto'},{num:84,date:'7/3 07:00',venue:'SoFi, LA'},
+    {num:85,date:'7/3 11:00',venue:'BC Place, VAN'},{num:86,date:'7/4 02:00',venue:'Hard Rock, MIA'},
+    {num:87,date:'7/4 06:00',venue:'Arrowhead, KC'},{num:88,date:'7/4 09:30',venue:'AT&T, Dallas'}
   ];
+  // R16 bracket order: [0]=M89,[1]=M90,...[7]=M96
   const R16_INFO=[
-    {num:89,date:'Jul 4'},{num:90,date:'Jul 4'},{num:91,date:'Jul 5'},{num:92,date:'Jul 5'},
-    {num:93,date:'Jul 6'},{num:94,date:'Jul 6'},{num:95,date:'Jul 7'},{num:96,date:'Jul 7'}
+    {num:89,date:'7/5 05:00',venue:'Lincoln, PHI'},{num:90,date:'7/5 01:00',venue:'NRG, Houston'},
+    {num:91,date:'7/6 04:00',venue:'MetLife, NY'},{num:92,date:'7/6 08:00',venue:'Azteca, CDMX'},
+    {num:93,date:'7/7 03:00',venue:'AT&T, Dallas'},{num:94,date:'7/7 08:00',venue:'Lumen, Seattle'},
+    {num:95,date:'7/8 00:00',venue:'Mercedes-Benz, ATL'},{num:96,date:'7/8 04:00',venue:'BC Place, VAN'}
   ];
-  const QF_INFO=[{num:97,date:'Jul 9'},{num:98,date:'Jul 10'},{num:99,date:'Jul 11'},{num:100,date:'Jul 11'}];
-  const SF_INFO=[{num:101,date:'Jul 14'},{num:102,date:'Jul 15'}];
+  const QF_INFO=[
+    {num:97,date:'7/10 03:00',venue:'Gillette, Boston'},{num:98,date:'7/11 03:00',venue:'SoFi, LA'},
+    {num:99,date:'7/12 05:00',venue:'Hard Rock, MIA'},{num:100,date:'7/12 03:00',venue:'Arrowhead, KC'}
+  ];
+  const SF_INFO=[
+    {num:101,date:'7/15 03:00',venue:'AT&T, Dallas'},{num:102,date:'7/16 03:00',venue:'Mercedes-Benz, ATL'}
+  ];
 
   // Render a single match card
   function mc(m, info, extraClass){
     const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
     let s=`<div class="ko-match ${extraClass||''}">`;
-    if(info) s+=`<div class="ko-match-header"><span class="ko-match-num">#${info.num}</span><span class="ko-match-date">${info.date}</span></div>`;
-    s+=`<div class="ko-team ${wA}"><span class="ko-flag">${bf(m.a)}</span><span class="ko-name">${WC26.getTeamName(m.a)}</span><span class="ko-score">${m.ga}</span></div>`;
-    s+=`<div class="ko-team ${wB}"><span class="ko-flag">${bf(m.b)}</span><span class="ko-name">${WC26.getTeamName(m.b)}</span><span class="ko-score">${m.gb}</span></div>`;
-    if(m.method) s+=`<div class="ko-method">${m.method}</div>`;
+    if(info) s+=`<div class="ko-match-header"><span class="ko-match-num">#${info.num}</span><span class="ko-match-date">${info.date}</span>${info.venue?`<span class="ko-match-venue">${info.venue}</span>`:''}</div>`;
+    // Show 90-min score for PSO matches
+    const sA = (m.method==='PSO' && m.ga90!=null) ? m.ga90 : m.ga;
+    const sB = (m.method==='PSO' && m.ga90!=null) ? m.gb90 : m.gb;
+    s+=`<div class="ko-team ${wA}"><span class="ko-flag">${bf(m.a)}</span><span class="ko-name">${WC26.getTeamName(m.a)}</span><span class="ko-score">${sA}</span></div>`;
+    s+=`<div class="ko-team ${wB}"><span class="ko-flag">${bf(m.b)}</span><span class="ko-name">${WC26.getTeamName(m.b)}</span><span class="ko-score">${sB}</span></div>`;
+    if(m.probs){const p=m.probs;s+=`<div class="ko-probs"><span class="kp w">${(p.win*100).toFixed(0)}%</span><span class="kp d">${(p.draw*100).toFixed(0)}%</span><span class="kp l">${(p.loss*100).toFixed(0)}%</span></div>`;}
+    if(m.method) s+=`<div class="ko-method">${m.method==='PSO'?`PSO ${m.ga}-${m.gb}`:m.method}</div>`;
     s+=`</div>`;
     return s;
   }
@@ -2149,7 +2213,7 @@ function renderBracket(){
   h+=`<div class="ko-center">`;
   // 3rd place
   h+=`<div class="ko-match" style="opacity:0.85">`;
-  h+=`<div class="ko-match-header"><span class="ko-match-num">#103</span><span class="ko-match-date">Jul 18</span></div>`;
+  h+=`<div class="ko-match-header"><span class="ko-match-num">#103</span><span class="ko-match-date">7/19 03:00</span><span class="ko-match-venue">Hard Rock, MIA</span></div>`;
   h+=`<div style="font-size:0.6rem;font-weight:700;color:var(--orange);text-align:center;padding:0.15rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div>`;
   h+=`<div class="ko-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="ko-flag">${bf(ko.Third.a)}</span><span class="ko-name">${WC26.getTeamName(ko.Third.a)}</span><span class="ko-score">${ko.Third.ga}</span></div>`;
   h+=`<div class="ko-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="ko-flag">${bf(ko.Third.b)}</span><span class="ko-name">${WC26.getTeamName(ko.Third.b)}</span><span class="ko-score">${ko.Third.gb}</span></div>`;
@@ -2157,7 +2221,7 @@ function renderBracket(){
   h+=`</div>`;
   // Final
   h+=`<div class="ko-match final-match">`;
-  h+=`<div class="ko-match-header"><span class="ko-match-num">#104</span><span class="ko-match-date">Jul 19</span></div>`;
+  h+=`<div class="ko-match-header"><span class="ko-match-num">#104</span><span class="ko-match-date">7/20 02:00</span><span class="ko-match-venue">MetLife, NY</span></div>`;
   h+=`<div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.15rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
   h+=`<div class="ko-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="ko-flag">${bf(ko.Final.a)}</span><span class="ko-name">${WC26.getTeamName(ko.Final.a)}</span><span class="ko-score">${ko.Final.ga}</span></div>`;
   h+=`<div class="ko-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="ko-flag">${bf(ko.Final.b)}</span><span class="ko-name">${WC26.getTeamName(ko.Final.b)}</span><span class="ko-score">${ko.Final.gb}</span></div>`;
@@ -2191,6 +2255,7 @@ async function runMonteCarloUI(){
       N: WC26.MC_DEFAULT || 50000
     });
     mcResults={champ:data.champ,finalist:data.finalist,semi:data.semi,quarter:data.quarter,r16:data.r16,N:data.N};
+    WC26.simulationHistory=data.simulationHistory||[];
     renderProbabilities();
     console.log('[MC] Server-side simulation complete, N='+data.N);
   }catch(err){
@@ -2318,14 +2383,16 @@ function renderProbabilities(){
   h+=`<div class="stat-pill"><div class="stat-num">${fl(teams[0])}</div><div class="stat-lbl">${t('prob.fav')}</div></div>`;
   h+=`<div class="stat-pill"><div class="stat-num">${((champ[teams[0]]||0)/N*100).toFixed(1)}%</div><div class="stat-lbl">${t('prob.winrate')}</div></div>`;
   h+=`</div>`;
-  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>Quarter</th><th>R16</th></tr>`;
+  // Note: rounds[0]=R32, rounds[1]=R16, rounds[2]=QF, rounds[3]=SF
+  // r16 = teams in R32 (always 100% for qualified teams), quarter = teams in R16
+  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>${t('sth.team')}</th><th>Elo</th><th>Δ</th><th>Odds%</th><th>Composite</th><th>Champion</th><th>Final</th><th>Semi</th><th>QF</th><th>R16</th></tr>`;
   teams.forEach(t=>{
     const cp=(champ[t]||0)/N*100,fp=(finalist[t]||0)/N*100,sp=(semi[t]||0)/N*100,qp=(quarter[t]||0)/N*100,rp=(r16[t]||0)/N*100;
     if(cp<0.05&&fp<0.3)return;
     const be=TEAMS[t].elo,de=WC26.dynamicElo[t]||be,ed=de-be;
     const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
     const op=WC26.oddsToProb(TEAMS[t].odds);
-    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
+    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp>=99.9?'✓':rp.toFixed(1)+'%'}</td></tr>`;
   });
   h+='</table></div>';
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
@@ -2711,8 +2778,6 @@ async function fetchResults(){
     const existingMap={};state.actualResults.forEach((r,i)=>{existingMap[`${r.team1}|${r.team2}`]=i;});
     let nc=0,vc=0,mc=0;
     const mismatches=[];
-    WC26.withPreTournamentElo(() => {
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
     for(const m of matches){
       let s1,s2,t1,t2,md,winner=null;
       if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;}
@@ -2740,33 +2805,24 @@ async function fetchResults(){
             const act=alt.s1>alt.s2?t1:(alt.s2>alt.s1?t2:'draw');
             ex.actual=act;ex.source='verified';
             if(alt.s1===alt.s2&&ex.winner)delete ex.winner; // clear stale winner on score change
-            // Recompute prediction
-            const probs=WC26.getBlendedProbs(t1,t2,preFormMap);
-            const pred=WC26.predictOutcome(probs,t1,t2);
-            ex.predicted=pred;ex.correct=(pred===act);
-            const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
-            ex.predGoals=[lh.toFixed(2),la.toFixed(2)];
-            ex.probs={win:probs.win,draw:probs.draw,loss:probs.loss};
+            // Mark for recompute — reevaluateResults() will fill real probs
+            ex.predicted=null;ex.correct=null;ex.predGoals=null;ex.probs=null;
             mc++;
           }
         }
         continue;
       }
 
-      // New result
+      // New result — probs will be computed by reevaluateResults()
       const resultSource=verified?'verified':(mismatch?'unverified':source);
-      const probs=WC26.getBlendedProbs(t1,t2,preFormMap);
-      const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
-      const pred=WC26.predictOutcome(probs,t1,t2);
       const act=s1>s2?t1:(s2>s1?t2:'draw');
-      const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:resultSource,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}};
+      const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:null,actual:act,correct:null,source:resultSource,predGoals:null,probs:null};
       if(winner)entry.winner=winner;
       if(mismatch)entry.altScore={s1:alt.s1,s2:alt.s2};
       state.actualResults.push(entry);
       nc++;existingMap[k]=state.actualResults.length-1;
       if(mismatch)mismatches.push({t1,t2,primary:`${s1}-${s2}`,alt:`${alt.s1}-${alt.s2}`});
     }
-    }); // end withPreTournamentElo
     // Log verification summary
     const summary=[`${nc} new`];
     if(vc>0)summary.push(`${vc} verified`);
@@ -3032,7 +3088,6 @@ async function fetchPolymarketResults() {
   try {
     const state = loadState();
     if (!state.actualResults) state.actualResults = [];
-    const savedElo={...WC26.dynamicElo};WC26.initDynamicElo();
     const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
     // Build lookup: key → index in actualResults (for update-in-place)
     const existingMap = {};
@@ -3077,10 +3132,7 @@ async function fetchPolymarketResults() {
                 const key = `${t1}|${t2}`;
                 const result = top.score[0] > top.score[1] ? t1 : (top.score[0] < top.score[1] ? t2 : 'draw');
                 const dateStr = resolveMatchDate(ev, t1, t2);
-                const probs = WC26.getBlendedProbs(t1, t2, preFormMap, dateStr);
-                const [lh, la] = WC26.getFormAdjustedLambdas(t1, t2, preFormMap, dateStr);
-                const pred = WC26.predictOutcome(probs, t1, t2);
-                const newResult = {team1:t1,team2:t2,score1:top.score[0],score2:top.score[1],date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket-exact',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}};
+                const newResult = {team1:t1,team2:t2,score1:top.score[0],score2:top.score[1],date:dateStr,predicted:null,actual:result,correct:null,source:'polymarket-exact',predGoals:null,probs:null};
                 if (key in existingMap) {
                   const idx = existingMap[key];
                   const old = state.actualResults[idx];
@@ -3146,10 +3198,7 @@ async function fetchPolymarketResults() {
         const oddsSum = pWin1+pDraw+pWin2;
         const preOdds = oddsSum > 0 ? { win: pWin1/oddsSum, draw: pDraw/oddsSum, loss: pWin2/oddsSum } : null;
         const dateStr = resolveMatchDate(ev, team1, team2);
-        const probs = WC26.getBlendedProbs(team1, team2, preFormMap, dateStr, preOdds);
-        const pred = WC26.predictOutcome(probs,team1,team2);
-        const [lh, la] = WC26.getFormAdjustedLambdas(team1, team2, preFormMap, dateStr, preOdds);
-        const newResult = {team1,team2,score1:s1,score2:s2,date:dateStr,predicted:pred,actual:result,correct:pred===result,source:'polymarket',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},preMatchOdds:preOdds};
+        const newResult = {team1,team2,score1:s1,score2:s2,date:dateStr,predicted:null,actual:result,correct:null,source:'polymarket',predGoals:null,probs:null,preMatchOdds:preOdds};
         if (key in existingMap) {
           // Skip if Exact Score already provided a better result
           const idx = existingMap[key];
@@ -3169,16 +3218,13 @@ async function fetchPolymarketResults() {
     }
     console.log('[Poly] Done, added:', added, 'total results:', state.actualResults.length);
     if (added > 0) {
-      WC26.rebuildDynamicElo(state.actualResults, 0.005);  // 0.5% mean reversion per sync
       state.lastUpdate = new Date().toISOString();
       saveState(state);
       mcResults = null;
-      showToast(`Polymarket: +${added} results, Elo updated`);
-    } else {
-      Object.assign(WC26.dynamicElo,savedElo);
+      showToast(`Polymarket: +${added} results`);
     }
     return added;
-  } catch (e) { Object.assign(WC26.dynamicElo,savedElo);console.error('[Poly] Error:', e); showToast('Polymarket results error: Request failed'); return 0; }
+  } catch (e) { console.error('[Poly] Error:', e); showToast('Polymarket results error: Request failed'); return 0; }
 }
 
 /** 用当前模型参数 + 赛前 Polymarket 赔率重新评估所有已完成比赛 */
@@ -3283,51 +3329,44 @@ async function refreshData(){
   // Merge match odds: the-odds-api + Polymarket
   const matchOdds = await fetchMatchOdds();
   try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds={...matchOdds,...mo};saveState(state);}}catch(e){}
-  reevaluateResults();
-  mcResults=null;runSimulation();
+  await reevaluateResults();
+  mcResults=null;await runSimulation();
   state.lastUpdate=new Date().toISOString();saveState(state);
   if(btn){btn.textContent='⟳ Refresh';btn.disabled=false;}showToast('Data refreshed');
 }
 
 // ── Manual entry ─────────────────────────────────────────────────────────
-function addResult(){
+async function addResult(){
   const state=loadState();const t1=document.getElementById('res-team1').value,t2=document.getElementById('res-team2').value;
   const s1=parseInt(document.getElementById('res-score1').value),s2=parseInt(document.getElementById('res-score2').value);
   if(!t1||!t2||isNaN(s1)||isNaN(s2)||t1===t2){showToast('Invalid input');return;}
-  const { probs, lh, la } = WC26.withPreTournamentElo(() => {
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-    const probs=WC26.getBlendedProbs(t1,t2,preFormMap);const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,preFormMap);
-    return { probs, lh, la };
-  });
-  const pred=WC26.predictOutcome(probs,t1,t2);
   const act=s1>s2?t1:(s2>s1?t2:'draw');
-  state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'manual',predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
-  state.lastUpdate=new Date().toISOString();saveState(state);reevaluateResults();
-  mcResults=null;runSimulation();
+  state.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:new Date().toISOString(),predicted:null,actual:act,correct:null,source:'manual',predGoals:null,probs:null});
+  state.lastUpdate=new Date().toISOString();saveState(state);
+  await reevaluateResults();
+  mcResults=null;await runSimulation();
   showToast(`Added: ${t1} ${s1}-${s2} ${t2}`);renderData();
 }
 function clearResults(){const s=loadState();s.actualResults=[];saveState(s);showToast('Cleared');renderData();}
-function importResults(){
+async function importResults(){
   const ta=document.getElementById('results-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);if(!Array.isArray(d))throw 0;const s=loadState();let c=0;
-    WC26.withPreTournamentElo(() => {
-      const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
-      for(const r of d){if(r.team1&&r.team2&&TEAMS[r.team1]&&TEAMS[r.team2]&&typeof r.score1==='number'&&typeof r.score2==='number'){
-        const probs=WC26.getBlendedProbs(r.team1,r.team2,preFormMap);const pred=WC26.predictOutcome(probs,r.team1,r.team2);
-        const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-        s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:pred,actual:act,correct:pred===act,source:'import'});c++;}}
-    });
-    s.lastUpdate=new Date().toISOString();saveState(s);reevaluateResults();
-  mcResults=null;runSimulation();showToast(`Imported ${c}`);renderData();
+    for(const r of d){if(r.team1&&r.team2&&TEAMS[r.team1]&&TEAMS[r.team2]&&typeof r.score1==='number'&&typeof r.score2==='number'){
+      const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
+      s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:null,actual:act,correct:null,source:'import',predGoals:null,probs:null});c++;}}
+    s.lastUpdate=new Date().toISOString();saveState(s);
+    await reevaluateResults();
+    mcResults=null;await runSimulation();showToast(`Imported ${c}`);renderData();
   }catch(e){showToast('Invalid JSON');}
 }
 function exportResults(){const s=loadState();const ta=document.getElementById('results-json');if(ta)ta.value=JSON.stringify(s.actualResults,null,1);showToast('Exported');}
-function applyCustomOdds(){
+async function applyCustomOdds(){
   const ta=document.getElementById('odds-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);const s=loadState();let c=0;
     for(const[team,odds]of Object.entries(d)){if(TEAMS[team]&&typeof odds==='number'&&odds>0){s.customOdds[team]=odds;TEAMS[team].odds=odds;c++;}}
-    s.lastUpdate=new Date().toISOString();saveState(s);showToast(`Updated ${c}`);reevaluateResults();
-  mcResults=null;runSimulation();
+    s.lastUpdate=new Date().toISOString();saveState(s);showToast(`Updated ${c}`);
+    await reevaluateResults();
+    mcResults=null;await runSimulation();
   }catch(e){showToast('Invalid JSON');}
 }
 function resetOdds(){const s=loadState();s.customOdds={};saveState(s);showToast('Reset — reload page');}
@@ -3402,81 +3441,63 @@ function validateData() {
       {team1:'United States',team2:'Paraguay',score1:4,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
     ];
     const existing=new Set(state.actualResults.map(r=>`${r.team1}|${r.team2}`));
-    WC26.withPreTournamentElo(() => {
-    const preFormMap={};for(const t of Object.keys(TEAMS))preFormMap[t]=TEAMS[t].form;
     for(const r of init){
       const k=`${r.team1}|${r.team2}`;
       if(existing.has(k)){
         const idx=state.actualResults.findIndex(x=>x.team1===r.team1&&x.team2===r.team2);
         if(idx>=0&&!state.actualResults[idx].predGoals){
-          const probs=WC26.getBlendedProbs(r.team1,r.team2,preFormMap);
-          const[lh,la]=WC26.getFormAdjustedLambdas(r.team1,r.team2,preFormMap);
-          const pred=WC26.predictOutcome(probs,r.team1,r.team2);
           const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-          state.actualResults[idx].predGoals=[lh.toFixed(2),la.toFixed(2)];
-          state.actualResults[idx].predicted=pred;
           state.actualResults[idx].actual=act;
-          state.actualResults[idx].correct=(pred===act);
-          state.actualResults[idx].probs={win:probs.win,draw:probs.draw,loss:probs.loss};
         }
         continue;
       }
-      const probs=WC26.getBlendedProbs(r.team1,r.team2,preFormMap);
-      const[lh,la]=WC26.getFormAdjustedLambdas(r.team1,r.team2,preFormMap);
-      const pred=WC26.predictOutcome(probs,r.team1,r.team2);
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-      state.actualResults.push({...r,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss}});
+      state.actualResults.push({...r,predicted:null,actual:act,correct:null,predGoals:null,probs:null});
     }
-    }); // end withPreTournamentElo
     state.dataVersion=4;
     state.lastUpdate=new Date().toISOString();saveState(state);
   }
   const sm=state.marketData;if(sm&&sm.matches)marketData=sm;
-  WC26.initDynamicElo();
   validateData(); // Check data integrity on every page load
 })();
+// Init: auto-fetch first, then reevaluate + simulate
 (async()=>{
-  try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
-  try{await runSimulation();}catch(e){console.error('sim:',e);}
-  applyLang();
-})();
-// Auto-fetch results from backup API (no key needed, always available)
-(async()=>{try{
-  const r=await fetch('/api/results-alt');
-  const d=await r.json();
-  if(!Array.isArray(d))return;
-  const s=loadState();if(!s.actualResults)s.actualResults=[];
-  const map={};s.actualResults.forEach((r,i)=>{map[`${r.team1}|${r.team2}`]=i;});
-  let added=0;
-  WC26.withPreTournamentElo(()=>{
-    const pf={};for(const t of Object.keys(TEAMS))pf[t]=TEAMS[t].form;
-    for(const m of d){
-      if(!m.score||!m.score.ft)continue;
-      const s1=m.score.ft[0],s2=m.score.ft[1];
-      const t1=mapTeamName(m.team1),t2=mapTeamName(m.team2);
-      if(s1==null||s2==null||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
-      const k=`${t1}|${t2}`;
-      if(map[k]!==undefined){
-        const ex=s.actualResults[map[k]];
-        if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
-      }else{
-        const probs=WC26.getBlendedProbs(t1,t2,pf);
-        const[lh,la]=WC26.getFormAdjustedLambdas(t1,t2,pf);
-        const pred=WC26.predictOutcome(probs,t1,t2);
-        const act=s1>s2?t1:(s2>s1?t2:'draw');
-        s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,predicted:pred,actual:act,correct:pred===act,predGoals:[lh.toFixed(2),la.toFixed(2)],probs:{win:probs.win,draw:probs.draw,loss:probs.loss},source:'auto'});
-        map[k]=s.actualResults.length-1;
-        added++;
+  // 1. Auto-fetch actual results from API (before simulation)
+  try{
+    const r=await fetch('/api/results-alt');
+    const d=await r.json();
+    if(Array.isArray(d)){
+      const s=loadState();if(!s.actualResults)s.actualResults=[];
+      const map={};s.actualResults.forEach((r,i)=>{map[`${r.team1}|${r.team2}`]=i;});
+      let added=0;
+      for(const m of d){
+        if(!m.score||!m.score.ft)continue;
+        const s1=m.score.ft[0],s2=m.score.ft[1];
+        const t1=mapTeamName(m.team1),t2=mapTeamName(m.team2);
+        if(s1==null||s2==null||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
+        const k=`${t1}|${t2}`;
+        if(map[k]!==undefined){
+          const ex=s.actualResults[map[k]];
+          if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
+        }else{
+          const act=s1>s2?t1:(s2>s1?t2:'draw');
+          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'});
+          map[k]=s.actualResults.length-1;
+          added++;
+        }
+      }
+      if(added>0){
+        s.lastUpdate=new Date().toISOString();
+        saveState(s);
+        console.log(`[AutoFetch] Added/updated ${added} results, total: ${s.actualResults.length}`);
       }
     }
-  });
-  if(added>0){
-    s.lastUpdate=new Date().toISOString();
-    saveState(s);
-    mcResults=null;await runSimulation();
-    console.log(`[AutoFetch] Added/updated ${added} results, total: ${s.actualResults.length}`);
-  }
-}catch(e){console.error('[AutoFetch] Error:',e);}})();
+  }catch(e){console.error('[AutoFetch] Error:',e);}
+  // 2. Always reevaluate + simulate (whether or not new results were found)
+  try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
+  try{mcResults=null;await runSimulation();}catch(e){console.error('sim:',e);}
+  applyLang();
+})();
 // Also try primary API if key exists
 (async()=>{try{
   if(getApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}
