@@ -332,14 +332,16 @@ body {
 /* ── FIFA-Style Knockout Bracket ────────────────────────────────────── */
 .bracket-wrap { overflow-x: auto; padding: 1rem 0; -webkit-overflow-scrolling: touch; }
 
+/* ═══════════════════════════════════════════════════════════════
+   FIFA World Cup 2026 — Bracket Design (ESPN/FIFA style)
+   ═══════════════════════════════════════════════════════════════ */
+
 .ko-bracket {
   display: flex;
   align-items: stretch;
   min-width: 1400px;
-  padding: 1rem 0.5rem;
+  padding: 0.5rem;
   gap: 0;
-  background: linear-gradient(180deg, rgba(0,122,255,0.02) 0%, transparent 50%);
-  border-radius: 12px;
 }
 
 .ko-half {
@@ -350,28 +352,35 @@ body {
 .ko-half-left { flex-direction: row; }
 .ko-half-right { flex-direction: row-reverse; }
 
+/* Round columns */
 .ko-round {
   display: flex;
   flex-direction: column;
   min-width: 170px;
-  max-width: 195px;
+  max-width: 200px;
 }
 
 .ko-round-title {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   font-weight: 800;
   color: var(--text3);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-align: center;
-  padding: 0.3rem 0;
-  margin-bottom: 0.2rem;
+  padding: 0.4rem 0;
+  margin-bottom: 0.15rem;
 }
 
-/* Vertical spacing per round */
-.ko-round[data-round="R32"] { gap: 0.1rem; }
-.ko-round[data-round="R16"] { gap: 0.4rem; }
-.ko-round[data-round="QF"]  { gap: 1.2rem; }
+/* Round-specific title colors */
+.ko-round[data-round="R32"] .ko-round-title { color: var(--blue); }
+.ko-round[data-round="R16"] .ko-round-title { color: var(--green); }
+.ko-round[data-round="QF"] .ko-round-title { color: var(--orange); }
+.ko-round[data-round="SF"] .ko-round-title { color: var(--red); }
+
+/* Vertical spacing per round: R32 tight → SF loose */
+.ko-round[data-round="R32"] { gap: 0.05rem; }
+.ko-round[data-round="R16"] { gap: 0.35rem; }
+.ko-round[data-round="QF"]  { gap: 1rem; }
 .ko-round[data-round="SF"]  { gap: 0; }
 
 /* Match pairs with connectors */
@@ -381,11 +390,11 @@ body {
   position: relative;
 }
 
-/* SVG-like connector lines */
+/* Connector lines */
 .ko-conn {
   position: absolute;
-  right: -14px;
-  width: 14px;
+  right: -12px;
+  width: 12px;
   pointer-events: none;
 }
 .ko-conn::before {
@@ -395,142 +404,155 @@ body {
   top: 25%;
   height: 50%;
   width: 0;
-  border-right: 2px solid rgba(0,122,255,0.2);
+  border-right: 1.5px solid var(--border);
 }
 .ko-conn::after {
   content: '';
   position: absolute;
   right: 0;
   top: 50%;
-  width: 14px;
+  width: 12px;
   height: 0;
-  border-top: 2px solid rgba(0,122,255,0.2);
+  border-top: 1.5px solid var(--border);
 }
-.ko-half-right .ko-conn { left: -14px; right: auto; }
-.ko-half-right .ko-conn::before { left: 0; right: auto; border-left: 2px solid rgba(0,122,255,0.2); border-right: none; }
+.ko-half-right .ko-conn { left: -12px; right: auto; }
+.ko-half-right .ko-conn::before { left: 0; right: auto; border-left: 1.5px solid var(--border); border-right: none; }
 .ko-half-right .ko-conn::after { left: 0; right: auto; }
 
-/* Match card — modern design */
+/* ── Match Card ────────────────────────────────────────────── */
 .ko-match {
   background: var(--card);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   overflow: hidden;
   border: 1px solid var(--border);
-  margin: 0.15rem 0;
-  transition: all 0.2s ease;
+  margin: 0.1rem 0;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 .ko-match:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   border-color: var(--blue);
 }
 .ko-match.final-match {
   border: 2px solid var(--gold);
-  background: linear-gradient(135deg, rgba(202,138,4,0.08), rgba(202,138,4,0.02));
-  box-shadow: 0 4px 16px rgba(202,138,4,0.15);
-}
-.ko-match.final-match:hover {
-  box-shadow: 0 8px 24px rgba(202,138,4,0.25);
-  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(202,138,4,0.06), rgba(202,138,4,0.01));
 }
 
+/* Match header: #number, date, venue */
 .ko-match-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.58rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.55rem;
   color: var(--text3);
-  background: linear-gradient(90deg, rgba(0,122,255,0.04), transparent);
+  background: rgba(0,0,0,0.02);
   border-bottom: 1px solid var(--border);
+  gap: 0.4rem;
 }
-.ko-match-num { font-weight: 800; color: var(--blue); font-size: 0.6rem; }
-.ko-match-date { font-weight: 600; color: var(--text2); }
-.ko-match-venue { font-weight: 400; font-size: 0.52rem; color: var(--text3); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-
-/* Probability pills */
-.ko-probs { display: flex; gap: 0.25rem; padding: 0.2rem 0.5rem; font-size: 0.52rem; }
-.kp { padding: 0.08rem 0.3rem; border-radius: 4px; font-weight: 700; letter-spacing: 0.02em; }
-.kp.w { background: rgba(52,199,89,0.15); color: var(--green); }
-.kp.d { background: rgba(107,114,128,0.1); color: var(--text2); }
-.kp.l { background: rgba(255,59,48,0.12); color: var(--red); }
+.ko-match-num { font-weight: 700; color: var(--blue); }
+.ko-match-date { font-weight: 600; }
+.ko-match-venue {
+  margin-left: auto;
+  font-size: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
 
 /* Team rows */
 .ko-team {
   display: flex;
   align-items: center;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.72rem;
+  padding: 0.22rem 0.4rem;
+  font-size: 0.7rem;
   font-weight: 600;
   border-bottom: 1px solid var(--border);
-  transition: background 0.15s;
 }
 .ko-team:last-child { border-bottom: none; }
 .ko-team.w {
-  color: var(--text);
-  background: linear-gradient(90deg, rgba(52,199,89,0.08), transparent);
+  background: rgba(52,199,89,0.06);
   font-weight: 700;
 }
 .ko-team.l { color: var(--text3); font-weight: 500; }
-.ko-team .ko-flag img { width: 20px; height: 14px; border-radius: 2px; margin-right: 6px; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); vertical-align: middle; }
+.ko-team .ko-flag img {
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 5px;
+  box-shadow: 0 0 0 0.5px rgba(0,0,0,0.1);
+  vertical-align: middle;
+}
 .ko-team .ko-name { flex: 1; }
 .ko-team .ko-score {
-  font-weight: 900;
-  font-size: 1rem;
-  min-width: 1.4rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  min-width: 1.2rem;
   text-align: center;
-  padding: 0 0.2rem;
 }
 .ko-team.w .ko-score { color: var(--green); }
 .ko-team.l .ko-score { color: var(--text3); }
 
-/* Match method (90'/AET/PSO) */
+/* Probability pills */
+.ko-probs {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.5rem;
+}
+.kp {
+  padding: 0.05rem 0.25rem;
+  border-radius: 3px;
+  font-weight: 700;
+}
+.kp.w { background: rgba(52,199,89,0.12); color: var(--green); }
+.kp.d { background: rgba(107,114,128,0.08); color: var(--text2); }
+.kp.l { background: rgba(255,59,48,0.1); color: var(--red); }
+
+/* Match method badge */
 .ko-method {
-  font-size: 0.58rem;
-  font-weight: 800;
+  font-size: 0.55rem;
+  font-weight: 700;
   color: var(--orange);
   text-align: center;
-  padding: 0.15rem;
-  background: rgba(217,119,6,0.08);
-  letter-spacing: 0.05em;
+  padding: 0.1rem;
+  background: rgba(217,119,6,0.06);
 }
 
-/* Center column: Final + 3rd + Champion */
+/* ── Center Column: Final + 3rd + Champion ────────────────── */
 .ko-center {
   display: flex;
   flex-direction: column;
   align-items: center;
   min-width: 200px;
-  gap: 1rem;
-  padding: 0 0.8rem;
+  gap: 0.8rem;
+  padding: 0 0.5rem;
 }
 
+/* Champion display */
 .ko-champion {
   text-align: center;
-  padding: 1.5rem 1rem;
-  background: linear-gradient(135deg, rgba(202,138,4,0.08), rgba(202,138,4,0.02));
-  border-radius: 12px;
-  border: 1px solid rgba(202,138,4,0.2);
+  padding: 1.2rem 0.8rem;
+  background: linear-gradient(135deg, rgba(202,138,4,0.06), rgba(202,138,4,0.01));
+  border-radius: 10px;
+  border: 1px solid rgba(202,138,4,0.15);
 }
 .ko-champion .trophy {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
-  filter: drop-shadow(0 2px 4px rgba(202,138,4,0.3));
+  font-size: 2.5rem;
+  margin-bottom: 0.4rem;
 }
 .ko-champion .name {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--gold);
-  text-shadow: 0 1px 2px rgba(202,138,4,0.2);
 }
 .ko-champion .label {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 700;
-  color: var(--text2);
+  color: var(--text3);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-top: 0.3rem;
+  letter-spacing: 0.1em;
+  margin-top: 0.2rem;
 }
 
 /* Placeholder for unfilled matches */
