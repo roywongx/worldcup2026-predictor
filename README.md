@@ -76,7 +76,8 @@ python3 server.py        # Start server on port 9090 (auto-launches compute-serv
 - Top-3 most probable scores with confidence percentages
 - Deterministic Poisson sampling (seeded, same result per match)
 - Extra time fatigue factor (ET_FATIGUE=0.85)
-- Temperature auto-optimization via grid search
+- Temperature auto-optimization via grid search (uses rawProbs, no double-calibration)
+- MC workers receive optimalT from main process (consistent probabilities)
 
 **Server:**
 - Parallel Monte Carlo via worker_threads (up to 16 workers)
@@ -171,7 +172,8 @@ python3 server.py        # 启动服务器（端口 9090，自动启动 compute-
 - 每场比赛最可能的 3 个比分及概率
 - 确定性 Poisson 采样（种子化，同一对阵结果固定）
 - 加时赛疲劳因子（ET_FATIGUE=0.85）
-- 温度参数自动优化（网格搜索）
+- 温度参数自动优化（使用 rawProbs，避免双重校准）
+- MC worker 接收主线程的 optimalT（概率一致性）
 
 **服务器优化：**
 - 并行 Monte Carlo（worker_threads，最多 16 个 worker）
