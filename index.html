@@ -1848,7 +1848,7 @@ function saveState(s){
 // Server-side API key management
 let _serverKeys={}; // Cached from server: {_has:{football-data:bool,oddsapi:bool}}
 async function loadServerKeys(){
-  try{const r=await fetch('/api/keys');if(r.ok)_serverKeys=await r.json();}catch(e){}
+  try{const r=await fetch('/api/keys');if(r.ok)_serverKeys=await r.json();}catch(e){console.error('[loadServerKeys]',e);}
 }
 async function saveApiKey(service,key){
   if(!key||key.length<8){showToast('Key too short');return;}
@@ -2558,7 +2558,9 @@ function renderData(){
   const hasO=hasApiKey('oddsapi'),hasR=hasApiKey('football-data');
   let h='<div class="data-grid">';
   if(!hasO&&!hasR){h+=`<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))"><h4>🚀 ${t('data.setup')}</h4><p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem">${t('data.setup.desc')}</p><div style="display:flex;flex-direction:column;gap:0.8rem"><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">⚽</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">Football-Data.org</div><div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div></div><a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">💰</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">The-Odds-API</div><div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div></div><a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div></div></div>`;}
-  h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData().catch(console.error)">⟳ ${t('data.fetchAll')}</button></div></div>`;
+  const age=state.lastUpdate?Math.floor((Date.now()-new Date(state.lastUpdate).getTime())/60000):999;
+  const staleWarn=age>30?`<span style="color:var(--orange);font-size:0.65rem">⚠ ${age>60?Math.floor(age/60)+'h':age+'m'} old — refresh recommended</span>`:'';
+  h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'} ${staleWarn}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData().catch(console.error)">⟳ ${t('data.fetchAll')}</button></div></div>`;
   const fdStatus=_serverKeys._has?.['football-data']?'<span style="color:var(--green)">✓ Saved</span>':'<span style="color:var(--text3)">Not set</span>';
   const odStatus=_serverKeys._has?.['oddsapi']?'<span style="color:var(--green)">✓ Saved</span>':'<span style="color:var(--text3)">Not set</span>';
   h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')} <span style="font-size:0.65rem;color:var(--text3)">(stored on server)</span></h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value).then(()=>renderData())">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button>${fdStatus}</div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value).then(()=>renderData())">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button>${odStatus}</div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
@@ -2666,7 +2668,9 @@ function renderRadar(){
   h+=`<button class="data-btn data-btn-secondary" onclick="reevaluateResults().then(()=>{mcResults=null;return runSimulation();}).then(()=>renderAll()).catch(console.error)">🔁 Re-evaluate</button>`;
   h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?t('prob.stopAuto'):t('prob.auto5min')}</button>`;
   h+=`<button class="data-btn data-btn-green" onclick="fetchAndSaveMatchOdds('radar')">📊 ${t('radar.fetchMatchOdds')}</button>`;
-  h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
+  const rAge=sd.lastFetch?Math.floor((Date.now()-new Date(sd.lastFetch).getTime())/60000):999;
+  const rStale=rAge>30?`<span style="color:var(--orange);font-size:0.65rem">⚠ ${rAge>60?Math.floor(rAge/60)+'h':rAge+'m'} old</span>`:'';
+  h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''} ${rStale}</span>`;
   h+=`</div>`;
 
   // EV Analysis Panel
@@ -2705,10 +2709,12 @@ function renderRadar(){
   }
 
   // Champion probability comparison
-  h+=`<div style="margin-top:1rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.champion')}</h4><div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>${t('radar.model')}</th><th>${t('radar.market')}</th><th>${t('radar.diff')}</th></tr>`;
+  h+=`<div style="margin-top:1rem"><h4 style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">${t('radar.champion')}</h4>`;
+  if(!mcResults)h+=`<p style="font-size:0.72rem;color:var(--text3);margin-bottom:0.5rem">Run Monte Carlo to see model probabilities</p>`;
+  h+=`<div class="prob-wrap"><table class="prob-table"><tr><th>Team</th><th>${t('radar.model')}</th><th>${t('radar.market')}</th><th>${t('radar.diff')}</th></tr>`;
   Object.keys(TEAMS).sort((a,b)=>(sd.champion[b]||0)-(sd.champion[a]||0)).forEach(t=>{
     const mp=sd.champion[t]||0;if(mp<0.001)return;
-    const mdl=mcResults?((mcResults.champ[t]||0)/mcResults.N):(composite(t)*0.2);
+    const mdl=mcResults?((mcResults.champ[t]||0)/mcResults.N):0;
     const diff=mdl-mp,dc=diff>0.02?'var(--green)':diff<-0.02?'var(--red)':'var(--text3)';
     h+=`<tr><td>${fl(t)}</td><td style="font-size:0.72rem">${(mdl*100).toFixed(1)}%</td><td style="font-size:0.72rem">${(mp*100).toFixed(1)}%</td><td style="color:${dc};font-weight:700">${diff>0?'+':''}${(diff*100).toFixed(1)}%</td></tr>`;
   });h+='</table></div></div>';
@@ -2776,9 +2782,9 @@ async function testOddsKey(){
   }catch(e){console.error('testOddsKey:',e);if(el){el.style.color='var(--red)';el.textContent='✗ Request failed';}}
 }
 
-async function fetchResults(){
+async function fetchResults(skipSim){
   if(_fetchBusy)return;_fetchBusy=true;
-  console.log('[fetchResults] Called');
+  console.log('[fetchResults] Called',skipSim?'(skipSim)':'');
   try{
   const se=document.getElementById('fetch-status');
   if(se)se.textContent=t('prob.fetchingResults');
@@ -2883,7 +2889,8 @@ async function fetchResults(){
       logFetch('verify',false,mismatches.map(m=>`${m.t1} vs ${m.t2}: ${m.primary||m.stored} → ${m.alt}`).join('; '));
     }
     if(nc+vc+mc>0){state.lastUpdate=new Date().toISOString();saveState(state);await reevaluateResults();
-  mcResults=null;await runSimulation();showToast(`Fetched: ${summary.join(', ')}`);if(se)se.textContent=`${summary.join(' · ')} · ${new Date().toLocaleTimeString()}`;}
+  if(!skipSim){mcResults=null;await runSimulation();}
+  showToast(`Fetched: ${summary.join(', ')}`);if(se)se.textContent=`${summary.join(' · ')} · ${new Date().toLocaleTimeString()}`;}
     else{showToast('No new results');if(se)se.textContent=`No new · ${new Date().toLocaleTimeString()}`;}
     return true;
   }catch(e){console.error('fetchResults:',e);if(se)se.textContent='Error: Request failed';showToast('Error: Request failed');return false;}
@@ -3372,17 +3379,20 @@ function togglePolymarketAuto() {
 
 async function refreshData(){
   const btn=document.querySelector('[onclick="refreshData().catch(console.error)"]');if(btn){btn.textContent='⟳ Fetching...';btn.disabled=true;}
-  try{await fetchResults();}catch(e){}
-  if(hasApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
+  let errors=[];
+  try{await fetchResults();}catch(e){console.error('[refresh] fetchResults:',e);errors.push('results');}
+  if(hasApiKey('oddsapi')){try{await fetchOdds();}catch(e){console.error('[refresh] fetchOdds:',e);errors.push('odds');}}
   const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
-  try{await fetchPolymarketResults();}catch(e){}
+  try{await fetchPolymarketResults();}catch(e){console.error('[refresh] polymarketResults:',e);errors.push('polymarket');}
   // Merge match odds: the-odds-api + Polymarket
   const matchOdds = await fetchMatchOdds();
-  try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds={...matchOdds,...mo};saveState(state);}}catch(e){}
+  try{const mo=await fetchPolymarketMatchOdds();if(Object.keys(mo).length>0){state.polymarketMatchOdds={...matchOdds,...mo};saveState(state);}}catch(e){console.error('[refresh] matchOdds:',e);errors.push('matchOdds');}
   await reevaluateResults();
   mcResults=null;await runSimulation();
   state.lastUpdate=new Date().toISOString();saveState(state);
-  if(btn){btn.textContent='⟳ Refresh';btn.disabled=false;}showToast('Data refreshed');
+  if(btn){btn.textContent='⟳ Refresh';btn.disabled=false;}
+  if(errors.length)showToast(`Refresh done (${errors.join(',')} failed)`,'error');
+  else showToast('Data refreshed');
 }
 
 // ── Manual entry ─────────────────────────────────────────────────────────
@@ -3485,10 +3495,10 @@ function validateData() {
   // Force re-seed with v4 to fix null scores from date mismatch
   if(!state.dataVersion || state.dataVersion < 4 || state.actualResults.length === 0){
     const init=[
-      {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-11T00:00:00Z',source:'official'},
-      {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-11T00:00:00Z',source:'official'},
-      {team1:'Canada',team2:'Bosnia Herzegovina',score1:1,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
-      {team1:'United States',team2:'Paraguay',score1:4,score2:1,date:'2026-06-12T00:00:00Z',source:'official'},
+      {team1:'Mexico',team2:'South Africa',score1:2,score2:0,date:'2026-06-12',source:'official'},
+      {team1:'South Korea',team2:'Czech Republic',score1:2,score2:1,date:'2026-06-12',source:'official'},
+      {team1:'Canada',team2:'Bosnia Herzegovina',score1:1,score2:1,date:'2026-06-13',source:'official'},
+      {team1:'United States',team2:'Paraguay',score1:4,score2:1,date:'2026-06-13',source:'official'},
     ];
     const existing=new Set(state.actualResults.map(r=>`${r.team1}|${r.team2}`));
     for(const r of init){
@@ -3535,6 +3545,20 @@ function validateData() {
     if(Array.isArray(d)){
       const s=loadState();if(!s.actualResults)s.actualResults=[];
       const map={};s.actualResults.forEach((r,i)=>{map[`${r.team1}|${r.team2}`]=i;});
+      // Normalize UTC date to Beijing date (UTC+8)
+      function toBJDate(dateStr){
+        if(!dateStr)return '';
+        // Already a Beijing date (no timezone, YYYY-MM-DD)
+        if(/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){
+          const d=new Date(dateStr+'T00:00:00Z');
+          d.setHours(d.getHours()+8);
+          return d.toISOString().substring(0,10);
+        }
+        // ISO date with timezone
+        const d=new Date(dateStr);
+        d.setHours(d.getHours()+8);
+        return d.toISOString().substring(0,10);
+      }
       let added=0;
       for(const m of d){
         if(!m.score||!m.score.ft)continue;
@@ -3547,7 +3571,7 @@ function validateData() {
           if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
         }else{
           const act=s1>s2?t1:(s2>s1?t2:'draw');
-          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:m.date||'',predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'});
+          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:toBJDate(m.date),predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'});
           map[k]=s.actualResults.length-1;
           added++;
         }
@@ -3560,7 +3584,7 @@ function validateData() {
     }
   }catch(e){console.error('[AutoFetch] Error:',e);}
   // 2. Also try primary API if key exists (may add winner/extra data)
-  try{if(hasApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}}catch(e){}
+  try{if(hasApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults(true);}}catch(e){}
   // 3. Reevaluate + simulate ONCE with all data loaded
   try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
   try{mcResults=null;await runSimulation();}catch(e){console.error('sim:',e);}
