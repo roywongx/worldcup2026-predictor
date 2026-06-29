@@ -1890,7 +1890,10 @@ async function runSimulation(){
   try{
   const state=loadState();
   const results=state.actualResults||[];
-  console.log(`[runSimulation] calling server API with ${results.length} results`);
+  // Debug: log R32-relevant results
+  const r32teams=['South Africa','Canada','Switzerland','Bosnia Herzegovina'];
+  const r32res=results.filter(r=>r32teams.includes(r.team1)||r32teams.includes(r.team2));
+  console.log(`[runSimulation] ${results.length} results total, R32-relevant:`,r32res.map(r=>`${r.team1} vs ${r.team2}: ${r.score1}-${r.score2}`));
   const data = await apiCompute('full', {
     actualResults: results,
     marketOdds: state.polymarketMatchOdds || {},
@@ -1900,6 +1903,9 @@ async function runSimulation(){
     currentResults = data.currentResults;
     WC26._dynamicFormMap = currentResults.formMap;
     if(currentResults.dynamicElo) WC26.dynamicElo = currentResults.dynamicElo;
+    // Debug: verify bracket
+    const r32=currentResults.ko?.R32||[];
+    if(r32[2])console.log(`[runSimulation] R32[2]: ${r32[2].a} vs ${r32[2].b} actual=${r32[2].actual}`);
   }
   if(data.calibration) window._calibrationStats = data.calibration;
   if(data.ev) window._evData = data.ev;
