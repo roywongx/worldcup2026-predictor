@@ -2742,12 +2742,14 @@ function renderRadar(){
 function logFetch(type,success,detail){const s=loadState();if(!s.fetchLog)s.fetchLog=[];s.fetchLog.unshift({time:new Date().toISOString(),type,success,detail});if(s.fetchLog.length>50)s.fetchLog=s.fetchLog.slice(0,50);saveState(s);}
 
 async function testApiKey(){
-  const key=document.getElementById('key-football-data').value;
+  const input=document.getElementById('key-football-data').value;
   const el=document.getElementById('key-test-result');
-  if(!key){if(el)el.textContent=t('prob.enterKey');return;}
+  if(!hasApiKey('football-data')&&!input){if(el)el.textContent=t('prob.enterKey');return;}
   if(el)el.textContent=t('prob.testing');if(el)el.style.color='var(--text3)';
   try{
-    const r=await fetch('/api/test',{headers:{'X-API-Key':key}});
+    // If input has value, test that key (header); otherwise test server-stored key (no header)
+    const headers=input?{'X-API-Key':input}:{};
+    const r=await fetch('/api/test',{headers});
     const j=await r.json();
     if(j.ok){
       if(el){el.style.color='var(--green)';el.textContent=`✓ Key valid! Plan: ${j.plan}. Competitions: ${(j.competitions||[]).slice(0,5).join(', ')}...`;}
@@ -2758,12 +2760,13 @@ async function testApiKey(){
 }
 
 async function testOddsKey(){
-  const key=document.getElementById('key-oddsapi').value;
+  const input=document.getElementById('key-oddsapi').value;
   const el=document.getElementById('odds-test-result');
-  if(!key){if(el)el.textContent=t('prob.enterKey');return;}
+  if(!hasApiKey('oddsapi')&&!input){if(el)el.textContent=t('prob.enterKey');return;}
   if(el)el.textContent=t('prob.testing');if(el)el.style.color='var(--text3)';
   try{
-    const r=await fetch('/api/test-odds',{headers:{'X-API-Key':key}});
+    const headers=input?{'X-API-Key':input}:{};
+    const r=await fetch('/api/test-odds',{headers});
     const j=await r.json();
     if(j.ok){
       if(el){el.style.color='var(--green)';el.textContent=`✓ Key valid! Remaining: ${j.remaining} requests`;}
