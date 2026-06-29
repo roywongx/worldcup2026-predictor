@@ -93,12 +93,35 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._test_odds_key()
         elif self.path.startswith('/api/test'):
             self._test_key()
+        elif self.path == '/api/keys':
+            keys = self._load_keys()
+            masked = {}
+            for k, v in keys.items():
+                if v and len(v) > 4:
+                    masked[k] = v[:4] + '*' * (len(v) - 4)
+                else:
+                    masked[k] = v
+            masked['_has'] = {k: bool(v) for k, v in keys.items()}
+            self._json_response(masked)
         else:
             super().do_GET()
 
     def do_POST(self):
         if self.path.startswith('/api/compute'):
             self._proxy_compute()
+        elif self.path == '/api/keys':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(length).decode('utf-8')
+                new_keys = json.loads(body)
+                existing = self._load_keys()
+                for k, v in new_keys.items():
+                    if v is not None:
+                        existing[k] = v
+                self._save_keys(existing)
+                self._json_response({'ok': True, 'saved': list(new_keys.keys())})
+            except Exception as e:
+                self._json_response({'error': str(e)}, 400)
         elif self.path.startswith('/api/montecarlo'):
             self._run_montecarlo()
         else:
@@ -190,10 +213,34 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         print(f'  [{ts}] {msg}')
 
     def _get_api_key(self):
-        return self.headers.get('X-API-Key', '')
+        """Get API key: prefer header, fall back to server-side config."""
+        header_key = self.headers.get('X-API-Key', '')
+        if header_key:
+            return header_key
+        return self._load_keys().get('football-data', '')
+
+    def _get_odds_key(self):
+        """Get odds API key: prefer header, fall back to server-side config."""
+        header_key = self.headers.get('X-API-Key', '')
+        if header_key:
+            return header_key
+        return self._load_keys().get('oddsapi', '')
+
+    def _load_keys(self):
+        keys_file = DIR / 'data' / 'api-keys.json'
+        if keys_file.exists():
+            try:
+                return json.loads(keys_file.read_text())
+            except Exception:
+                pass
+        return {}
+
+    def _save_keys(self, keys):
+        keys_file = DIR / 'data' / 'api-keys.json'
+        keys_file.write_text(json.dumps(keys, indent=2))
 
     def _odds_request(self, path, params=None):
-        api_key = self._get_api_key()
+        api_key = self._get_odds_key()
         all_params = dict(params or {})
         all_params['apiKey'] = api_key
         query = urllib.parse.urlencode(all_params)
@@ -218,7 +265,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'ok': False, 'error': str(e)}, 502)
 
     def _test_odds_key(self):
-        api_key = self._get_api_key()
+        api_key = self._get_odds_key()
         if not api_key:
             self._json_response({'error': 'Pass X-API-Key header'}, 400)
             return
@@ -266,7 +313,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': str(e)}, 502)
 
     def _proxy_odds_api(self):
-        api_key = self._get_api_key()
+        api_key = self._get_odds_key()
         if not api_key:
             self._json_response({'error': 'Missing API key'}, 400)
             return
@@ -284,7 +331,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': str(e)}, 502)
 
     def _proxy_match_odds(self):
-        api_key = self._get_api_key()
+        api_key = self._get_odds_key()
         if not api_key:
             self._json_response({'error': 'Missing API key'}, 400)
             return

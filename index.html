@@ -1845,8 +1845,28 @@ function saveState(s){
     _stateCache=s;_stateCacheKey=raw;
   }}catch(e){}
 }
-function getApiKey(s){return loadState().apiKeys[s]||'';}
-function saveApiKey(s,k){if(k.length>100){showToast('Key too long');return;}const st=loadState();st.apiKeys[s]=k;saveState(st);showToast(s+' key saved');}
+// Server-side API key management
+let _serverKeys={}; // Cached from server: {_has:{football-data:bool,oddsapi:bool}}
+async function loadServerKeys(){
+  try{const r=await fetch('/api/keys');if(r.ok)_serverKeys=await r.json();}catch(e){}
+}
+async function saveApiKey(service,key){
+  if(!key||key.length<8){showToast('Key too short');return;}
+  if(key.length>100){showToast('Key too long');return;}
+  try{
+    const r=await fetch('/api/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[service]:key})});
+    if(r.ok){await loadServerKeys();showToast(service+' key saved to server');}
+    else showToast('Save failed','error');
+  }catch(e){showToast('Save error: '+e.message,'error');}
+}
+function getApiKey(s){
+  // Check if server has this key
+  if(_serverKeys._has&&_serverKeys._has[s])return '***';
+  return loadState().apiKeys[s]||'';
+}
+function hasApiKey(s){
+  return !!(_serverKeys._has&&_serverKeys._has[s])||!!(loadState().apiKeys[s]);
+}
 
 // ── Tab navigation ───────────────────────────────────────────────────────
 let currentResults=null,mcResults=null,marketData={matches:{},champion:{},lastFetch:null};
@@ -2535,11 +2555,13 @@ function renderModel(){
 function renderData(){
   try{
   const state=loadState();const stats=getCalibrationStats(state.actualResults||[]);
-  const hasO=!!getApiKey('oddsapi'),hasR=!!getApiKey('football-data');
+  const hasO=hasApiKey('oddsapi'),hasR=hasApiKey('football-data');
   let h='<div class="data-grid">';
   if(!hasO&&!hasR){h+=`<div class="data-card" style="border:2px solid var(--blue);background:linear-gradient(135deg,rgba(0,122,255,0.03),rgba(0,122,255,0.08))"><h4>🚀 ${t('data.setup')}</h4><p style="font-size:0.8rem;color:var(--text2);margin-bottom:1rem">${t('data.setup.desc')}</p><div style="display:flex;flex-direction:column;gap:0.8rem"><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">⚽</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">Football-Data.org</div><div style="font-size:0.7rem;color:var(--text3)">Match results · 10 req/min · Free</div></div><a href="https://www.football-data.org/client/register" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div><div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:1.2rem">💰</span><div style="flex:1"><div style="font-size:0.8rem;font-weight:600">The-Odds-API</div><div style="font-size:0.7rem;color:var(--text3)">Betting odds · 500 req/month · Free</div></div><a href="https://the-odds-api.com/" target="_blank" class="data-btn data-btn-primary" style="text-decoration:none;font-size:0.7rem">${t('data.getKey')}</a></div></div></div>`;}
   h+=`<div class="data-card" style="border:1px solid rgba(0,122,255,0.15)"><h4>🔄 Auto-Fetch</h4><div id="fetch-status" style="font-size:0.72rem;color:var(--text3);margin-bottom:0.6rem">${state.lastUpdate?'Last: '+new Date(state.lastUpdate).toLocaleString():'Not fetched'}</div><div class="data-actions"><button class="data-btn data-btn-primary" onclick="fetchResults()">⚽ ${t('data.fetchResults')}</button><button class="data-btn data-btn-primary" onclick="fetchOdds()" ${hasO?'':'disabled'}>💰 ${t('data.fetchOdds')}</button><button class="data-btn data-btn-green" onclick="refreshData().catch(console.error)">⟳ ${t('data.fetchAll')}</button></div></div>`;
-  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')}</h4><div style="font-size:0.65rem;color:var(--orange);margin-bottom:0.4rem">⚠️ API keys stored in browser localStorage. Do not use on shared computers.</div><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" value="${esc(getApiKey('football-data'))}" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button></div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" value="${esc(getApiKey('oddsapi'))}" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value);renderData()">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button></div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
+  const fdStatus=_serverKeys._has?.['football-data']?'<span style="color:var(--green)">✓ Saved</span>':'<span style="color:var(--text3)">Not set</span>';
+  const odStatus=_serverKeys._has?.['oddsapi']?'<span style="color:var(--green)">✓ Saved</span>':'<span style="color:var(--text3)">Not set</span>';
+  h+=`<div class="data-card"><h4>🔑 ${t('data.apiKeys')} <span style="font-size:0.65rem;color:var(--text3)">(stored on server)</span></h4><div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.results')}</span><input type="password" id="key-football-data" placeholder="football-data.org key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('football-data',document.getElementById('key-football-data').value).then(()=>renderData())">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testApiKey()">🔍 Test</button>${fdStatus}</div><div id="key-test-result" style="font-size:0.7rem;color:var(--text3);margin-bottom:0.4rem;margin-left:5.5rem"></div><div style="display:flex;gap:0.4rem;align-items:center"><span style="font-size:0.72rem;min-width:5.5rem">${t('data.odds')}</span><input type="password" id="key-oddsapi" placeholder="the-odds-api.com key" style="flex:1;font-size:0.72rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><button class="data-btn data-btn-primary" onclick="saveApiKey('oddsapi',document.getElementById('key-oddsapi').value).then(()=>renderData())">${t('data.save')}</button><button class="data-btn data-btn-secondary" onclick="testOddsKey()">🔍 Test</button>${odStatus}</div><div id="odds-test-result" style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;margin-left:5.5rem"></div></div>`;
   h+=`<div class="data-card calibration-card"><h4>📊 ${t('data.calibration')}</h4>`;
   try{
   if(stats&&stats.total>=3){
@@ -2755,14 +2777,14 @@ async function fetchResults(){
   if(_fetchBusy)return;_fetchBusy=true;
   console.log('[fetchResults] Called');
   try{
-  const apiKey=getApiKey('football-data');const se=document.getElementById('fetch-status');
+  const se=document.getElementById('fetch-status');
   if(se)se.textContent=t('prob.fetchingResults');
   try{
-    // Fetch primary source (football-data.org)
+    // Fetch primary source (football-data.org) — server reads key from config
     let data=null;
-    if(apiKey){
+    if(hasApiKey('football-data')){
       try{
-        const r=await fetch('/api/results',{headers:{'X-API-Key':apiKey}});
+        const r=await fetch('/api/results');
         const j=await r.json();
         if(j.error){logFetch('results',false,j.error);}
         else if(j.matches){data=j;logFetch('results',true,'via proxy');}
@@ -2866,11 +2888,11 @@ async function fetchResults(){
 }
 
 async function fetchOdds(){
-  const apiKey=getApiKey('oddsapi');if(!apiKey){showToast('Set The-Odds-API key first');return false;}
+  if(!hasApiKey('oddsapi')){showToast('Set The-Odds-API key first');return false;}
   const se=document.getElementById('fetch-status');if(se)se.textContent=t('prob.fetchingOdds');
   try{
     // Use local proxy to bypass CORS
-    const r=await fetch('/api/odds',{headers:{'X-API-Key':apiKey}});
+    const r=await fetch('/api/odds');
     if(!r.ok){showToast(`Odds API error: ${r.status}`);return false;}
     const resp=await r.json();if(resp.error){showToast(`Odds error: ${resp.error}`);return false;}
     const data=resp.data||resp;const oddsMap={};
@@ -2884,9 +2906,9 @@ async function fetchOdds(){
 
 /** Fetch match-level h2h odds from the-odds-api.com → W/D/L probabilities */
 async function fetchMatchOdds(){
-  const apiKey=getApiKey('oddsapi');if(!apiKey)return{};
+  if(!hasApiKey('oddsapi'))return{};
   try{
-    const r=await fetch('/api/match-odds',{headers:{'X-API-Key':apiKey}});
+    const r=await fetch('/api/match-odds');
     if(!r.ok)return{};
     const resp=await r.json();if(resp.error)return{};
     const data=resp.data||[];const oddsMap={};
@@ -3276,7 +3298,7 @@ async function syncPolymarketData() {
   if (btn) { btn.textContent = '⏳ Syncing...'; btn.disabled = true; }
   try {
     // 1. 赛果: football-data.org 优先, Polymarket 补充
-    if (getApiKey('football-data')) {
+    if (hasApiKey('football-data')) {
       try { await fetchResults(); } catch (e) { console.log('football-data:', e.message); }
     }
     const polyResults = await fetchPolymarketResults();
@@ -3348,7 +3370,7 @@ function togglePolymarketAuto() {
 async function refreshData(){
   const btn=document.querySelector('[onclick="refreshData().catch(console.error)"]');if(btn){btn.textContent='⟳ Fetching...';btn.disabled=true;}
   try{await fetchResults();}catch(e){}
-  if(getApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
+  if(hasApiKey('oddsapi')){try{await fetchOdds();}catch(e){}}
   const state=loadState();for(const[team,odds]of Object.entries(state.customOdds)){if(TEAMS[team])TEAMS[team].odds=odds;}
   try{await fetchPolymarketResults();}catch(e){}
   // Merge match odds: the-odds-api + Polymarket
@@ -3501,6 +3523,8 @@ function validateData() {
     }
   }catch(e){}
   localStorage.setItem('wc26_code_ver',String(CODE_VER));
+  // 0. Load server-side API keys
+  await loadServerKeys();
   // 1. Auto-fetch actual results from ALT API (no key needed)
   try{
     const r=await fetch('/api/results-alt');
@@ -3533,7 +3557,7 @@ function validateData() {
     }
   }catch(e){console.error('[AutoFetch] Error:',e);}
   // 2. Also try primary API if key exists (may add winner/extra data)
-  try{if(getApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}}catch(e){}
+  try{if(hasApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}}catch(e){}
   // 3. Reevaluate + simulate ONCE with all data loaded
   try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
   try{mcResults=null;await runSimulation();}catch(e){console.error('sim:',e);}
