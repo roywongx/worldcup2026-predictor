@@ -1,7 +1,7 @@
 # 🔧 审计修复日志
 
 **修复日期**: 2026-06-29  
-**修复 commit**: `7b13153`  
+**修复 commit**: `7b13153`, hotfix `ab6a267`, `e423354`  
 **审计报告**: [AUDIT-2026-06-29-LAN-TRUSTED.md](./AUDIT-2026-06-29-LAN-TRUSTED.md)
 
 ---
@@ -73,6 +73,15 @@
 
 ---
 
+## Hotfix（回归修复）
+
+| Commit | 问题 | 根因 | 修复方案 |
+|--------|------|------|----------|
+| `ab6a267` | 大量比赛显示 W:50% D:50% L:0% | `fitIsotonicCalibration` 用 `matchProbs`（无 GBDT/温度）拟合，但 `getBlendedProbs` 在温度缩放后才调用 `calibrateProbs`，双重校准导致 loss 概率塌缩 | 禁用 `getBlendedProbs` 中的 `calibrateProbs` 调用，保留诊断用 `fitIsotonicCalibration`。TODO：用 post-temp 概率重新拟合校准 |
+| `e423354` | R32 bracket 大量队伍变 null | `THIRD_INDICES` 误设为 `[1,3,5,6,7,9,11,13]`（T3 match 编号），实际 bracket 位置是 `[0,1,6,7,10,11,14,15]` | 修正 `THIRD_BRACKET_POS` 映射，fallback 路径也补上 T3→bracket 转换 |
+
+---
+
 ## 验证结果
 
 ```
@@ -84,4 +93,6 @@
 ✓ /data/api-keys.json → 403
 ✓ /.git/config → 403
 ✓ /index.html → 200
+✓ 概率分布正常（无 L:0% 异常）
+✓ R32 bracket 16 场比赛全部有有效队伍（无 null）
 ```
