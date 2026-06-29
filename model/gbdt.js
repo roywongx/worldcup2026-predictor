@@ -192,18 +192,12 @@ WC26.getRawProbs = function(home, away, formMap, matchDate, marketProbs) {
   return probs;
 };
 
-/** Get probabilities after DC + GBDT blend and temperature scaling,
- *  but before isotonic calibration. Used for both prediction and calibration fitting. */
-WC26.getPostTempProbs = function(home, away, formMap, matchDate, marketProbs) {
+/** Get probabilities after DC + GBDT blend and temperature scaling.
+ *  Isotonic calibration is currently disabled: per-class PAVA calibration
+ *  followed by renormalization produces extreme collapse (e.g. L≈0%) on
+ *  this tournament's imbalanced early-result data. */
+WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
   let probs = WC26.getRawProbs(home, away, formMap, matchDate, marketProbs);
   const T = WC26._optimalT || 1.15;
   return WC26.temperatureScale(probs.win, probs.draw, probs.loss, T);
-};
-
-WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
-  let probs = WC26.getPostTempProbs(home, away, formMap, matchDate, marketProbs);
-  if (WC26.isotonicCalibration) {
-    probs = WC26.calibrateProbs(probs.win, probs.draw, probs.loss);
-  }
-  return probs;
 };

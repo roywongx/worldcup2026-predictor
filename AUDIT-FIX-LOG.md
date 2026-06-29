@@ -104,15 +104,17 @@
 **修复日期**: 2026-06-29  
 **修复 commit**: （本次提交）
 
-### 1. Isotonic 校准真正应用（解决 P3 回退）
+### 1. Isotonic 校准（P3）
 
 | # | 问题 | 修复方案 | 文件 |
 |---|------|----------|------|
-| P3 | 校准被 hotfix 禁用 | 新增 `WC26.getPostTempProbs`：先做 DC+GBDT+温度缩放，再在校准拟合和应用中复用同一概率；`fitIsotonicCalibration` 接受 `formMap` 参数 | `model/gbdt.js`, `model/stats.js` |
+| P3 | 校准被 hotfix 禁用 | 尝试重新启用：新增 `WC26.getPostTempProbs`，让 `fitIsotonicCalibration` 与 `getBlendedProbs` 使用同一后验概率；`fitIsotonicCalibration` 接受 `formMap` 参数 | `model/gbdt.js`, `model/stats.js` |
+| — | 重新启用后仍出现大量 `L:0%` | 经测试，即使拟合/应用使用同一概率，PAVA 逐类校准 + 归一化仍会在此赛事不平衡早期结果数据上把 loss 概率压到接近 0。最终仍**禁用** `getBlendedProbs` 中的校准应用，保留 `fitIsotonicCalibration` 仅作诊断展示 | `model/gbdt.js` |
 | — | `runReevaluate` 中 GBDT 未训练就拟合校准 | 先 `trainAndBlendGBDT` 再 `fitAndCacheCalibration` | `compute-server.js` |
-| — | `runSimulation` 未缓存校准 | 在 `formMap` 计算后调用 `fitAndCacheCalibration`，使后续 `getBlendedProbs` 能应用校准 | `compute-server.js` |
 
-验证：`action:full` 返回的概率分布正常，无 `L:0%` 异常。
+验证：
+- 重新启用时：30 场实际结果下 13 场比赛 `L<0.5%`。
+- 最终禁用后：`reevaluate` / `full` 均无 `L<0.5%`。
 
 ### 2. 并行 / 单线程 Monte Carlo 统一使用动态 form
 

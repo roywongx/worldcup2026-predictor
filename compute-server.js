@@ -68,7 +68,6 @@ function runSimulation(params) {
       console.log(`[Model] Optimal T: ${WC26._optimalT} (from ${resultCount} results)`);
     }
     const formMap = WC26.calculateDynamicForm(actualResults);
-    WC26.fitAndCacheCalibration(actualResults, formMap);
     const actualMap = WC26.buildActualResultsMap(actualResults);
     const marketOddsMap = marketOdds;
     WC26._allMarketVolumes = Object.values(marketOddsMap).map(v => v.volume || 0).filter(v => v > 0);

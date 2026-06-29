@@ -249,16 +249,19 @@ WC26.reliabilityDiagram = function(actualResults, nBins) {
 };
 
 /** Fit isotonic calibration using PAVA (Pool Adjacent Violators Algorithm).
- *  Fits on the same post-temperature probabilities that getBlendedProbs uses,
- *  so applying calibration after temperature scaling is not double-calibration. */
+ *  Fits on post-temperature probabilities for diagnostic display.
+ *  NOTE: calibration is NOT applied in getBlendedProbs because per-class
+ *  isotonic regression followed by renormalization causes probability collapse
+ *  (e.g. L≈0%) on imbalanced early-result data. */
 WC26.fitIsotonicCalibration = function(actualResults, formMap) {
   if (!actualResults || actualResults.length < 20) return null;
 
   const outcomes = { win: [], draw: [], loss: [] };
   for (const r of actualResults) {
     if (r.score1 == null || r.score2 == null) continue;
-    // Use post-temp probs (same as getBlendedProbs without the calibration step)
-    const probs = WC26.getPostTempProbs(r.team1, r.team2, formMap || {}, r.date);
+    const raw = WC26.getRawProbs(r.team1, r.team2, formMap || {}, r.date);
+    const T = WC26._optimalT || 1.15;
+    const probs = WC26.temperatureScale(raw.win, raw.draw, raw.loss, T);
     const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
     outcomes.win.push({ p: probs.win, y: outcome === 0 ? 1 : 0 });
     outcomes.draw.push({ p: probs.draw, y: outcome === 1 ? 1 : 0 });
