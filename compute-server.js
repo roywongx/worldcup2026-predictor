@@ -35,44 +35,6 @@ let cachedCustomOdds = {};
 let mcResults = null;  // {champ, finalist, semi, quarter, r16, N}
 let simulationHistory = null;
 
-// ── Helper: calculate dynamic form (copied from index.html logic) ────
-function calculateDynamicForm(actualResults) {
-  if (!actualResults || actualResults.length === 0) return {};
-  const now = new Date();
-  const teamMatches = {};
-  for (const r of actualResults) {
-    if (r.score1 == null || r.score2 == null) continue;
-    for (const t of [r.team1, r.team2]) {
-      if (!teamMatches[t]) teamMatches[t] = [];
-      teamMatches[t].push(r);
-    }
-  }
-  const formMap = {};
-  for (const [team, matches] of Object.entries(teamMatches)) {
-    let weightedSum = 0, weightTotal = 0;
-    for (const m of matches) {
-      const daysAgo = (now - new Date(m.date)) / (1000 * 60 * 60 * 24);
-      const w = Math.exp(-0.15 * Math.max(0, daysAgo));
-      const won = m.team1 === team ? m.score1 > m.score2 : m.score2 > m.score1;
-      const draw = m.score1 === m.score2;
-      const pts = won ? 1 : (draw ? 0.33 : 0);
-      const gd = m.team1 === team ? m.score1 - m.score2 : m.score2 - m.score1;
-      const gdBonus = Math.max(-0.2, Math.min(0.2, gd * 0.1));
-      const opp = m.team1 === team ? m.team2 : m.team1;
-      const oppElo = TEAMS[opp] ? TEAMS[opp].elo : 1500;
-      const oppBonus = Math.max(0, Math.min(0.15, (oppElo - 1500) / 2000));
-      weightedSum += w * (pts + gdBonus + oppBonus);
-      weightTotal += w;
-    }
-    const wcForm = weightTotal > 0 ? weightedSum / weightTotal : 0.5;
-    const preForm = Object.hasOwn(TEAMS, team) ? TEAMS[team].form : 0.5;
-    const matchCount = matches.length;
-    const wcWeight = 1 - Math.pow(0.7, matchCount);
-    formMap[team] = wcWeight * wcForm + (1 - wcWeight) * preForm;
-  }
-  return formMap;
-}
-
 // ── Action: simulation ───────────────────────────────────────────────
 function runSimulation(params) {
   const actualResults = params.actualResults || cachedActualResults;
@@ -105,7 +67,8 @@ function runSimulation(params) {
       WC26._optimalTCount = resultCount;
       console.log(`[Model] Optimal T: ${WC26._optimalT} (from ${resultCount} results)`);
     }
-    const formMap = calculateDynamicForm(actualResults);
+    const formMap = WC26.calculateDynamicForm(actualResults);
+    WC26.fitAndCacheCalibration(actualResults, formMap);
     const actualMap = WC26.buildActualResultsMap(actualResults);
     const marketOddsMap = marketOdds;
     WC26._allMarketVolumes = Object.values(marketOddsMap).map(v => v.volume || 0).filter(v => v > 0);
@@ -278,7 +241,7 @@ function runSimulation(params) {
       ko.Champion = '?';
     }
 
-    const isoParams = WC26.fitIsotonicCalibration(actualResults);
+    const isoParams = WC26.fitIsotonicCalibration(actualResults, formMap);
 
     return { standings, matchResults, rankings, bestThirds, ko, formMap, isoParams, dynamicElo: { ...WC26.dynamicElo } };
   });
@@ -300,8 +263,8 @@ function runReevaluate(params) {
   return WC26.withPreTournamentElo(() => {
     const preFormMap = {};
     for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
-    WC26.fitAndCacheCalibration(actualResults);
     WC26.trainAndBlendGBDT(actualResults);
+    WC26.fitAndCacheCalibration(actualResults, preFormMap);
 
     let changed = 0;
     const marketOddsMap = marketOdds;
@@ -361,7 +324,7 @@ function runCalibration(params) {
       logLossSum += WC26.logLoss(predArr, outcome);
     }
 
-    const isoParams = WC26.fitIsotonicCalibration(actualResults);
+    const isoParams = WC26.fitIsotonicCalibration(actualResults, preFormMap);
     const nBins = 10;
     const bins = Array.from({ length: nBins }, () => ({ count: 0, sumProb: 0, sumOutcome: 0 }));
     for (let i = 0; i < predictions.length; i++) {
@@ -519,7 +482,7 @@ function runBacktest() {
 }
 
 // ── Single-threaded MC for small N ────────────────────────────────
-function runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds) {
+function runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds, formMap) {
   // Apply custom odds (save/restore)
   const savedCustomOdds = {};
   for (const [team, odds] of Object.entries(customOdds || {})) {
@@ -529,8 +492,7 @@ function runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds)
   }
 
   const actualMap = WC26.buildActualResultsMap(actualResults);
-  const preFormMap = {};
-  for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
+  const simFormMap = formMap || {};
 
   const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
   let successCount = 0;
@@ -539,7 +501,7 @@ function runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds)
   for (let i = 0; i < N; i++) {
     Object.assign(WC26.dynamicElo, savedElo);
     try {
-      const result = WC26.simulateOneTournament(actualMap, preFormMap, marketOdds);
+      const result = WC26.simulateOneTournament(actualMap, simFormMap, marketOdds);
       if (!result || !result.champion) continue;
       champ[result.champion] = (champ[result.champion] || 0) + 1;
       if (result.rounds && result.rounds.length >= 4) for (const m of result.rounds[3]) { finalist[m.a] = (finalist[m.a] || 0) + 1; finalist[m.b] = (finalist[m.b] || 0) + 1; }
@@ -578,10 +540,11 @@ async function runMonteCarlo(params) {
   WC26.rebuildDynamicElo(actualResults);
   WC26.trainAndBlendGBDT(actualResults);
   const savedElo = { ...WC26.dynamicElo };
+  const formMap = WC26.calculateDynamicForm(actualResults);
 
   // For small N, run single-threaded to avoid worker overhead
   if (N <= 2000) {
-    return runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds);
+    return runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds, formMap);
   }
 
   // Determine worker count (use available CPUs, max 16, min 1)
@@ -597,7 +560,7 @@ async function runMonteCarlo(params) {
     if (wN <= 0) continue;
     workers.push(new Promise((resolve, reject) => {
       const worker = new Worker(path.join(__dirname, 'mc-worker.js'), {
-        workerData: { batchSize: wN, actualResults, marketOdds, savedElo, optimalT: WC26._optimalT || 1.15, customOdds }
+        workerData: { batchSize: wN, actualResults, marketOdds, savedElo, optimalT: WC26._optimalT || 1.15, customOdds, formMap }
       });
       worker.on('message', resolve);
       worker.on('error', reject);
@@ -688,18 +651,20 @@ const server = http.createServer((req, res) => {
     }
 
     let body = '';
+    let bodyResponded = false;
     const MAX_BODY = 1024 * 1024; // 1MB
     req.on('data', chunk => {
+      if (bodyResponded) return;
       body += chunk;
       if (body.length > MAX_BODY) {
         body = '';
-        req.destroy();
+        bodyResponded = true;
         res.writeHead(413, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Request body too large (max 1MB)', type: 'BODY_TOO_LARGE' }));
       }
     });
     req.on('end', async () => {
-      if (!body) return; // already responded with 413
+      if (bodyResponded || !body) return; // already responded with 413
       let input;
       try {
         input = JSON.parse(body);

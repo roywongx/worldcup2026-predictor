@@ -192,16 +192,18 @@ WC26.getRawProbs = function(home, away, formMap, matchDate, marketProbs) {
   return probs;
 };
 
-WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
+/** Get probabilities after DC + GBDT blend and temperature scaling,
+ *  but before isotonic calibration. Used for both prediction and calibration fitting. */
+WC26.getPostTempProbs = function(home, away, formMap, matchDate, marketProbs) {
   let probs = WC26.getRawProbs(home, away, formMap, matchDate, marketProbs);
-  // Temperature scaling
   const T = WC26._optimalT || 1.15;
-  probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, T);
-  // Isotonic calibration disabled: fitIsotonicCalibration uses matchProbs (no GBDT/temp),
-  // but getBlendedProbs applies to post-temp probs → double-calibration causes L:0%.
-  // TODO: refit calibration on post-temp probabilities before re-enabling.
-  // if (WC26.isotonicCalibration) {
-  //   probs = WC26.calibrateProbs(probs.win, probs.draw, probs.loss);
-  // }
+  return WC26.temperatureScale(probs.win, probs.draw, probs.loss, T);
+};
+
+WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
+  let probs = WC26.getPostTempProbs(home, away, formMap, matchDate, marketProbs);
+  if (WC26.isotonicCalibration) {
+    probs = WC26.calibrateProbs(probs.win, probs.draw, probs.loss);
+  }
   return probs;
 };

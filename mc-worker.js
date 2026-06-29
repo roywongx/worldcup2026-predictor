@@ -18,7 +18,7 @@ eval(fs.readFileSync(path.join(dir, 'model/monte-carlo.js'), 'utf8'));
 
 const TEAMS = globalThis.TEAMS || WC26.TEAMS;
 
-const { batchSize, actualResults, marketOdds, savedElo, optimalT, customOdds } = workerData;
+const { batchSize, actualResults, marketOdds, savedElo, optimalT, customOdds, formMap } = workerData;
 
 // Apply custom odds (save/restore to avoid polluting global TEAMS)
 const savedCustomOdds = {};
@@ -34,8 +34,7 @@ WC26.rebuildDynamicElo(actualResults);
 WC26.trainAndBlendGBDT(actualResults);
 WC26._allMarketVolumes = Object.values(marketOdds || {}).map(v => v.volume || 0).filter(v => v > 0);
 const actualMap = WC26.buildActualResultsMap(actualResults);
-const preFormMap = {};
-for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
+const simFormMap = formMap || {};
 
 // Run batch
 const champ = {}, finalist = {}, semi = {}, quarter = {}, r16 = {};
@@ -45,7 +44,7 @@ const history = [];
 for (let i = 0; i < batchSize; i++) {
   Object.assign(WC26.dynamicElo, savedElo);
   try {
-    const result = WC26.simulateOneTournament(actualMap, preFormMap, marketOdds);
+    const result = WC26.simulateOneTournament(actualMap, simFormMap, marketOdds);
     if (!result || !result.champion) continue;
     champ[result.champion] = (champ[result.champion] || 0) + 1;
     if (result.rounds && result.rounds.length >= 4) for (const m of result.rounds[3]) { finalist[m.a] = (finalist[m.a] || 0) + 1; finalist[m.b] = (finalist[m.b] || 0) + 1; }

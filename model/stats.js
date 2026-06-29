@@ -249,19 +249,20 @@ WC26.reliabilityDiagram = function(actualResults, nBins) {
 };
 
 /** Fit isotonic calibration using PAVA (Pool Adjacent Violators Algorithm).
- *  Recomputes raw DC probabilities to avoid double-calibrating on stored probs. */
-WC26.fitIsotonicCalibration = function(actualResults) {
+ *  Fits on the same post-temperature probabilities that getBlendedProbs uses,
+ *  so applying calibration after temperature scaling is not double-calibration. */
+WC26.fitIsotonicCalibration = function(actualResults, formMap) {
   if (!actualResults || actualResults.length < 20) return null;
 
   const outcomes = { win: [], draw: [], loss: [] };
   for (const r of actualResults) {
     if (r.score1 == null || r.score2 == null) continue;
-    // Recompute raw DC probs (don't use stored r.probs which may already be calibrated)
-    const raw = WC26.matchProbs(r.team1, r.team2, {}, r.date);
+    // Use post-temp probs (same as getBlendedProbs without the calibration step)
+    const probs = WC26.getPostTempProbs(r.team1, r.team2, formMap || {}, r.date);
     const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
-    outcomes.win.push({ p: raw.win, y: outcome === 0 ? 1 : 0 });
-    outcomes.draw.push({ p: raw.draw, y: outcome === 1 ? 1 : 0 });
-    outcomes.loss.push({ p: raw.loss, y: outcome === 2 ? 1 : 0 });
+    outcomes.win.push({ p: probs.win, y: outcome === 0 ? 1 : 0 });
+    outcomes.draw.push({ p: probs.draw, y: outcome === 1 ? 1 : 0 });
+    outcomes.loss.push({ p: probs.loss, y: outcome === 2 ? 1 : 0 });
   }
 
   const result = {};
@@ -345,6 +346,45 @@ WC26.calibrateProbs = function(pW, pD, pL) {
 };
 
 /** Fit isotonic calibration from actualResults and cache it */
-WC26.fitAndCacheCalibration = function(actualResults) {
-  WC26.isotonicCalibration = WC26.fitIsotonicCalibration(actualResults);
+WC26.fitAndCacheCalibration = function(actualResults, formMap) {
+  WC26.isotonicCalibration = WC26.fitIsotonicCalibration(actualResults, formMap);
+};
+
+/** Calculate dynamic form map from actual results (time-decayed performance).
+ *  Moved here so it can be shared between compute-server.js and mc-worker.js. */
+WC26.calculateDynamicForm = function(actualResults) {
+  if (!actualResults || actualResults.length === 0) return {};
+  const now = new Date();
+  const teamMatches = {};
+  for (const r of actualResults) {
+    if (r.score1 == null || r.score2 == null) continue;
+    for (const t of [r.team1, r.team2]) {
+      if (!teamMatches[t]) teamMatches[t] = [];
+      teamMatches[t].push(r);
+    }
+  }
+  const formMap = {};
+  for (const [team, matches] of Object.entries(teamMatches)) {
+    let weightedSum = 0, weightTotal = 0;
+    for (const m of matches) {
+      const daysAgo = (now - new Date(m.date)) / (1000 * 60 * 60 * 24);
+      const w = Math.exp(-0.15 * Math.max(0, daysAgo));
+      const won = m.team1 === team ? m.score1 > m.score2 : m.score2 > m.score1;
+      const draw = m.score1 === m.score2;
+      const pts = won ? 1 : (draw ? 0.33 : 0);
+      const gd = m.team1 === team ? m.score1 - m.score2 : m.score2 - m.score1;
+      const gdBonus = Math.max(-0.2, Math.min(0.2, gd * 0.1));
+      const opp = m.team1 === team ? m.team2 : m.team1;
+      const oppElo = WC26.TEAMS[opp] ? WC26.TEAMS[opp].elo : 1500;
+      const oppBonus = Math.max(0, Math.min(0.15, (oppElo - 1500) / 2000));
+      weightedSum += w * (pts + gdBonus + oppBonus);
+      weightTotal += w;
+    }
+    const wcForm = weightTotal > 0 ? weightedSum / weightTotal : 0.5;
+    const preForm = WC26.TEAMS[team] ? WC26.TEAMS[team].form : 0.5;
+    const matchCount = matches.length;
+    const wcWeight = 1 - Math.pow(0.7, matchCount);
+    formMap[team] = wcWeight * wcForm + (1 - wcWeight) * preForm;
+  }
+  return formMap;
 };

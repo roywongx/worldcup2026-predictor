@@ -1822,7 +1822,7 @@ function loadState(){
     if(raw){const s=JSON.parse(raw);
       if(!s.actualResults)s.actualResults=[];if(!s.customOdds)s.customOdds={};if(!s.apiKeys)s.apiKeys={};if(!s.fetchLog)s.fetchLog=[];
       _stateVer=s._ver||0;_stateCache=s;_stateCacheKey=raw;return s;}
-  }catch(e){}
+  }catch(e){console.error('[loadState]',e);}
   return _stateCache||{customOdds:{},actualResults:[],apiKeys:{},lastUpdate:null,fetchLog:[],_ver:0};
 }
 function saveState(s){
@@ -1843,7 +1843,7 @@ function saveState(s){
     const raw=JSON.stringify(s);
     localStorage.setItem(STORAGE_KEY,raw);
     _stateCache=s;_stateCacheKey=raw;
-  }}catch(e){}
+  }}catch(e){console.error('[saveState]',e);}
 }
 // Server-side API key management
 let _serverKeys={}; // Cached from server: {_has:{football-data:bool,oddsapi:bool}}
@@ -1903,9 +1903,15 @@ async function runSimulation(){
   }
   if(data._hash){
     const s=loadState();
-    if(s._resultHash && s._resultHash !== data._hash) console.log('[Model] Results hash changed:', s._resultHash, '→', data._hash);
-    s._resultHash = data._hash;
-    saveState(s);
+    if(s._resultHash && s._resultHash !== data._hash){
+      console.log('[Model] Results hash changed:', s._resultHash, '→', data._hash);
+      s._resultHash = data._hash;
+      saveState(s);
+      setTimeout(runSimulation, 0);
+    } else {
+      s._resultHash = data._hash;
+      saveState(s);
+    }
   }
   if(data.calibration) window._calibrationStats = data.calibration;
   if(data.ev) window._evData = data.ev;
@@ -2995,7 +3001,7 @@ async function fetchPolymarketData(){
     for(const mk of(events[0].markets||[])){
       try{const cr=await rateLimitedFetch(`https://clob.polymarket.com/markets/${mk.conditionId}`);if(!cr.ok)continue;
       const cd=await cr.json();const tn=mapPolymarketTeam(cd.question||mk.question||'');if(!tn||!TEAMS[tn])continue;
-      const yt=(cd.tokens||[]).find(t=>t.outcome==='Yes');if(yt&&yt.price>0){nc[tn]=yt.price;fc++;}}catch(e){}
+      const yt=(cd.tokens||[]).find(t=>t.outcome==='Yes');if(yt&&yt.price>0){nc[tn]=yt.price;fc++;}}catch(e){console.error('[syncPolymarketData] market parse failed:',e.message);}
     }
     // Champion odds are independent binary markets — each team's Yes price IS its
     // probability of winning. Do NOT normalize to sum=1 (that would inflate small
@@ -3568,7 +3574,7 @@ function validateData() {
       location.reload();
       return;
     }
-  }catch(e){}
+  }catch(e){console.error('[versionCheck]',e);}
   localStorage.setItem('wc26_code_ver',String(CODE_VER));
   // 0. Load server-side API keys
   await loadServerKeys();
@@ -3618,7 +3624,7 @@ function validateData() {
     }
   }catch(e){console.error('[AutoFetch] Error:',e);}
   // 2. Also try primary API if key exists (may add winner/extra data)
-  try{if(hasApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults(true);}}catch(e){}
+  try{if(hasApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults(true);}}catch(e){console.error('[AutoFetch] football-data:',e);}
   // 3. Reevaluate + simulate ONCE with all data loaded
   try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
   try{mcResults=null;await runSimulation();}catch(e){console.error('sim:',e);}

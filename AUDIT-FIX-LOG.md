@@ -96,3 +96,62 @@
 ✓ 概率分布正常（无 L:0% 异常）
 ✓ R32 bracket 16 场比赛全部有有效队伍（无 null）
 ```
+
+---
+
+## 后续修复（由 Kimi Code 完成）
+
+**修复日期**: 2026-06-29  
+**修复 commit**: （本次提交）
+
+### 1. Isotonic 校准真正应用（解决 P3 回退）
+
+| # | 问题 | 修复方案 | 文件 |
+|---|------|----------|------|
+| P3 | 校准被 hotfix 禁用 | 新增 `WC26.getPostTempProbs`：先做 DC+GBDT+温度缩放，再在校准拟合和应用中复用同一概率；`fitIsotonicCalibration` 接受 `formMap` 参数 | `model/gbdt.js`, `model/stats.js` |
+| — | `runReevaluate` 中 GBDT 未训练就拟合校准 | 先 `trainAndBlendGBDT` 再 `fitAndCacheCalibration` | `compute-server.js` |
+| — | `runSimulation` 未缓存校准 | 在 `formMap` 计算后调用 `fitAndCacheCalibration`，使后续 `getBlendedProbs` 能应用校准 | `compute-server.js` |
+
+验证：`action:full` 返回的概率分布正常，无 `L:0%` 异常。
+
+### 2. 并行 / 单线程 Monte Carlo 统一使用动态 form
+
+| # | 问题 | 修复方案 | 文件 |
+|---|------|----------|------|
+| P4/H3/H4 | worker 与主进程 form 不一致 | `WC26.calculateDynamicForm` 抽到 `model/stats.js`；`runMonteCarlo` 计算 `formMap` 后传给 `runMonteCarloSingle` 和 worker；worker 用 `formMap` 替代 `preFormMap` | `model/stats.js`, `compute-server.js`, `mc-worker.js` |
+
+### 3. 请求防护完善
+
+| # | 问题 | 修复方案 | 文件 |
+|---|------|----------|------|
+| P6 | 直接 POST `:9091` body 超限时连接被重置 | `req.destroy()` 移到响应发送之后；增加 `bodyResponded` 标志防止重复响应 | `compute-server.js` |
+
+### 4. 其他小修复
+
+| # | 问题 | 修复方案 | 文件 |
+|---|------|----------|------|
+| A4 | 仍有 5 处空 `catch(e){}` | 全部加上 `console.error` 上下文 | `index.html` |
+| A2 | `_hash` 变化只打印日志 | 检测到变化后通过 `setTimeout(runSimulation, 0)` 自动重算 | `index.html` |
+
+### 验证结果（本次）
+
+```
+✓ server.py syntax OK
+✓ All JS modules syntax OK
+✓ compute-server.js syntax OK
+✓ npm test passes
+✓ /api/compute action:full → 200, bracket 无 null, 无 L:0%
+✓ /api/compute action:montecarlo N=10000 → 200
+✓ 非法 JSON → 400 INVALID_JSON
+✓ 超大 body 直接访问 :9091 → 413 BODY_TOO_LARGE
+✓ 超大 body 经 :9090 代理 → 413
+✓ /data/api-keys.json → 403
+```
+
+### 仍未处理项
+
+- `eval()` 加载模型文件（LAN 信任前提下保留）
+- 日期 UTC/北京语义统一
+- GBDT 冷启动、Elo 回归率等产品决策项
+- Service Worker / clear.html / 魔法数字等设计债
+- 单元测试
