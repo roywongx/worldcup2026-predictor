@@ -1901,6 +1901,12 @@ async function runSimulation(){
     WC26._dynamicFormMap = currentResults.formMap;
     if(currentResults.dynamicElo) WC26.dynamicElo = currentResults.dynamicElo;
   }
+  if(data._hash){
+    const s=loadState();
+    if(s._resultHash && s._resultHash !== data._hash) console.log('[Model] Results hash changed:', s._resultHash, '→', data._hash);
+    s._resultHash = data._hash;
+    saveState(s);
+  }
   if(data.calibration) window._calibrationStats = data.calibration;
   if(data.ev) window._evData = data.ev;
   if(data.brierScores) window._brierScores = data.brierScores;
@@ -2429,8 +2435,8 @@ function renderProbabilities(){
     const be=TEAMS[t].elo,de=WC26.dynamicElo[t]||be,ed=de-be;
     const dc=ed>0?'var(--green)':ed<0?'var(--red)':'var(--text3)',ds=ed>0?`+${ed}`:ed<0?`${ed}`:'-';
     const op=WC26.oddsToProb(TEAMS[t].odds);
-    // Column data: Champion=cp, 决赛=cp, 四强=fp, 八强=sp, 16强=qp
-    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${cp.toFixed(1)}%</td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td></tr>`;
+    // Column data: Champion=cp, 决赛=fp, 四强=sp, 八强=qp, 16强=rp
+    h+=`<tr><td>${fl(t)}</td><td style="color:var(--blue);font-weight:700">${de}</td><td style="color:${dc};font-size:0.7rem">${ds}</td><td style="color:var(--orange);font-size:0.7rem">${(op*100).toFixed(1)}%</td><td style="color:var(--purple);font-weight:700">${(composite(t)*100).toFixed(0)}</td><td><div class="prob-bar-wrap">${cp.toFixed(1)}%<div class="prob-bar" style="width:${cp*2.5}px"></div></div></td><td>${fp.toFixed(1)}%</td><td>${sp.toFixed(1)}%</td><td>${qp.toFixed(1)}%</td><td>${rp.toFixed(1)}%</td></tr>`;
   });
   h+='</table></div>';
   h+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem"><div style="font-size:0.72rem;color:var(--text3)"><strong>Model:</strong> Dixon-Coles Poisson + Elo + Monte Carlo</div><button class="btn-pill btn-secondary" onclick="runMonteCarloUI()" style="font-size:0.75rem;padding:0.4rem 1rem">${t('prob.rerun')}</button></div>`;
@@ -2953,15 +2959,41 @@ async function fetchMatchOdds(){
   }catch(e){return{};}
 }
 
+// Rate-limited fetch with exponential backoff and Page Visibility pause
+let _lastFetchTime = 0;
+const FETCH_DELAY_MS = 300; // min 300ms between requests
+async function rateLimitedFetch(url, opts) {
+  // Pause if page is hidden (Page Visibility API)
+  if (document.hidden) {
+    await new Promise(resolve => {
+      const onVis = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', onVis); resolve(); } };
+      document.addEventListener('visibilitychange', onVis);
+    });
+  }
+  // Enforce minimum delay between requests
+  const elapsed = Date.now() - _lastFetchTime;
+  if (elapsed < FETCH_DELAY_MS) await new Promise(r => setTimeout(r, FETCH_DELAY_MS - elapsed));
+  _lastFetchTime = Date.now();
+  // Exponential backoff on 429
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await fetch(url, opts);
+    if (resp.status !== 429) return resp;
+    const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+    console.warn(`[Polymarket] Rate limited, waiting ${delay}ms...`);
+    await new Promise(r => setTimeout(r, delay));
+  }
+  return fetch(url, opts); // final attempt
+}
+
 async function fetchPolymarketData(){
   const se=document.getElementById('radar-status');if(se)se.textContent='Fetching...';
   try{
-    const er=await fetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
+    const er=await rateLimitedFetch('https://gamma-api.polymarket.com/events?slug=world-cup-winner');
     if(!er.ok)throw new Error(`API: ${er.status}`);const events=await er.json();
     if(!events||events.length===0)throw new Error('No event found');
     const nc={};let fc=0;
     for(const mk of(events[0].markets||[])){
-      try{const cr=await fetch(`https://clob.polymarket.com/markets/${mk.conditionId}`);if(!cr.ok)continue;
+      try{const cr=await rateLimitedFetch(`https://clob.polymarket.com/markets/${mk.conditionId}`);if(!cr.ok)continue;
       const cd=await cr.json();const tn=mapPolymarketTeam(cd.question||mk.question||'');if(!tn||!TEAMS[tn])continue;
       const yt=(cd.tokens||[]).find(t=>t.outcome==='Yes');if(yt&&yt.price>0){nc[tn]=yt.price;fc++;}}catch(e){}
     }
@@ -2992,7 +3024,7 @@ async function fetchPolymarketMatchOdds() {
     // Fetch all WC match events (series_slug=soccer-fifwc), paginated
     for (let offset = 0; offset < 500; offset += 100) {
       const url = `https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc&active=true&closed=false&limit=100&offset=${offset}`;
-      const er = await fetch(url);
+      const er = await rateLimitedFetch(url);
       if (!er.ok) break;
       const events = await er.json();
       if (!events || events.length === 0) break;
@@ -3070,7 +3102,7 @@ async function fetchPolymarketMatchOdds() {
             const matchTs = new Date(gameTime).getTime() / 1000;
             // Get last pre-match price for each market using CLOB prices-history
             const fetchPreMatch = async (tokenId) => {
-              const r = await fetch(`https://clob.polymarket.com/prices-history?market=${tokenId}&interval=max&fidelity=60`);
+              const r = await rateLimitedFetch(`https://clob.polymarket.com/prices-history?market=${tokenId}&interval=max&fidelity=60`);
               if (!r.ok) return null;
               const d = await r.json();
               const hist = d.history || [];
@@ -3153,7 +3185,7 @@ async function fetchPolymarketResults() {
     console.log('[Poly] Starting fetch, existing results:', state.actualResults.length);
     for (let offset = 0; offset < 500; offset += 100) {
       const url = `https://gamma-api.polymarket.com/events?series_slug=soccer-fifwc&closed=true&limit=100&offset=${offset}`;
-      const resp = await fetch(url);
+      const resp = await rateLimitedFetch(url);
       if (!resp.ok) break;
       const events = await resp.json();
       console.log('[Poly] Fetched', events?.length, 'events at offset', offset);
@@ -3411,9 +3443,11 @@ function clearResults(){const s=loadState();s.actualResults=[];saveState(s);show
 async function importResults(){
   const ta=document.getElementById('results-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);if(!Array.isArray(d))throw 0;const s=loadState();let c=0;
+    const existing=new Set(s.actualResults.map(r=>`${r.team1}|${r.team2}`));
     for(const r of d){if(r.team1&&r.team2&&TEAMS[r.team1]&&TEAMS[r.team2]&&typeof r.score1==='number'&&typeof r.score2==='number'){
+      const key=`${r.team1}|${r.team2}`;if(existing.has(key))continue;
       const act=r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw');
-      s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:null,actual:act,correct:null,source:'import',predGoals:null,probs:null});c++;}}
+      s.actualResults.push({...r,date:r.date||new Date().toISOString(),predicted:null,actual:act,correct:null,source:'import',predGoals:null,probs:null});existing.add(key);c++;}}
     s.lastUpdate=new Date().toISOString();saveState(s);
     await reevaluateResults();
     mcResults=null;await runSimulation();showToast(`Imported ${c}`);renderData();
@@ -3423,7 +3457,7 @@ function exportResults(){const s=loadState();const ta=document.getElementById('r
 async function applyCustomOdds(){
   const ta=document.getElementById('odds-json');if(!ta)return;
   try{const d=JSON.parse(ta.value);const s=loadState();let c=0;
-    for(const[team,odds]of Object.entries(d)){if(TEAMS[team]&&typeof odds==='number'&&odds>0){s.customOdds[team]=odds;TEAMS[team].odds=odds;c++;}}
+    for(const[team,odds]of Object.entries(d)){if(Object.hasOwn(TEAMS,team)&&typeof odds==='number'&&odds>0){s.customOdds[team]=odds;TEAMS[team].odds=odds;c++;}}
     s.lastUpdate=new Date().toISOString();saveState(s);showToast(`Updated ${c}`);
     await reevaluateResults();
     mcResults=null;await runSimulation();
@@ -3431,7 +3465,7 @@ async function applyCustomOdds(){
 }
 function resetOdds(){const s=loadState();s.customOdds={};saveState(s);showToast('Reset — reload page');}
 function exportOddsJSON(){const o={};Object.keys(TEAMS).forEach(t=>{o[t]=TEAMS[t].odds;});const ta=document.getElementById('odds-json');if(ta)ta.value=JSON.stringify(o,null,1);showToast('Exported');}
-function quickOddsUpdate(team,val){const odds=parseInt(val);if(TEAMS[team]&&odds>0){TEAMS[team].odds=odds;const s=loadState();s.customOdds[team]=odds;saveState(s);}}
+function quickOddsUpdate(team,val){const odds=parseInt(val);if(Object.hasOwn(TEAMS,team)&&odds>0){TEAMS[team].odds=odds;const s=loadState();s.customOdds[team]=odds;saveState(s);}}
 
 // ── Data Validation (runs on init, catches data errors early) ─────────
 function validateData() {
@@ -3453,9 +3487,9 @@ function validateData() {
   for (const t of Object.keys(TEAMS)) {
     if (!groupedTeams.has(t)) errors.push(`${t} in TEAMS but not in any group`);
   }
-  // 4. Opening match is Mexico vs South Africa on Jun 11
-  if (MATCHES[0][2] !== 'Mexico' || MATCHES[0][3] !== 'South Africa' || MATCHES[0][0] !== '2026-06-11') {
-    errors.push(`Opening match should be Mexico vs South Africa on 2026-06-11`);
+  // 4. Opening match is Mexico vs South Africa (Beijing date Jun 12 = UTC Jun 11)
+  if (MATCHES[0][2] !== 'Mexico' || MATCHES[0][3] !== 'South Africa' || MATCHES[0][0] !== '2026-06-12') {
+    errors.push(`Opening match should be Mexico vs South Africa on 2026-06-12 (Beijing time)`);
   }
   // 5. England flag should be gb-eng, not gb
   if (FLAGS['England'] === 'gb') errors.push("England flag is 'gb' (UK), should be 'gb-eng'");

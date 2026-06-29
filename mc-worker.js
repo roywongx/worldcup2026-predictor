@@ -18,12 +18,21 @@ eval(fs.readFileSync(path.join(dir, 'model/monte-carlo.js'), 'utf8'));
 
 const TEAMS = globalThis.TEAMS || WC26.TEAMS;
 
-const { batchSize, actualResults, marketOdds, savedElo, optimalT } = workerData;
+const { batchSize, actualResults, marketOdds, savedElo, optimalT, customOdds } = workerData;
+
+// Apply custom odds (save/restore to avoid polluting global TEAMS)
+const savedCustomOdds = {};
+for (const [team, odds] of Object.entries(customOdds || {})) {
+  if (!Object.hasOwn(TEAMS, team)) continue;
+  savedCustomOdds[team] = TEAMS[team].odds;
+  TEAMS[team].odds = odds;
+}
 
 // Setup
 WC26._optimalT = optimalT || 1.15;
 WC26.rebuildDynamicElo(actualResults);
 WC26.trainAndBlendGBDT(actualResults);
+WC26._allMarketVolumes = Object.values(marketOdds || {}).map(v => v.volume || 0).filter(v => v > 0);
 const actualMap = WC26.buildActualResultsMap(actualResults);
 const preFormMap = {};
 for (const t of Object.keys(TEAMS)) preFormMap[t] = TEAMS[t].form;
@@ -50,6 +59,11 @@ for (let i = 0; i < batchSize; i++) {
     history.push({ champion: result.champion, matchResults: mr });
     successCount++;
   } catch (e) { console.warn('[MC Worker] Simulation failed:', e.message); }
+}
+
+// Restore original odds
+for (const [team, odds] of Object.entries(savedCustomOdds)) {
+  if (Object.hasOwn(TEAMS, team)) TEAMS[team].odds = odds;
 }
 
 parentPort.postMessage({ champ, finalist, semi, quarter, r16, successCount, history });

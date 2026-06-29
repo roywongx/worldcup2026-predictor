@@ -44,10 +44,10 @@ WC26.poissonPMF = function(k, lam) {
 
 /** Dixon-Coles tau correction for low-score correlation */
 WC26.dixonColesTau = function(h, a, lh, la, rho) {
-  if (h === 0 && a === 0) return 1 - lh * la * rho;
-  if (h === 0 && a === 1) return 1 + lh * rho;
-  if (h === 1 && a === 0) return 1 + la * rho;
-  if (h === 1 && a === 1) return 1 - rho;
+  if (h === 0 && a === 0) return Math.max(0, 1 - lh * la * rho);
+  if (h === 0 && a === 1) return Math.max(0, 1 + lh * rho);
+  if (h === 1 && a === 0) return Math.max(0, 1 + la * rho);
+  if (h === 1 && a === 1) return Math.max(0, 1 - rho);
   return 1;
 };
 

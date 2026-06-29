@@ -197,5 +197,9 @@ WC26.getBlendedProbs = function(home, away, formMap, matchDate, marketProbs) {
   // Temperature scaling
   const T = WC26._optimalT || 1.15;
   probs = WC26.temperatureScale(probs.win, probs.draw, probs.loss, T);
+  // Isotonic calibration (if fitted)
+  if (WC26.isotonicCalibration) {
+    probs = WC26.calibrateProbs(probs.win, probs.draw, probs.loss);
+  }
   return probs;
 };

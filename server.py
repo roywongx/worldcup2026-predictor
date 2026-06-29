@@ -43,7 +43,7 @@ def ensure_compute_server():
     try:
         _compute_proc = subprocess.Popen(
             ['node', str(script)], cwd=str(DIR),
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         for _ in range(30):
             time.sleep(0.2)
@@ -80,6 +80,22 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DIR), **kwargs)
 
+    def _is_blocked_path(self, path):
+        """Check if path should be blocked (sensitive files)."""
+        from urllib.parse import unquote, urlparse
+        clean = unquote(urlparse(path).path)
+        parts = [p for p in clean.split('/') if p]
+        # Block hidden files/dirs
+        for p in parts:
+            if p.startswith('.'):
+                return True
+        # Block sensitive files
+        blocked_names = ('api-keys.json', '.git', '.env')
+        for p in parts:
+            if p in blocked_names:
+                return True
+        return False
+
     def do_GET(self):
         if self.path.startswith('/api/results-alt'):
             self._proxy_worldcupjson()
@@ -104,6 +120,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             masked['_has'] = {k: bool(v) for k, v in keys.items()}
             self._json_response(masked)
         else:
+            if self._is_blocked_path(self.path):
+                self.send_error(403, 'Access denied')
+                return
             super().do_GET()
 
     def do_POST(self):
@@ -112,6 +131,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/api/keys':
             try:
                 length = int(self.headers.get('Content-Length', 0))
+                if length > 1024 * 1024:  # 1MB limit
+                    self._json_response({'error': 'Request body too large'}, 413)
+                    return
                 body = self.rfile.read(length).decode('utf-8')
                 new_keys = json.loads(body)
                 existing = self._load_keys()
@@ -140,6 +162,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         """Proxy computation requests to compute-server.js on port 9091."""
         try:
             length = int(self.headers.get('Content-Length', 0))
+            if length > 1024 * 1024:  # 1MB limit
+                self._json_response({'error': 'Request body too large'}, 413)
+                return
             body = self.rfile.read(length).decode('utf-8')
             url = f'http://127.0.0.1:{COMPUTE_PORT}/compute'
             req = urllib.request.Request(url, data=body.encode('utf-8'),
@@ -163,6 +188,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     def _run_montecarlo(self):
         try:
             length = int(self.headers.get('Content-Length', 0))
+            if length > 1024 * 1024:  # 1MB limit
+                self._json_response({'error': 'Request body too large'}, 413)
+                return
             body = self.rfile.read(length).decode('utf-8')
             input_data = json.loads(body) if body else {}
             # Try compute server first

@@ -56,71 +56,75 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
   }
   const W = g => rankings[g][0], R = g => rankings[g][1];
 
-  // Array index = bracket position (0-15). R16 cross-pairing uses these indices.
-  // FIFA R32 third-place assignments (Annex C)
-  // 8 slots where group winners face 3rd-place teams.
-  // Slot mapping: winner group → bracket match index
-  //   1E→M75(2), 1I→M77(4), 1A→M79(6), 1L→M80(7),
-  //   1D→M81(8), 1G→M82(9), 1B→M85(12), 1K→M87(14), leftover→M88(15)
-  const qualified3 = (thirdPlaceGroups || []).filter(g => thirdMap[g]);
-  const T3 = {};
-  const used3 = new Set();
-  // 8 third-place slots. M88 = R(D) vs R(G) (no third-place team).
-  // Preferred groups from FIFA Annex C. Greedy assignment with preferred-first.
-  const slots3 = [
-    {m:2,  pref:'D', ex:['E','C','F']},     // M75: 1E vs 3rd (adj M76: W-F,R-C)
-    {m:4,  pref:'F', ex:['I','E']},          // M77: 1I vs 3rd (adj M78: R-E,R-I)
-    {m:6,  pref:'E', ex:['A','L']},          // M79: 1A vs 3rd (adj M80: W-L,3rd)
-    {m:7,  pref:'K', ex:['L','A']},          // M80: 1L vs 3rd (adj M79: W-A,3rd)
-    {m:8,  pref:'B', ex:['D','G']},          // M81: 1D vs 3rd (adj M82: W-G,3rd)
-    {m:9,  pref:'I', ex:['G','D']},          // M82: 1G vs 3rd (adj M81: W-D,3rd)
-    {m:12, pref:'J', ex:['B','J','H']},      // M85: 1B vs 3rd (adj M86: W-J,R-H)
-    {m:14, pref:'L', ex:['K','D']},          // M87: 1K vs 3rd (adj M88: R-D,R-G)
-  ];
-  for (const s of slots3) {
-    const adjMatch = s.m ^ 1;
-    const adj3Group = T3[adjMatch] ? T3[adjMatch] : null;
-    // Try preferred group first
-    let assigned = false;
-    if (s.pref && qualified3.includes(s.pref) && !used3.has(s.pref) && !s.ex.includes(s.pref)) {
-      if (!adj3Group || adj3Group !== thirdMap[s.pref]) {
-        T3[s.m] = thirdMap[s.pref]; used3.add(s.pref); assigned = true;
-      }
+  // Use FIFA Annex C TPM matrix for third-place assignment
+  const qualified3 = (thirdPlaceGroups || []).filter(g => thirdMap[g]).sort();
+  const tpmKey = qualified3.join('');
+  const tpmVal = (WC26.TPM || {})[tpmKey];
+  const THIRD_INDICES = [1, 3, 5, 6, 7, 9, 11, 13];
+  const thirdAt = new Array(16).fill(null);
+
+  if (tpmVal && tpmVal.length === 8) {
+    for (let i = 0; i < 8; i++) {
+      const group = tpmVal[i];
+      if (thirdMap[group]) thirdAt[THIRD_INDICES[i]] = thirdMap[group];
     }
-    // Fallback: first available
-    if (!assigned) {
-      for (const g of qualified3) {
-        if (used3.has(g) || s.ex.includes(g)) continue;
-        if (adj3Group && adj3Group === thirdMap[g]) continue;
-        T3[s.m] = thirdMap[g]; used3.add(g); assigned = true;
-        break;
+  } else {
+    // Fallback: greedy assignment if TPM lookup fails
+    console.warn(`[Bracket] TPM lookup failed for key "${tpmKey}", using fallback`);
+    const slots3 = [
+      {m:2,  pref:'D', ex:['E','C','F']},
+      {m:4,  pref:'F', ex:['I','E']},
+      {m:6,  pref:'E', ex:['A','L']},
+      {m:7,  pref:'K', ex:['L','A']},
+      {m:8,  pref:'B', ex:['D','G']},
+      {m:9,  pref:'I', ex:['G','D']},
+      {m:12, pref:'J', ex:['B','J','H']},
+      {m:14, pref:'L', ex:['K','D']},
+    ];
+    const used3 = new Set();
+    for (const s of slots3) {
+      const adjMatch = s.m ^ 1;
+      const adj3Group = thirdAt[adjMatch] || null;
+      let assigned = false;
+      if (s.pref && qualified3.includes(s.pref) && !used3.has(s.pref) && !s.ex.includes(s.pref)) {
+        if (!adj3Group || adj3Group !== thirdMap[s.pref]) {
+          thirdAt[s.m] = thirdMap[s.pref]; used3.add(s.pref); assigned = true;
+        }
       }
+      if (!assigned) {
+        for (const g of qualified3) {
+          if (used3.has(g) || s.ex.includes(g)) continue;
+          if (adj3Group && adj3Group === thirdMap[g]) continue;
+          thirdAt[s.m] = thirdMap[g]; used3.add(g); assigned = true;
+          break;
+        }
+      }
+      if (!assigned) console.warn(`[Bracket] No third-place team for slot M${73+s.m}`);
     }
-    if (!assigned) console.warn(`[Bracket] No third-place team for slot M${73+s.m}`);
   }
-  function getThirdAt(idx) { return T3[idx] || null; }
+  function getThirdAt(idx) { return thirdAt[idx] || null; }
 
   // FIFA R32 bracket — ordered so sequential pairing produces correct R16
   // Source: https://zh.wikipedia.org/wiki/2026年國際足協世界盃
   // R16: [0]+[1]→M89, [2]+[3]→M90, [4]+[5]→M91, [6]+[7]→M92
   //      [8]+[9]→M93, [10]+[11]→M94, [12]+[13]→M95, [14]+[15]→M96
   return [
-    W('E'), getThirdAt(2),                // [0]  M74: Germany vs Paraguay
-    W('I'), getThirdAt(4),                // [1]  M77: France vs Sweden
-    R('A'), R('B'),                       // [2]  M73: South Africa vs Canada
-    W('F'), R('C'),                       // [3]  M75: Netherlands vs Morocco
-    W('C'), R('F'),                       // [4]  M76: Brazil vs Japan
-    R('E'), R('I'),                       // [5]  M78: Ivory Coast vs Norway
-    W('A'), getThirdAt(6),                // [6]  M79: Mexico vs Ecuador
-    W('L'), getThirdAt(7),                // [7]  M80: England vs DR Congo
-    R('K'), R('L'),                       // [8]  M83: Portugal vs Croatia
-    W('H'), R('J'),                       // [9]  M84: Spain vs Austria
-    W('D'), getThirdAt(8),                // [10] M81: USA vs Bosnia
-    W('G'), getThirdAt(9),                // [11] M82: Belgium vs Senegal
-    W('J'), R('H'),                       // [12] M86: Argentina vs Cape Verde
-    R('D'), R('G'),                       // [13] M88: Australia vs Egypt
-    W('B'), getThirdAt(12),               // [14] M85: Switzerland vs Algeria
-    W('K'), getThirdAt(14),               // [15] M87: Colombia vs Ghana
+    W('E'), getThirdAt(1),                // [0]  M74: 1E vs 3rd
+    W('I'), getThirdAt(3),                // [1]  M77: 1I vs 3rd
+    R('A'), R('B'),                       // [2]  M73: RA vs RB
+    W('F'), R('C'),                       // [3]  M75: 1F vs RC
+    W('C'), R('F'),                       // [4]  M76: 1C vs RF
+    R('E'), R('I'),                       // [5]  M78: RE vs RI
+    W('A'), getThirdAt(5),                // [6]  M79: 1A vs 3rd
+    W('L'), getThirdAt(6),                // [7]  M80: 1L vs 3rd
+    R('K'), R('L'),                       // [8]  M83: RK vs RL
+    W('H'), R('J'),                       // [9]  M84: 1H vs RJ
+    W('D'), getThirdAt(7),                // [10] M81: 1D vs 3rd
+    W('G'), getThirdAt(9),                // [11] M82: 1G vs 3rd
+    W('J'), R('H'),                       // [12] M86: 1J vs RH
+    R('D'), R('G'),                       // [13] M88: RD vs RG
+    W('B'), getThirdAt(11),               // [14] M85: 1B vs 3rd
+    W('K'), getThirdAt(13),               // [15] M87: 1K vs 3rd
   ];
 };
 
@@ -134,7 +138,7 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
     }
   }
 
-  const MD3_DATE = '2026-06-24';
+  const MD3_DATE = '2026-06-25';
   for (const [utcDate, bjTime, home, away, grp] of WC26.MATCHES) {
     let sa, sb;
     const actual = actualMap[`${home}|${away}|${utcDate}`] || actualMap[`${home}|${away}|`];
