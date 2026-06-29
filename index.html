@@ -1263,7 +1263,11 @@ async function apiCompute(action, params) {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({action, params: params || {}})
   });
-  if (!resp.ok) throw new Error('Compute API error: ' + resp.status);
+  if (!resp.ok) {
+    let msg = `Compute API error: ${resp.status}`;
+    try { const err = await resp.json(); if(err.error) msg = err.error; } catch(e) {}
+    throw new Error(msg);
+  }
   return resp.json();
 }
 
@@ -1850,7 +1854,9 @@ function showSection(id,btn){
 }
 
 // ── Main Simulation ──────────────────────────────────────────────────────
+let _simBusy=false;
 async function runSimulation(){
+  if(_simBusy)return;_simBusy=true;
   try{
   const state=loadState();
   const results=state.actualResults||[];
@@ -1870,7 +1876,7 @@ async function runSimulation(){
   if(data.brierScores) window._brierScores = data.brierScores;
   if(data.backtest) window._backtestResults = data.backtest;
   renderAll();
-  }catch(e){console.error('runSimulation:',e);}
+  }catch(e){console.error('runSimulation:',e);}finally{_simBusy=false;}
 }
 
 // ── Render All ───────────────────────────────────────────────────────────
@@ -2622,7 +2628,7 @@ function renderRadar(){
   const state2=loadState();const autoOn=state2.polymarketAuto;
   h+=`<div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">`;
   h+=`<button class="data-btn data-btn-primary" onclick="syncPolymarketData()">🔄 Sync Polymarket</button>`;
-  h+=`<button class="data-btn data-btn-secondary" onclick="reevaluateResults();mcResults=null;runSimulation();renderAll()">🔁 Re-evaluate</button>`;
+  h+=`<button class="data-btn data-btn-secondary" onclick="reevaluateResults().then(()=>{mcResults=null;return runSimulation();}).then(()=>renderAll()).catch(console.error)">🔁 Re-evaluate</button>`;
   h+=`<button class="data-btn ${autoOn?'data-btn-danger':'data-btn-secondary'}" onclick="togglePolymarketAuto()">${autoOn?t('prob.stopAuto'):t('prob.auto5min')}</button>`;
   h+=`<button class="data-btn data-btn-green" onclick="fetchAndSaveMatchOdds('radar')">📊 ${t('radar.fetchMatchOdds')}</button>`;
   h+=`<span id="radar-status" style="font-size:0.72rem;color:var(--text3)">${sd.lastFetch?'Last: '+new Date(sd.lastFetch).toLocaleString():''}</span>`;
@@ -3469,16 +3475,20 @@ function validateData() {
 // Init: single sequential flow — fetch → reevaluate → simulate
 (async()=>{
   // Version check: clear stale localStorage after code updates
-  const CODE_VER = 6;
-  const s0 = loadState();
-  if ((s0._codeVer || 0) < CODE_VER) {
-    console.log(`[Init] Code version ${s0._codeVer||0} → ${CODE_VER}, clearing stale data`);
-    localStorage.removeItem('wc2026_data');
-    location.reload();
-    return;
-  }
+  const CODE_VER = 7;
+  try{
+    const verRaw=localStorage.getItem('wc26_code_ver');
+    const oldVer=verRaw?parseInt(verRaw):0;
+    if(oldVer<CODE_VER){
+      console.log(`[Init] Code version ${oldVer} → ${CODE_VER}, clearing stale data`);
+      localStorage.removeItem('wc2026_data');
+      localStorage.setItem('wc26_code_ver',String(CODE_VER));
+      location.reload();
+      return;
+    }
+  }catch(e){}
+  localStorage.setItem('wc26_code_ver',String(CODE_VER));
   // 1. Auto-fetch actual results from ALT API (no key needed)
-  {const s=loadState();s._codeVer=CODE_VER;saveState(s);}
   try{
     const r=await fetch('/api/results-alt');
     const d=await r.json();
