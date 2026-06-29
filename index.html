@@ -3468,7 +3468,17 @@ function validateData() {
 })();
 // Init: single sequential flow — fetch → reevaluate → simulate
 (async()=>{
+  // Version check: clear stale localStorage after code updates
+  const CODE_VER = 6;
+  const s0 = loadState();
+  if ((s0._codeVer || 0) < CODE_VER) {
+    console.log(`[Init] Code version ${s0._codeVer||0} → ${CODE_VER}, clearing stale data`);
+    localStorage.removeItem('wc2026_data');
+    location.reload();
+    return;
+  }
   // 1. Auto-fetch actual results from ALT API (no key needed)
+  {const s=loadState();s._codeVer=CODE_VER;saveState(s);}
   try{
     const r=await fetch('/api/results-alt');
     const d=await r.json();
