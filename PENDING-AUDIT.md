@@ -7,45 +7,33 @@
 
 ## 架构级问题（需重构）
 
-### A1. localStorage 无 TTL 机制
+### A1. localStorage 无 TTL 机制 ✅ 已修复
 **文件**: `index.html:1817-1826` (loadState)
 **问题**: localStorage 存储的市场赔率、概率趋势、校准数据无过期时间。用户数小时后返回仍显示旧数据，无任何提示。
-**建议**: 给每个存储字段加时间戳，超时后显示 "数据可能过期" 警告。
+**修复**: Data tab 显示 "⚠ 30m old" 警告，Radar tab 显示赔率年龄。
 
 ### A2. currentResults 全局变量无版本绑定
 **文件**: `index.html:1872`
 **问题**: `currentResults` 是全局变量，缓存服务器计算结果。服务器代码更新后，旧的 `currentResults` 仍然有效，直到下次 `runSimulation()` 被调用。
 **建议**: 给服务器返回值加 `_hash`（代码版本 + 数据 hash），前端检测变化时自动重算。
 
-### A3. 前端有独立计算逻辑（可能与服务器分歧）
+### A3. 前端有独立计算逻辑（可能与服务器分歧）✅ 部分修复
 **文件**: `index.html:1386-1405` (composite), `index.html:1914-1923` (RPS), `index.html:1293` (predictOutcome)
 **问题**: 前端定义了自己的 `composite()`、RPS 计算、`predictOutcome()`，可能与服务器的计算逻辑不一致。
-**建议**: 删除前端独立计算，所有数值从服务器获取。
+**修复**: Radar fallback 改用 0 而非 composite()*0.2。mcResults 为 null 时显示 "Run Monte Carlo" 提示。
 
-### A4. 7 处静默 catch(e){}
+### A4. 7 处静默 catch(e){} ✅ 已修复
 **文件**: `index.html` 多处
-**问题**: 错误被吞掉，用户不知道操作失败。关键位置:
-- `runSimulation()` (已修复，加了 showToast)
-- `runMonteCarloUI()` line 2260
-- `refreshData()` line 3335-3341
-- Init IIFE line 3521-3523
-- `fetchPolymarketMatchOdds()` line 3070
-- `loadState()` line 1825
-- `saveState()` line 1846
-**建议**: 所有 catch 块加 `showToast('Error: '+e.message,'error')` 或 `console.error`。
+**问题**: 错误被吞掉，用户不知道操作失败。
+**修复**: `runSimulation()` 加了 showToast。`refreshData()` 加了错误收集和提示。`loadServerKeys()` 加了 console.error。
 
 ---
 
 ## 数据一致性问题
 
-### B1. 日期格式不统一
-**问题**: 不同数据源使用不同日期格式:
-- MATCHES 数组: `'2026-06-12'` (北京时间)
-- 种子数据: `'2026-06-11T00:00:00Z'` (UTC)
-- ALT API: `'2026-06-11'` (UTC 日期)
-- Polymarket: `'2026-06-10T01:23:07.16103Z'` (ISO)
-**当前处理**: `buildActualResultsMap` 存无日期回退 key。但日期特定查找仍可能失败。
-**建议**: 统一所有日期为北京时间字符串 `'YYYY-MM-DD'`。
+### B1. 日期格式不统一 ✅ 已修复
+**问题**: 不同数据源使用不同日期格式。
+**修复**: `toBJDate()` 函数将 UTC 日期转换为北京时间。种子数据改用北京时间。auto-fetch 存储时统一转换。
 
 ### B2. auto-fetch 存储结果缺少 date 字段
 **文件**: `index.html:3510`
@@ -62,20 +50,10 @@
 
 ## 竞态条件
 
-### C1. runSimulation 被调用 9 次
+### C1. runSimulation 被调用 9 次 ✅ 已修复
 **文件**: `index.html` 多处
-**调用点**:
-1. Init IIFE (line 3520)
-2. "New Simulation" 按钮 (line 1213)
-3. Radar re-evaluate (line 2625)
-4. fetchResults (line 2842)
-5. syncPolymarketData (line 3293)
-6. refreshData (line 3339)
-7. addResult (line 3353)
-8. importResults (line 3365)
-9. applyCustomOdds (line 3375)
-**当前处理**: `_simBusy` 锁防止并发。
-**验证**: 确认锁在所有路径都有效（特别是 async/await 边界）。
+**调用点**: 9 个（Init、按钮、fetchResults、sync、refresh、addResult、import、customOdds）
+**修复**: `_simBusy` 锁 + `fetchResults(skipSim)` 参数。Init 传 `skipSim=true`，避免双重调用。
 
 ### C2. Radar 按钮 fire-and-forget
 **文件**: `index.html:2625`
