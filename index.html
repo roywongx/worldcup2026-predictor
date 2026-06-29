@@ -3466,9 +3466,9 @@ function validateData() {
   const sm=state.marketData;if(sm&&sm.matches)marketData=sm;
   validateData(); // Check data integrity on every page load
 })();
-// Init: auto-fetch first, then reevaluate + simulate
+// Init: single sequential flow — fetch → reevaluate → simulate
 (async()=>{
-  // 1. Auto-fetch actual results from API (before simulation)
+  // 1. Auto-fetch actual results from ALT API (no key needed)
   try{
     const r=await fetch('/api/results-alt');
     const d=await r.json();
@@ -3487,7 +3487,7 @@ function validateData() {
           if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
         }else{
           const act=s1>s2?t1:(s2>s1?t2:'draw');
-          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'});
+          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:m.date||'',predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'});
           map[k]=s.actualResults.length-1;
           added++;
         }
@@ -3499,15 +3499,13 @@ function validateData() {
       }
     }
   }catch(e){console.error('[AutoFetch] Error:',e);}
-  // 2. Always reevaluate + simulate (whether or not new results were found)
+  // 2. Also try primary API if key exists (may add winner/extra data)
+  try{if(getApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}}catch(e){}
+  // 3. Reevaluate + simulate ONCE with all data loaded
   try{await reevaluateResults();}catch(e){console.error('reeval:',e);}
   try{mcResults=null;await runSimulation();}catch(e){console.error('sim:',e);}
   applyLang();
 })();
-// Also try primary API if key exists
-(async()=>{try{
-  if(getApiKey('football-data')&&!localStorage.getItem('skipAutoFetch')){await fetchResults();}
-}catch(e){}})();
 // Service Worker for offline caching
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
