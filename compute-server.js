@@ -105,10 +105,6 @@ function runSimulation(params) {
       WC26._optimalTCount = resultCount;
       console.log(`[Model] Optimal T: ${WC26._optimalT} (from ${resultCount} results)`);
     }
-    // Fit isotonic calibration if not already cached
-    if (!WC26.isotonicCalibration && resultCount >= 10) {
-      WC26.fitAndCacheCalibration(actualResults);
-    }
     const formMap = calculateDynamicForm(actualResults);
     const actualMap = WC26.buildActualResultsMap(actualResults);
     const marketOddsMap = marketOdds;
