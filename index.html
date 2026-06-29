@@ -2281,6 +2281,8 @@ function renderBracket(){
   h+=roundCol(r32R, R32_INFO.slice(8,16), 'R32');
   h+=`</div>`;
 
+  // Debug: show R32[2] data directly in bracket
+  if(ko.R32[2]) h+=`<div style="text-align:center;padding:0.5rem;font-size:0.65rem;color:var(--text3)">DEBUG R32[2]: ${ko.R32[2].a} vs ${ko.R32[2].b} (actual=${ko.R32[2].actual||false})</div>`;
   h+='</div>';
   document.getElementById('section-bracket').innerHTML=h;
 }
