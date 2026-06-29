@@ -57,20 +57,27 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
   const W = g => rankings[g][0], R = g => rankings[g][1];
 
   // Use FIFA Annex C TPM matrix for third-place assignment
+  // TPM key: sorted 8 group letters with qualified third-place teams
+  // TPM value: 8 letters, one per third-place slot in bracket order
+  // Bracket positions for third-place teams: [0,1,6,7,10,11,14,15]
+  //   [0]=M74(1E vs 3rd), [1]=M77(1I vs 3rd), [6]=M79(1A vs 3rd), [7]=M80(1L vs 3rd)
+  //   [10]=M81(1D vs 3rd), [11]=M82(1G vs 3rd), [14]=M85(1B vs 3rd), [15]=M87(1K vs 3rd)
   const qualified3 = (thirdPlaceGroups || []).filter(g => thirdMap[g]).sort();
   const tpmKey = qualified3.join('');
   const tpmVal = (WC26.TPM || {})[tpmKey];
-  const THIRD_INDICES = [1, 3, 5, 6, 7, 9, 11, 13];
-  const thirdAt = new Array(16).fill(null);
+  const THIRD_BRACKET_POS = [0, 1, 6, 7, 10, 11, 14, 15];
+  const thirdAt = {};
 
   if (tpmVal && tpmVal.length === 8) {
     for (let i = 0; i < 8; i++) {
       const group = tpmVal[i];
-      if (thirdMap[group]) thirdAt[THIRD_INDICES[i]] = thirdMap[group];
+      if (thirdMap[group]) thirdAt[THIRD_BRACKET_POS[i]] = thirdMap[group];
     }
   } else {
     // Fallback: greedy assignment if TPM lookup fails
     console.warn(`[Bracket] TPM lookup failed for key "${tpmKey}", using fallback`);
+    const T3 = {};
+    const used3 = new Set();
     const slots3 = [
       {m:2,  pref:'D', ex:['E','C','F']},
       {m:4,  pref:'F', ex:['I','E']},
@@ -81,50 +88,53 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
       {m:12, pref:'J', ex:['B','J','H']},
       {m:14, pref:'L', ex:['K','D']},
     ];
-    const used3 = new Set();
     for (const s of slots3) {
       const adjMatch = s.m ^ 1;
-      const adj3Group = thirdAt[adjMatch] || null;
+      const adj3Group = T3[adjMatch] || null;
       let assigned = false;
       if (s.pref && qualified3.includes(s.pref) && !used3.has(s.pref) && !s.ex.includes(s.pref)) {
         if (!adj3Group || adj3Group !== thirdMap[s.pref]) {
-          thirdAt[s.m] = thirdMap[s.pref]; used3.add(s.pref); assigned = true;
+          T3[s.m] = thirdMap[s.pref]; used3.add(s.pref); assigned = true;
         }
       }
       if (!assigned) {
         for (const g of qualified3) {
           if (used3.has(g) || s.ex.includes(g)) continue;
           if (adj3Group && adj3Group === thirdMap[g]) continue;
-          thirdAt[s.m] = thirdMap[g]; used3.add(g); assigned = true;
+          T3[s.m] = thirdMap[g]; used3.add(g); assigned = true;
           break;
         }
       }
-      if (!assigned) console.warn(`[Bracket] No third-place team for slot M${73+s.m}`);
     }
+    // Map T3 slots (indexed by match number) to bracket positions
+    thirdAt[0] = T3[2];   // M74
+    thirdAt[1] = T3[4];   // M77
+    thirdAt[6] = T3[6];   // M79
+    thirdAt[7] = T3[7];   // M80
+    thirdAt[10] = T3[8];  // M81
+    thirdAt[11] = T3[9];  // M82
+    thirdAt[14] = T3[12]; // M85
+    thirdAt[15] = T3[14]; // M87
   }
   function getThirdAt(idx) { return thirdAt[idx] || null; }
 
-  // FIFA R32 bracket — ordered so sequential pairing produces correct R16
-  // Source: https://zh.wikipedia.org/wiki/2026年國際足協世界盃
-  // R16: [0]+[1]→M89, [2]+[3]→M90, [4]+[5]→M91, [6]+[7]→M92
-  //      [8]+[9]→M93, [10]+[11]→M94, [12]+[13]→M95, [14]+[15]→M96
   return [
-    W('E'), getThirdAt(1),                // [0]  M74: 1E vs 3rd
-    W('I'), getThirdAt(3),                // [1]  M77: 1I vs 3rd
+    W('E'), getThirdAt(0),                // [0]  M74: 1E vs 3rd
+    W('I'), getThirdAt(1),                // [1]  M77: 1I vs 3rd
     R('A'), R('B'),                       // [2]  M73: RA vs RB
     W('F'), R('C'),                       // [3]  M75: 1F vs RC
     W('C'), R('F'),                       // [4]  M76: 1C vs RF
     R('E'), R('I'),                       // [5]  M78: RE vs RI
-    W('A'), getThirdAt(5),                // [6]  M79: 1A vs 3rd
-    W('L'), getThirdAt(6),                // [7]  M80: 1L vs 3rd
+    W('A'), getThirdAt(6),                // [6]  M79: 1A vs 3rd
+    W('L'), getThirdAt(7),                // [7]  M80: 1L vs 3rd
     R('K'), R('L'),                       // [8]  M83: RK vs RL
     W('H'), R('J'),                       // [9]  M84: 1H vs RJ
-    W('D'), getThirdAt(7),                // [10] M81: 1D vs 3rd
-    W('G'), getThirdAt(9),                // [11] M82: 1G vs 3rd
+    W('D'), getThirdAt(10),               // [10] M81: 1D vs 3rd
+    W('G'), getThirdAt(11),               // [11] M82: 1G vs 3rd
     W('J'), R('H'),                       // [12] M86: 1J vs RH
     R('D'), R('G'),                       // [13] M88: RD vs RG
-    W('B'), getThirdAt(11),               // [14] M85: 1B vs 3rd
-    W('K'), getThirdAt(13),               // [15] M87: 1K vs 3rd
+    W('B'), getThirdAt(14),               // [14] M85: 1B vs 3rd
+    W('K'), getThirdAt(15),               // [15] M87: 1K vs 3rd
   ];
 };
 
