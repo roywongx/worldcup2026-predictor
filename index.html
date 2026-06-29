@@ -282,6 +282,11 @@ body {
   box-shadow: 0 2px 8px rgba(202,138,4,0.12);
   border: 1px solid rgba(202,138,4,0.2);
 }
+.match-card.ko-locked {
+  border-left: 3px solid var(--green);
+  background: linear-gradient(90deg, rgba(0,180,80,0.04), transparent);
+}
+.match-card.ko-locked .m-score { color: var(--green); font-weight: 700; }
 
 .m-group {
   font-size: 0.72rem;
@@ -437,6 +442,11 @@ body {
   border: 2px solid var(--gold);
   background: linear-gradient(135deg, rgba(202,138,4,0.06), rgba(202,138,4,0.01));
 }
+.ko-match.ko-locked {
+  border: 1px solid var(--green);
+  background: linear-gradient(135deg, rgba(0,180,80,0.06), rgba(0,180,80,0.01));
+}
+.ko-match.ko-locked .ko-score { color: var(--green); font-weight: 700; }
 
 /* Match header: #number, date, venue */
 .ko-match-header {
@@ -1876,7 +1886,7 @@ async function runSimulation(){
   if(data.brierScores) window._brierScores = data.brierScores;
   if(data.backtest) window._backtestResults = data.backtest;
   renderAll();
-  }catch(e){console.error('runSimulation:',e);}finally{_simBusy=false;}
+  }catch(e){console.error('runSimulation:',e);showToast('Simulation error: '+e.message,'error');}finally{_simBusy=false;}
 }
 
 // ── Render All ───────────────────────────────────────────────────────────
@@ -2111,20 +2121,22 @@ function renderMatches(){
     const mkt=m.mkt||marketOdds[mktKey1]||marketOdds[mktKey2]||null;
     if(mkt&&mkt.win){const mw=(mkt.win*100).toFixed(0),md=(mkt.draw*100).toFixed(0),ml=(mkt.loss*100).toFixed(0);
       probHtml+=` <span style="font-size:0.65rem;color:var(--purple)">│ Mkt W:${mw}% D:${md}% L:${ml}%</span>`;}
+    const isActual=!!m.actual;
     const label=m.label||'KO',labelColor=m.label==='FIN'?'var(--gold)':m.label==='3rd'?'var(--orange)':'var(--blue)';
     // Show 90-min score for PSO matches, final score otherwise
     const scoreDisplay = (m.method==='PSO' && m.ga90!=null) ? `${m.ga90}-${m.gb90}` : `${m.ga}-${m.gb}`;
     const psoNote = (m.method==='PSO' && m.ga90!=null) ? ` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>` : '';
+    const actualBadge = isActual ? ' <span style="color:var(--green);font-weight:700;font-size:0.65rem">✓</span>' : '';
     // Expected goals + top-3 most probable scores (for betting reference)
     let xgLine = '';
-    if (m.lh!=null && m.la!=null) {
+    if (!isActual && m.lh!=null && m.la!=null) {
       xgLine += `<div style="font-size:0.6rem;color:var(--text3);padding-left:2.5rem;margin-top:0.1rem">xG: ${m.lh.toFixed(2)} - ${m.la.toFixed(2)}`;
       if (m.top3 && m.top3.length > 0) {
         xgLine += ` · ${m.top3.map(s => s.s + ' ' + (s.p*100).toFixed(0) + '%').join(' / ')}`;
       }
       xgLine += '</div>';
     }
-    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}</div>`;
+    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}${isActual?' ko-locked':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${actualBadge}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}</div>`;
   });
   h+='</div>';document.getElementById('section-matches').innerHTML=h;
 }
@@ -2168,8 +2180,9 @@ function renderBracket(){
   // Render a single match card
   function mc(m, info, extraClass){
     const wA=m.ga>m.gb?'w':'l',wB=m.gb>m.ga?'w':'l';
-    let s=`<div class="ko-match ${extraClass||''}">`;
-    if(info) s+=`<div class="ko-match-header"><span class="ko-match-num">#${info.num}</span><span class="ko-match-date">${info.date}</span>${info.venue?`<span class="ko-match-venue">${info.venue}</span>`:''}</div>`;
+    const isActual=!!m.actual;
+    let s=`<div class="ko-match ${extraClass||''} ${isActual?'ko-locked':''}">`;
+    if(info) s+=`<div class="ko-match-header"><span class="ko-match-num">#${info.num}</span><span class="ko-match-date">${info.date}</span>${info.venue?`<span class="ko-match-venue">${info.venue}</span>`:''}${isActual?'<span style="color:var(--green);font-weight:700;margin-left:auto">✓</span>':''}</div>`;
     // Show 90-min score for PSO matches
     const sA = (m.method==='PSO' && m.ga90!=null) ? m.ga90 : m.ga;
     const sB = (m.method==='PSO' && m.ga90!=null) ? m.gb90 : m.gb;

@@ -231,7 +231,7 @@ function runSimulation(params) {
             const method = ga !== gb ? "90'" : 'PSO';
             if (ga === gb && actual.winner) { if (actual.winner === home) ga++; else gb++; }
             winners.push(ga > gb ? home : away);
-            res.push({ a: home, ga, gb, b: away, method, probs, mkt: mktProbs || null });
+            res.push({ a: home, ga, gb, b: away, method, probs, mkt: mktProbs || null, actual: true });
           } else {
             // Deterministic: use model lambdas (rounded) instead of random simKO
             const [lh, la] = WC26.getFormAdjustedLambdas(home, away, preFormMap, kodate, mktProbs);
@@ -616,12 +616,17 @@ function runFull(params) {
   const brierResult = runBrier(params);
   const btResult = runBacktest();
 
+  const ar = params.actualResults || [];
+  const mo = params.marketOdds || {};
+  const _hash = `${ar.length}|${Object.keys(mo).length}|${Date.now()}`;
+
   return {
     currentResults: simResult,
     calibration: calResult,
     ev: evResult,
     brierScores: brierResult,
-    backtest: btResult
+    backtest: btResult,
+    _hash
   };
 }
 
