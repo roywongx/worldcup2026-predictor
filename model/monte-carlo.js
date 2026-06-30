@@ -312,6 +312,7 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
       nextRound.push(winner);
       const r = { a: home, ga, gb, b: away, method };
       if (ga90 != null) { r.ga90 = ga90; r.gb90 = gb90; }
+      if (actual && actual.penalties) r.penalties = actual.penalties;
       roundResults.push(r);
     }
     rounds.push(roundResults);
@@ -388,11 +389,13 @@ WC26.buildActualResultsMap = function(actualResults) {
     const dateStr = r.date ? r.date.substring(0, 10) : '';
     const val = { score1: r.score1, score2: r.score2, team1: r.team1, team2: r.team2 };
     if(r.winner)val.winner=r.winner;
+    if(r.penalties)val.penalties=r.penalties;
     // Date-specific key
     if (dateStr) {
       map[`${r.team1}|${r.team2}|${dateStr}`] = val;
       map[`${r.team2}|${r.team1}|${dateStr}`] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
       if(r.winner)map[`${r.team2}|${r.team1}|${dateStr}`].winner=r.winner;
+      if(r.penalties)map[`${r.team2}|${r.team1}|${dateStr}`].penalties=r.penalties;
     }
     // Dateless fallback (handles date format mismatches: UTC vs Beijing time)
     const dlKey1 = `${r.team1}|${r.team2}|`;
@@ -400,6 +403,7 @@ WC26.buildActualResultsMap = function(actualResults) {
     if (!map[dlKey1]) map[dlKey1] = val;
     if (!map[dlKey2]) map[dlKey2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
     if(r.winner){if(!map[dlKey1].winner)map[dlKey1].winner=r.winner;if(!map[dlKey2].winner)map[dlKey2].winner=r.winner;}
+    if(r.penalties){if(!map[dlKey1].penalties)map[dlKey1].penalties=r.penalties;if(!map[dlKey2].penalties)map[dlKey2].penalties=r.penalties;}
   }
 
   WC26._cachedActualMap = map;

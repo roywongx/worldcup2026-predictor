@@ -2158,7 +2158,12 @@ function renderMatches(){
     const label=m.label||'KO',labelColor=m.label==='FIN'?'var(--gold)':m.label==='3rd'?'var(--orange)':'var(--blue)';
     // Show 90-min score for PSO matches, final score otherwise
     const scoreDisplay = (m.method==='PSO' && m.ga90!=null) ? `${m.ga90}-${m.gb90}` : `${m.ga}-${m.gb}`;
-    const psoNote = (m.method==='PSO' && m.ga90!=null) ? ` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>` : '';
+    let psoNote = '';
+    if(m.method==='PSO' && m.ga90!=null){
+      // Use actual penalty scores if available, otherwise show simulated ga-gb
+      if(m.penalties){ psoNote=` <span style="font-size:0.6rem;color:var(--orange)">(点球 ${m.penalties.home}-${m.penalties.away})</span>`; }
+      else{ psoNote=` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>`; }
+    }
     const actualBadge = isActual ? ' <span style="color:var(--green);font-weight:700;font-size:0.65rem">✓</span>' : '';
     // Expected goals + top-3 most probable scores (for betting reference)
     let xgLine = '';
@@ -2243,7 +2248,10 @@ function renderBracket(){
     s+=`<div class="ko-team ${wB}"><span class="ko-flag">${bf(m.b)}</span><span class="ko-name">${WC26.getTeamName(m.b)}</span><span class="ko-score">${sB}</span></div>`;
     if(m.probs){const p=m.probs;s+=`<div class="ko-probs"><span class="kp w">${(p.win*100).toFixed(0)}%</span><span class="kp d">${(p.draw*100).toFixed(0)}%</span><span class="kp l">${(p.loss*100).toFixed(0)}%</span></div>`;}
     if(m.top3&&m.top3.length>0){s+=`<div style="font-size:0.5rem;color:var(--text3);padding:0 0.45rem">${m.top3.map(s=>s.s+' '+(s.p*100).toFixed(0)+'%').join(' / ')}</div>`;}
-    if(m.method) s+=`<div class="ko-method">${m.method==='PSO'?`PSO ${m.ga}-${m.gb}`:m.method}</div>`;
+    if(m.method){
+      const pen=m.penalties?`点球 ${m.penalties.home}-${m.penalties.away}`:(m.method==='PSO'?`PSO ${m.ga}-${m.gb}`:m.method);
+      s+=`<div class="ko-method">${pen}</div>`;
+    }
     s+=`</div>`;
     return s;
   }
@@ -2870,11 +2878,13 @@ async function fetchResults(skipSim){
     for(const m of matches){
       let s1,s2,t1,t2,md,winner=null;
       let rtScore=null; // regularTime score for penalty shootouts
+      let penScore=null; // penalty shootout scores
       if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;
         // Penalty shootout: derive winner from penalties if API didn't set one
-        if(!winner&&m.score.duration==='PENALTY_SHOOTOUT'&&m.score.penalties){
+        if(m.score.duration==='PENALTY_SHOOTOUT'&&m.score.penalties){
           const ph=m.score.penalties.home||0,pa=m.score.penalties.away||0;
-          if(ph>pa)winner=t1;else if(pa>ph)winner=t2;
+          penScore={home:ph,away:pa};
+          if(!winner){if(ph>pa)winner=t1;else if(pa>ph)winner=t2;}
           // If penalties tied but fullTime differs, use fullTime to determine winner
           if(!winner&&s1!==s2)winner=s1>s2?t1:t2;
           const rt=m.score.regularTime;if(rt)rtScore={s1:rt.home,s2:rt.away};
@@ -2897,6 +2907,7 @@ async function fetchResults(skipSim){
         if(!ex.winner&&ex.score1===ex.score2&&winner){
           ex.winner=winner;
           if(rtScore){ex.score1=rtScore.s1;ex.score2=rtScore.s2;}
+          if(penScore)ex.penalties=penScore;
           ex.predicted=null;ex.correct=null;ex.predGoals=null;ex.probs=null;
           mc++;console.log(`[fetchResults] Fixed penalty winner: ${t1} vs ${t2} → ${winner}`);
           continue; // Skip alt cross-verify — penalty scores differ from fullTime
@@ -2926,6 +2937,7 @@ async function fetchResults(skipSim){
       const act=fs1>fs2?t1:(fs2>fs1?t2:'draw');
       const entry={team1:t1,team2:t2,score1:fs1,score2:fs2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:null,actual:act,correct:null,source:resultSource,predGoals:null,probs:null};
       if(winner)entry.winner=winner;
+      if(penScore)entry.penalties=penScore;
       if(mismatch)entry.altScore={s1:alt.s1,s2:alt.s2};
       state.actualResults.push(entry);
       nc++;existingMap[k]=state.actualResults.length-1;
