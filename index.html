@@ -2848,7 +2848,14 @@ async function fetchResults(skipSim){
     const mismatches=[];
     for(const m of matches){
       let s1,s2,t1,t2,md,winner=null;
-      if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;}
+      let rtScore=null; // regularTime score for penalty shootouts
+      if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;
+        // Penalty shootout: derive winner from penalties if API didn't set one
+        if(!winner&&m.score.duration==='PENALTY_SHOOTOUT'&&m.score.penalties){
+          const ph=m.score.penalties.home||0,pa=m.score.penalties.away||0;
+          if(ph>pa)winner=t1;else if(pa>ph)winner=t2;
+          const rt=m.score.regularTime;if(rt)rtScore={s1:rt.home,s2:rt.away};
+        }}
       else if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';}
       else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
@@ -2863,6 +2870,14 @@ async function fetchResults(skipSim){
       if(k in existingMap){
         // Already exists — check if we should verify/fix it
         const ex=state.actualResults[existingMap[k]];
+        // Fix existing penalty shootout entries that have no winner (stored fullTime 4-4 etc.)
+        if(!ex.winner&&ex.score1===ex.score2&&winner){
+          ex.winner=winner;
+          if(rtScore){ex.score1=rtScore.s1;ex.score2=rtScore.s2;}
+          ex.predicted=null;ex.correct=null;ex.predGoals=null;ex.probs=null;
+          mc++;console.log(`[fetchResults] Fixed penalty winner: ${t1} vs ${t2} → ${winner}`);
+          continue; // Skip alt cross-verify — penalty scores differ from fullTime
+        }
         if(ex.source!=='verified'&&alt){
           if(alt.s1===ex.score1&&alt.s2===ex.score2){
             ex.source='verified';vc++;
@@ -2883,8 +2898,10 @@ async function fetchResults(skipSim){
 
       // New result — probs will be computed by reevaluateResults()
       const resultSource=verified?'verified':(mismatch?'unverified':source);
-      const act=s1>s2?t1:(s2>s1?t2:'draw');
-      const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:null,actual:act,correct:null,source:resultSource,predGoals:null,probs:null};
+      // For penalty shootouts, use regularTime score for simulation correctness
+      const fs1=rtScore?rtScore.s1:s1, fs2=rtScore?rtScore.s2:s2;
+      const act=fs1>fs2?t1:(fs2>fs1?t2:'draw');
+      const entry={team1:t1,team2:t2,score1:fs1,score2:fs2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:null,actual:act,correct:null,source:resultSource,predGoals:null,probs:null};
       if(winner)entry.winner=winner;
       if(mismatch)entry.altScore={s1:alt.s1,s2:alt.s2};
       state.actualResults.push(entry);
