@@ -273,12 +273,14 @@ function runReevaluate(params) {
       const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap, r.date, mktOdds);
       const pred = WC26.predictOutcome(probs, r.team1, r.team2);
       const [lh, la] = WC26.getFormAdjustedLambdas(r.team1, r.team2, preFormMap, r.date, mktOdds);
-      if (r.predicted !== pred || r.correct !== (pred === r.actual)) changed++;
+      // For penalty shootouts, use winner as actual outcome (not 'draw')
+      const actualOutcome = (r.winner && r.score1 === r.score2) ? r.winner : r.actual;
+      if (r.predicted !== pred || r.correct !== (pred === actualOutcome)) changed++;
       return {
         ...r,
         rawProbs: { win: rawProbs.win, draw: rawProbs.draw, loss: rawProbs.loss },
         predicted: pred,
-        correct: pred === r.actual,
+        correct: pred === actualOutcome,
         probs: { win: probs.win, draw: probs.draw, loss: probs.loss },
         predGoals: [lh.toFixed(2), la.toFixed(2)]
       };

@@ -2168,7 +2168,24 @@ function renderMatches(){
       }
       xgLine += '</div>';
     }
-    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}${isActual?' ko-locked':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${actualBadge}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}</div>`;
+    // Prediction comparison for actual KO matches (from actualResults/reevaluate)
+    let predLine = '';
+    if(isActual){
+      const stored=actualLookup[`${m.a}|${m.b}`]||actualLookup[`${m.b}|${m.a}`];
+      if(stored&&stored.predGoals){
+        const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
+        const sp=stored.probs||{};
+        const predW=WC26.predictOutcome(sp,m.a,m.b);
+        const isCorrect=stored.correct;
+        predLine=`<div style="font-size:0.65rem;color:var(--text3);margin-top:2px;padding-left:2.5rem">
+          <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓':'✗'}</span>
+          <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
+          ${stored.probs?`<span style="margin-left:4px">W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%</span>`:''}
+          ${mkt?`<span style="margin-left:4px;color:var(--purple)">Mkt: W:${(mkt.win*100).toFixed(0)}% D:${(mkt.draw*100).toFixed(0)}% L:${(mkt.loss*100).toFixed(0)}%</span>`:''}
+        </div>`;
+      }
+    }
+    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}${isActual?' ko-locked':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${actualBadge}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}${predLine}</div>`;
   });
   h+='</div>';document.getElementById('section-matches').innerHTML=h;
 }
