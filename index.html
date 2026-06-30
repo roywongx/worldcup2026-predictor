@@ -2177,10 +2177,13 @@ function renderMatches(){
         const predH=parseFloat(stored.predGoals[0]),predA=parseFloat(stored.predGoals[1]);
         const sp=stored.probs||{};
         const predW=WC26.predictOutcome(sp,m.a,m.b);
-        const isCorrect=stored.correct;
+        // For PSO: judge against 90-min result (stored.actual='draw'), not penalty winner
+        const isPSO=stored.score1===stored.score2&&stored.winner;
+        const isCorrect=isPSO?(predW==='draw'):stored.correct;
+        const actual90=isPSO?`平局 (90')`:stored.actual;
         predLine=`<div style="font-size:0.65rem;color:var(--text3);margin-top:2px;padding-left:2.5rem">
           <span style="color:${isCorrect?'var(--green)':'var(--red)'};font-weight:700">${isCorrect?'✓':'✗'}</span>
-          <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW})</span>
+          <span style="margin-left:4px">${t('match.pred')}: ${predH.toFixed(1)}-${predA.toFixed(1)} (${predW}) ← 90'</span>
           ${stored.probs?`<span style="margin-left:4px">W:${(stored.probs.win*100).toFixed(0)}% D:${(stored.probs.draw*100).toFixed(0)}% L:${(stored.probs.loss*100).toFixed(0)}%</span>`:''}
           ${mkt?`<span style="margin-left:4px;color:var(--purple)">Mkt: W:${(mkt.win*100).toFixed(0)}% D:${(mkt.draw*100).toFixed(0)}% L:${(mkt.loss*100).toFixed(0)}%</span>`:''}
         </div>`;

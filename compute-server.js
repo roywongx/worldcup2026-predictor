@@ -197,9 +197,15 @@ function runSimulation(params) {
           if (actual) {
             let ga = actual.score1, gb = actual.score2;
             const method = ga !== gb ? "90'" : 'PSO';
-            if (ga === gb && actual.winner) { if (actual.winner === home) ga++; else gb++; }
+            let ga90, gb90;
+            if (ga === gb) {
+              ga90 = ga; gb90 = gb;
+              if (actual.winner) { if (actual.winner === home) ga++; else gb++; }
+            }
             winners.push(ga > gb ? home : away);
-            res.push({ a: home, ga, gb, b: away, method, probs, mkt: mktProbs || null, actual: true });
+            const r = { a: home, ga, gb, b: away, method, probs, mkt: mktProbs || null, actual: true };
+            if (ga90 != null) { r.ga90 = ga90; r.gb90 = gb90; }
+            res.push(r);
           } else {
             // Deterministic: use model lambdas (rounded) instead of random simKO
             const [lh, la] = WC26.getFormAdjustedLambdas(home, away, formMap, kodate, mktProbs);
