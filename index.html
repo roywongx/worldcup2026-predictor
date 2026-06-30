@@ -2854,6 +2854,8 @@ async function fetchResults(skipSim){
         if(!winner&&m.score.duration==='PENALTY_SHOOTOUT'&&m.score.penalties){
           const ph=m.score.penalties.home||0,pa=m.score.penalties.away||0;
           if(ph>pa)winner=t1;else if(pa>ph)winner=t2;
+          // If penalties tied but fullTime differs, use fullTime to determine winner
+          if(!winner&&s1!==s2)winner=s1>s2?t1:t2;
           const rt=m.score.regularTime;if(rt)rtScore={s1:rt.home,s2:rt.away};
         }}
       else if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';}
@@ -3546,7 +3548,18 @@ function validateData() {
       r.winner=r.actual;winnerFixed++;
     }
   }
-  if(winnerFixed>0){console.log(`[Init] Backfilled winner for ${winnerFixed} draw results`);saveState(state);}
+  // Remove penalty shootout entries with no winner — force re-fetch for correct data
+  const beforeClean=state.actualResults.length;
+  state.actualResults=state.actualResults.filter(r=>{
+    if(!r.winner&&r.score1===r.score2&&r.date){
+      const d=r.date.substring(0,10);
+      // Group stage ends 2026-06-28; matches after that are knockouts
+      if(d>='2026-06-29'){console.log(`[Init] Removing unresolved KO entry: ${r.team1} vs ${r.team2}`);return false;}
+    }
+    return true;
+  });
+  if(state.actualResults.length<beforeClean){winnerFixed+=(beforeClean-state.actualResults.length);}
+  if(winnerFixed>0){console.log(`[Init] Fixed/removed ${winnerFixed} penalty results — re-fetch to get correct data`);saveState(state);}
   // Seed initial results (version 4 = Beijing date format + null score fix)
   // Also re-seed if dataVersion is current but actualResults was cleared
   // Force re-seed with v4 to fix null scores from date mismatch
