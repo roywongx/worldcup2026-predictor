@@ -294,12 +294,13 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
 
       const actual = actualMap[`${home}|${away}|${koDate}`] || actualMap[`${home}|${away}|`]
         || actualMap[`${away}|${home}|${koDate}`] || actualMap[`${away}|${home}|`];
-      let ga, gb, method;
+      let ga, gb, method, ga90, gb90;
       if (actual) {
         ga = actual.score1; gb = actual.score2;
         method = "90'";
         if (ga === gb) {
           method = 'PSO';
+          ga90 = ga; gb90 = gb; // store 90-min score before penalty tiebreaker
           if(actual.winner){if(actual.winner===home)ga++;else gb++;}
           else ga++; // fallback: home team advances
         }
@@ -309,7 +310,9 @@ WC26.simulateOneTournament = function(actualMap, formMap, marketOddsMap) {
 
       const winner = ga > gb ? home : away;
       nextRound.push(winner);
-      roundResults.push({ a: home, ga, gb, b: away, method });
+      const r = { a: home, ga, gb, b: away, method };
+      if (ga90 != null) { r.ga90 = ga90; r.gb90 = gb90; }
+      roundResults.push(r);
     }
     rounds.push(roundResults);
     currentRound = nextRound;
