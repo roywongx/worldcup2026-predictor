@@ -222,7 +222,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({'error': str(e)}, 500)
 
     def end_headers(self):
-        if self.path.startswith('/api/'):
+        if self.path == '/sw.js' or self.path.startswith('/sw.js?'):
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        elif self.path.startswith('/api/'):
             if '/results' in self.path:
                 self.send_header('Cache-Control', 'public, max-age=300')
             elif '/odds' in self.path:

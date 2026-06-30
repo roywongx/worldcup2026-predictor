@@ -3695,7 +3695,7 @@ function validateData() {
 })();
 // Service Worker for offline caching
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.register('/sw.js?v='+Date.now()).catch(() => {});
 }
 </script>
 </body>

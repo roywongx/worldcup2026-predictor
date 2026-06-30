@@ -1,5 +1,5 @@
 // Service Worker — offline cache for World Cup 2026 Predictor
-const CACHE = 'wc26-v3';
+const CACHE = 'wc26-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -23,8 +23,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Never cache index.html, model code, API calls, or external requests — always fetch fresh
-  if (url.pathname.startsWith('/api/') || url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.startsWith('/model/') || url.hostname.includes('polymarket') || url.hostname.includes('football-data')) {
+  // Never cache index.html, sw.js, model code, API calls, or external requests — always fetch fresh
+  if (url.pathname.startsWith('/api/') || url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname === '/sw.js' || url.pathname.startsWith('/model/') || url.hostname.includes('polymarket') || url.hostname.includes('football-data')) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
   } else {
     e.respondWith(
