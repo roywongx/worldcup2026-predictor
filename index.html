@@ -3592,7 +3592,9 @@ function validateData() {
     return true;
   });
   if(state.actualResults.length<beforeClean){winnerFixed+=(beforeClean-state.actualResults.length);}
-  if(winnerFixed>0){console.log(`[Init] Fixed/removed ${winnerFixed} penalty results — re-fetch to get correct data`);saveState(state);}
+  // Auto-fix: KO matches with winner but no penalties — trigger refetch
+  const needsPenaltyFix=state.actualResults.some(r=>r.winner&&r.score1===r.score2&&!r.penalties&&r.date&&r.date.substring(0,10)>='2026-06-29');
+  if(winnerFixed>0||needsPenaltyFix){console.log(`[Init] Fixed/removed ${winnerFixed} penalty results, needsPenaltyFix=${needsPenaltyFix}`);saveState(state);}
   // Seed initial results (version 4 = Beijing date format + null score fix)
   // Also re-seed if dataVersion is current but actualResults was cleared
   // Force re-seed with v4 to fix null scores from date mismatch
@@ -3626,7 +3628,7 @@ function validateData() {
 // Init: single sequential flow — fetch → reevaluate → simulate
 (async()=>{
   // Version check: clear stale localStorage after code updates
-  const CODE_VER = 7;
+  const CODE_VER = 8; // 8: penalty scores in KO matches
   try{
     const verRaw=localStorage.getItem('wc26_code_ver');
     const oldVer=verRaw?parseInt(verRaw):0;
@@ -3693,9 +3695,18 @@ function validateData() {
   try{mcResults=null;await runSimulation();}catch(e){console.error('sim:',e);}
   applyLang();
 })();
-// Service Worker for offline caching
+// Service Worker: force update + auto-reload when new SW activates
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js?v='+Date.now()).catch(() => {});
+  navigator.serviceWorker.register('/sw.js?v=' + Date.now()).then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (nw) nw.addEventListener('statechange', () => {
+        if (nw.state === 'activated') { console.log('[SW] New version activated, reloading'); location.reload(); }
+      });
+    });
+    reg.update();
+  }).catch(() => {});
+}
 }
 </script>
 </body>
