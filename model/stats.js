@@ -218,7 +218,9 @@ WC26.reliabilityDiagram = function(actualResults, nBins) {
   let ece = 0, total = 0;
   for (const r of actualResults) {
     if (r.score1 == null || !r.probs) continue;
-    const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
+    const actualOutcome = (r.winner && r.score1 === r.score2) ? r.winner :
+      (r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw'));
+    const outcome = actualOutcome === r.team1 ? 0 : (actualOutcome === 'draw' ? 1 : 2);
     const probs = [r.probs.win, r.probs.draw, r.probs.loss];
     // For each class, bin by that class's predicted probability
     for (let cls = 0; cls < 3; cls++) {
@@ -262,7 +264,9 @@ WC26.fitIsotonicCalibration = function(actualResults, formMap) {
     const raw = WC26.getRawProbs(r.team1, r.team2, formMap || {}, r.date);
     const T = WC26._optimalT || 1.15;
     const probs = WC26.temperatureScale(raw.win, raw.draw, raw.loss, T);
-    const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
+    const actualOutcome = (r.winner && r.score1 === r.score2) ? r.winner :
+      (r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw'));
+    const outcome = actualOutcome === r.team1 ? 0 : (actualOutcome === 'draw' ? 1 : 2);
     outcomes.win.push({ p: probs.win, y: outcome === 0 ? 1 : 0 });
     outcomes.draw.push({ p: probs.draw, y: outcome === 1 ? 1 : 0 });
     outcomes.loss.push({ p: probs.loss, y: outcome === 2 ? 1 : 0 });

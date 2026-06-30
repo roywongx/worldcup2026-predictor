@@ -56,7 +56,9 @@ WC26.SimpleGBDT = class SimpleGBDT {
         }
       }
       const features = this.extractFeatures(r.team1, r.team2);
-      const outcome = r.score1 > r.score2 ? 0 : (r.score1 === r.score2 ? 1 : 2);
+      const actualOutcome = (r.winner && r.score1 === r.score2) ? r.winner :
+        (r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw'));
+      const outcome = actualOutcome === r.team1 ? 0 : (actualOutcome === 'draw' ? 1 : 2);
       X.push(features);
       y.push(outcome);
     }

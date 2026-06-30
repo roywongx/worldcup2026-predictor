@@ -1962,7 +1962,8 @@ function renderMatches(){
     let rpsSum=0;
     played.forEach(r=>{
       if(r.probs){
-        const outcome=r.score1>r.score2?0:(r.score1===r.score2?1:2);
+        const ao=(r.winner&&r.score1===r.score2)?r.winner:(r.score1>r.score2?r.team1:(r.score2>r.score1?r.team2:'draw'));
+        const outcome=ao===r.team1?0:(ao==='draw'?1:2);
         const cumP=[r.probs.win,r.probs.win+r.probs.draw,1];
         const cumO=[outcome===0?1:0,outcome<=1?1:0,1];
         rpsSum+=((cumP[0]-cumO[0])**2+(cumP[1]-cumO[1])**2+(cumP[2]-cumO[2])**2)/2;

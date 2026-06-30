@@ -311,14 +311,16 @@ function runCalibration(params) {
         const probs = WC26.getBlendedProbs(r.team1, r.team2, preFormMap);
         predArr = [probs.win, probs.draw, probs.loss];
       }
+      const actualOutcome = (r.winner && r.score1 === r.score2) ? r.winner : r.actual;
       let outcome;
-      if (r.score1 > r.score2) outcome = 0;
-      else if (r.score1 === r.score2) outcome = 1;
+      if (actualOutcome === r.team1) outcome = 0;
+      else if (actualOutcome === 'draw') outcome = 1;
       else outcome = 2;
       predictions.push(predArr);
       outcomes.push(outcome);
       const predWinner = predArr[0] >= predArr[1] && predArr[0] >= predArr[2] ? r.team1 : (predArr[2] >= predArr[1] && predArr[2] >= predArr[0] ? r.team2 : 'draw');
-      const actWinner = r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw');
+      const actWinner = (r.winner && r.score1 === r.score2) ? r.winner :
+        (r.score1 > r.score2 ? r.team1 : (r.score2 > r.score1 ? r.team2 : 'draw'));
       if (predWinner === actWinner) correct++;
       rpsSum += WC26.rankedProbabilityScore(predArr, outcome);
       brierSum += WC26.brierScore(predArr, outcome);
