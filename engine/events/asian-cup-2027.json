@@ -1,0 +1,47 @@
+{
+  "id": "asian-cup-2027",
+  "name": "AFC Asian Cup 2027",
+  "nameZh": "2027 亚洲杯（沙特）",
+  "tournament": "AFC Asian Cup",
+  "start": "2027-01-07",
+  "end": "2027-02-05",
+  "host": ["Saudi Arabia"],
+  "format": "24 队：6 组 × 4，每组前 2 + 4 个最佳第三进十六强；淘汰赛加时 + 点球",
+  "groups": {
+    "A": ["Saudi Arabia", "Kuwait", "Oman", "Palestine"],
+    "B": ["Uzbekistan", "Bahrain", "North Korea", "Jordan"],
+    "C": ["Iran", "Syria", "Kyrgyzstan", "China"],
+    "D": ["Australia", "Tajikistan", "Iraq", "Singapore"],
+    "E": ["South Korea", "United Arab Emirates", "Vietnam", "Yemen"],
+    "F": ["Japan", "Qatar", "Thailand", "Indonesia"]
+  },
+  "advance": { "perGroup": 2, "bestThirds": 4 },
+  "thirdTable": {
+    "slots": ["1A", "1B", "1C", "1D"],
+    "combos": {
+      "ABCD": "CDAB", "ABCE": "CABE", "ABCF": "CABF", "ABDE": "DABE", "ABDF": "DABF",
+      "ABEF": "EABF", "ACDE": "CDAE", "ACDF": "CDAF", "ACEF": "CAFE", "ADEF": "DAFE",
+      "BCDE": "CDBE", "BCDF": "CDBF", "BCEF": "ECBF", "BDEF": "EDBF", "CDEF": "CDFE"
+    }
+  },
+  "thirdAllowed": { "1A": ["C", "D", "E"], "1B": ["A", "C", "D"], "1C": ["A", "B", "F"], "1D": ["B", "E", "F"] },
+  "knockout": {
+    "rounds": ["R16", "QF", "SF", "F"],
+    "firstRound": [
+      ["2A", "2C"], ["1D", "3@1D"], ["1B", "3@1B"], ["1F", "2E"],
+      ["1C", "3@1C"], ["1E", "2D"], ["1A", "3@1A"], ["2B", "2F"]
+    ],
+    "firstRoundLabels": ["M37", "M39", "M38", "M41", "M44", "M43", "M40", "M42"]
+  },
+  "names": {
+    "Saudi Arabia": "沙特阿拉伯", "Kuwait": "科威特", "Oman": "阿曼", "Palestine": "巴勒斯坦",
+    "Uzbekistan": "乌兹别克斯坦", "Bahrain": "巴林", "North Korea": "朝鲜", "Jordan": "约旦",
+    "Iran": "伊朗", "Syria": "叙利亚", "Kyrgyzstan": "吉尔吉斯斯坦", "China": "中国",
+    "Australia": "澳大利亚", "Tajikistan": "塔吉克斯坦", "Iraq": "伊拉克", "Singapore": "新加坡",
+    "South Korea": "韩国", "United Arab Emirates": "阿联酋", "Vietnam": "越南", "Yemen": "也门",
+    "Japan": "日本", "Qatar": "卡塔尔", "Thailand": "泰国", "Indonesia": "印度尼西亚"
+  },
+  "sources": [
+    "抽签 2026-05-09（利雅得）；分组、第三名组合表与十六强对阵：zh.wikipedia.org/wiki/2027年亚足联亚洲杯（据 AFC 赛程）"
+  ]
+}

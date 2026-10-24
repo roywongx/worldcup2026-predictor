@@ -1,12 +1,16 @@
 {
   "name": "worldcup2026-predictor",
   "version": "1.0.0",
-  "description": "2026 FIFA World Cup Predictor — Dixon-Coles Poisson model with Polymarket integration",
+  "description": "Major international football tournament predictor (World Cup, Euro, Copa America, Asian Cup, AFCON, Gold Cup): Dixon-Coles + Elo, Monte Carlo; plus the original World Cup 2026 page",
   "main": "server.py",
   "scripts": {
     "start": "python3 server.py 9090",
     "open": "python3 -c \"import webbrowser; webbrowser.open('http://localhost:9090')\"",
-    "test": "python3 -c \"import ast; ast.parse(open('server.py').read()); print('✓ server.py syntax OK'); import http.server, json, socketserver; print('✓ stdlib imports OK')\" && node -e \"const fs=require('fs');const files=['data/teams.js','data/matches.js','model/stats.js','model/elo.js','model/dixon-coles.js','model/gbdt.js','model/monte-carlo.js','mc-worker.js'];files.forEach(f=>{try{new Function(fs.readFileSync(f,'utf8'));console.log('✓',f)}catch(e){console.error('✗',f,e.message);process.exit(1)}});console.log('✓ All JS modules syntax OK')\""
+    "test": "python3 -c \"import ast; ast.parse(open('server.py').read()); print('✓ server.py syntax OK'); import http.server, json, socketserver; print('✓ stdlib imports OK')\" && node -e \"const fs=require('fs');const files=['data/teams.js','data/matches.js','model/stats.js','model/elo.js','model/dixon-coles.js','model/gbdt.js','model/monte-carlo.js','mc-worker.js'];files.forEach(f=>{try{new Function(fs.readFileSync(f,'utf8'));console.log('✓',f)}catch(e){console.error('✗',f,e.message);process.exit(1)}});console.log('✓ All JS modules syntax OK')\"",
+    "test:engine": "node --test tests/engine.test.js",
+    "engine:fetch": "node engine/cli.js fetch",
+    "engine:backtest": "node engine/cli.js backtest --from 2017",
+    "engine:simulate": "node engine/cli.js simulate"
   },
   "keywords": [
     "worldcup",
