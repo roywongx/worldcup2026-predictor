@@ -1,0 +1,39 @@
+{
+  "params": {
+    "halfLifeDays": 4380,
+    "windowDays": 7300,
+    "friendlyWeight": 1,
+    "prior": 2,
+    "eloBeta": 1.25
+  },
+  "tuning": {
+    "how": "node engine/cli.js tune —— 只在 2010–2016 开赛的 16 届大赛（559 场）上网格搜索（开赛前拟合一次），选 RPS 最低",
+    "train": {
+      "editions": 16,
+      "matches": 559,
+      "rps": 0.1936
+    },
+    "test": {
+      "note": "2017–2026 开赛的 20 届、911 场，逐比赛日滚动拟合，未参与调参",
+      "model": {
+        "rps": 0.1742,
+        "logLoss": 0.9085,
+        "brier": 0.5364,
+        "accuracy": 0.589,
+        "ece": 0.0234
+      },
+      "eloBaseline": {
+        "rps": 0.1757,
+        "logLoss": 0.9444,
+        "brier": 0.5403,
+        "accuracy": 0.595
+      },
+      "baseRates": {
+        "rps": 0.2277,
+        "logLoss": 1.0691
+      }
+    },
+    "date": "2026-10-24",
+    "dataThrough": "2026-10-06"
+  }
+}

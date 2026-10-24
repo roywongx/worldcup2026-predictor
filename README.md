@@ -6,6 +6,33 @@
 
 ---
 
+## 🌍 Major tournaments / 重大赛事预测（`/tournaments.html`）
+
+A tournament-agnostic engine in `engine/` (zero dependencies, Node 22) for World Cup, Euro, Copa América, Asian Cup, AFCON and Gold Cup.
+`engine/` 是与具体赛事无关的预测引擎（零依赖），覆盖世界杯、欧洲杯、美洲杯、亚洲杯、非洲杯、金杯赛。
+
+- **Data / 数据**：every full international since 1872 ([martj42/international_results](https://github.com/martj42/international_results), CC0) — `npm run engine:fetch`
+- **Model / 模型**：Dixon-Coles bivariate Poisson, attack/defence fitted by time-decayed weighted likelihood, blended with World Football Elo；参数见 `engine/model.json`
+- **Simulation / 模拟**：Monte Carlo of the real format — group tiebreakers incl. head-to-head, best third-placed teams via the official combination table, extra time + penalties; results already played are used as-is
+- **Validation / 验证**：tuned only on 16 finals 2010–2016; tested out-of-sample on 20 finals 2017–2026 (911 matches, refitted every matchday)
+
+| 2017–2026 out-of-sample | RPS ↓ | log-loss ↓ | accuracy |
+|---|---|---|---|
+| This model / 本模型 | **0.1742** | **0.9085** | 58.9% |
+| Elo baseline / Elo 基线 | 0.1757 | 0.9444 | 59.5% |
+| Base rates / 频率基线 | 0.2277 | 1.0691 | 44.8% |
+
+```bash
+npm run engine:fetch                      # download history / 下载历史数据
+npm run engine:backtest                   # reproduce the table / 复现上表
+npm run engine:simulate -- asian-cup-2027 # → web/data/asian-cup-2027.json
+npm run test:engine
+```
+
+Add a tournament / 新增赛事：copy `engine/events/asian-cup-2027.json`, fill groups, host, knockout bracket and (if published) the official third-place table from official sources; `npm run test:engine` checks the config.
+
+---
+
 ## English
 
 ### Architecture Overview
