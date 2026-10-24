@@ -35,9 +35,32 @@ let cachedCustomOdds = {};
 let mcResults = null;  // {champ, finalist, semi, quarter, r16, N}
 let simulationHistory = null;
 
+// Build allowed match pair set from official schedule to ignore API test/fantasy fixtures
+const _allowedPairs = new Set();
+for (const [, , home, away] of MATCHES) {
+  _allowedPairs.add(`${home}|${away}`);
+  _allowedPairs.add(`${away}|${home}`);
+}
+function filterActualResults(actualResults) {
+  if (!Array.isArray(actualResults)) return [];
+  const before = actualResults.length;
+  const filtered = actualResults.filter(r => {
+    if (!r || !r.team1 || !r.team2) return false;
+    if (_allowedPairs.has(`${r.team1}|${r.team2}`)) return true;
+    // Keep knockout-stage results even if the exact pair isn't in the group schedule.
+    // FIFA 2026 group stage ends 2026-06-27; knockouts begin 2026-06-28 (M73).
+    const dateStr = r.date ? String(r.date).substring(0, 10) : '';
+    return dateStr >= '2026-06-28';
+  });
+  if (filtered.length < before) {
+    console.log(`[Compute] Filtered actualResults: ${before} → ${filtered.length} (removed ${before - filtered.length} matches not in WC26.MATCHES or KO stage)`);
+  }
+  return filtered;
+}
+
 // ── Action: simulation ───────────────────────────────────────────────
 function runSimulation(params) {
-  const actualResults = params.actualResults || cachedActualResults;
+  const actualResults = filterActualResults(params.actualResults || cachedActualResults);
   const marketOdds = params.marketOdds || cachedMarketOdds;
   const customOdds = params.customOdds || {};
 
@@ -196,15 +219,25 @@ function runSimulation(params) {
           const actual = actualMap[`${home}|${away}|${kodate}`] || actualMap[`${home}|${away}|`] || actualMap[`${away}|${home}|${kodate}`] || actualMap[`${away}|${home}|`];
           if (actual) {
             let ga = actual.score1, gb = actual.score2;
-            const method = ga !== gb ? "90'" : 'PSO';
-            let ga90, gb90;
+            let ga90 = ga, gb90 = gb;
+            let method = "90'";
             if (ga === gb) {
-              ga90 = ga; gb90 = gb;
-              if (actual.winner) { if (actual.winner === home) ga++; else gb++; }
+              if (actual.penalties) {
+                method = 'PSO';
+                if (actual.winner === home) { ga = ga90 + 1; gb = gb90; }
+                else if (actual.winner === away) { ga = ga90; gb = gb90 + 1; }
+              } else if (actual.et && actual.et.s1 !== actual.et.s2) {
+                method = 'AET';
+                ga = actual.et.s1; gb = actual.et.s2;
+              } else if (actual.winner) {
+                method = 'AET';
+                if (actual.winner === home) { ga = ga90 + 1; gb = gb90; }
+                else { ga = ga90; gb = gb90 + 1; }
+              }
             }
             winners.push(ga > gb ? home : away);
             const r = { a: home, ga, gb, b: away, method, probs, mkt: mktProbs || null, actual: true };
-            if (ga90 != null) { r.ga90 = ga90; r.gb90 = gb90; }
+            r.ga90 = ga90; r.gb90 = gb90;
             if (actual.penalties) r.penalties = actual.penalties;
             res.push(r);
           } else {
@@ -233,11 +266,15 @@ function runSimulation(params) {
       const sfpairs = [[w3[0],w3[1]],[w3[2],w3[3]]];
       let [w4, sfr] = runKORound(sfpairs, '2026-07-15');
       const sfLosers = sfr.map(m => m.ga > m.gb ? m.b : m.a);
+      const thirdMkt = WC26.getStoredMarketOdds(marketOddsMap, sfLosers[0], sfLosers[1], '2026-07-19');
+      const thirdProbs = WC26.getBlendedProbs(sfLosers[0], sfLosers[1], formMap, '2026-07-19', thirdMkt);
       const [tga, tgb, tm] = WC26.simKO(sfLosers[0], sfLosers[1], formMap, '2026-07-19', marketOddsMap);
+      const finalMkt = WC26.getStoredMarketOdds(marketOddsMap, w4[0], w4[1], '2026-07-20');
+      const finalProbs = WC26.getBlendedProbs(w4[0], w4[1], formMap, '2026-07-20', finalMkt);
       const [fa, fb, fm] = WC26.simKO(w4[0], w4[1], formMap, '2026-07-20', marketOddsMap);
       ko.R32 = r32r; ko.R16 = r16r; ko.QF = qfr; ko.SF = sfr;
-      ko.Third = { a: sfLosers[0], ga: tga, gb: tgb, b: sfLosers[1], method: tm };
-      ko.Final = { a: w4[0], ga: fa, gb: fb, b: w4[1], method: fm };
+      ko.Third = { a: sfLosers[0], ga: tga, gb: tgb, b: sfLosers[1], method: tm, probs: thirdProbs, mkt: thirdMkt || null };
+      ko.Final = { a: w4[0], ga: fa, gb: fb, b: w4[1], method: fm, probs: finalProbs, mkt: finalMkt || null };
       ko.Champion = fa > fb ? w4[0] : w4[1];
     } catch (e) {
       console.error('[Compute] Bracket error:', e.message);
@@ -261,7 +298,7 @@ function runSimulation(params) {
 
 // ── Action: reevaluate ───────────────────────────────────────────────
 function runReevaluate(params) {
-  const actualResults = params.actualResults || cachedActualResults;
+  const actualResults = filterActualResults(params.actualResults || cachedActualResults);
   const marketOdds = params.marketOdds || cachedMarketOdds;
   cachedActualResults = actualResults;
   cachedMarketOdds = marketOdds;
@@ -298,7 +335,7 @@ function runReevaluate(params) {
 
 // ── Action: calibration ──────────────────────────────────────────────
 function runCalibration(params) {
-  const actualResults = params.actualResults || cachedActualResults;
+  const actualResults = filterActualResults(params.actualResults || cachedActualResults);
   if (!actualResults || actualResults.length < 3) return null;
 
   return WC26.withPreTournamentElo(() => {
@@ -363,7 +400,7 @@ function runCalibration(params) {
 
 // ── Action: ev ───────────────────────────────────────────────────────
 function runEV(params) {
-  const actualResults = params.actualResults || cachedActualResults;
+  const actualResults = filterActualResults(params.actualResults || cachedActualResults);
   const marketOdds = params.marketOdds || cachedMarketOdds;
   const actualMap = WC26.buildActualResultsMap(actualResults);
 
@@ -542,7 +579,7 @@ function runMonteCarloSingle(actualResults, N, marketOdds, savedElo, customOdds,
 
 // ── Action: montecarlo (parallel via worker_threads) ────────────────
 async function runMonteCarlo(params) {
-  const actualResults = params.actualResults || cachedActualResults;
+  const actualResults = filterActualResults(params.actualResults || cachedActualResults);
   const N = Math.min(Math.max(parseInt(params.N) || 50000, 100), 500000);
   const marketOdds = params.marketOdds || cachedMarketOdds;
   const customOdds = params.customOdds || {};
@@ -603,7 +640,7 @@ async function runMonteCarlo(params) {
 
 // ── Action: calibration diagnostics (reliability diagram + optimal T) ──
 function runCalibrationDiag(params) {
-  const actualResults = params.actualResults || cachedActualResults;
+  const actualResults = filterActualResults(params.actualResults || cachedActualResults);
   const nBins = params.nBins || 10;
   const reliability = WC26.reliabilityDiagram(actualResults, nBins);
   const optimalT = WC26.findOptimalTemperature(actualResults);

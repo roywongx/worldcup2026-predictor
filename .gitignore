@@ -1,2 +1,6 @@
 __pycache__/
 data/api-keys.json
+
+# 运行产物
+__pycache__/
+*.log

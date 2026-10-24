@@ -1,5 +1,5 @@
 // Service Worker — offline cache for World Cup 2026 Predictor
-const CACHE = 'wc26-v4';
+const CACHE = 'wc26-v5';
 const ASSETS = [
   '/',
   '/index.html',

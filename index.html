@@ -1623,7 +1623,7 @@ function mapTeamName(apiName) {
     'Ivory Coast': 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast', "Côte d'Ivoire": 'Ivory Coast',
     'Qatar': 'Qatar', 'Panama': 'Panama', 'Algeria': 'Algeria', 'Jordan': 'Jordan',
     'Iraq': 'Iraq', 'Uzbekistan': 'Uzbekistan', 'DR Congo': 'DR Congo', 'Congo DR': 'DR Congo',
-    'Cape Verde': 'Cape Verde', 'Cabo Verde': 'Cape Verde', 'Haiti': 'Haiti', 'New Zealand': 'New Zealand',
+    'Cape Verde': 'Cape Verde', 'Cape Verde Islands': 'Cape Verde', 'Cabo Verde': 'Cape Verde', 'Haiti': 'Haiti', 'New Zealand': 'New Zealand',
     'South Africa': 'South Africa', 'Curacao': 'Curaçao', 'Curaçao': 'Curaçao',
     'Sweden': 'Sweden', 'IR Iran': 'Iran',
   };
@@ -1807,6 +1807,25 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function fl(t){const c=FLAGS[t];const name=esc(WC26.getTeamName(t));return c?`<img src="https://flagcdn.com/w40/${esc(c)}.png" width="20" height="14" style="border-radius:2px;vertical-align:middle;margin-right:4px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1)">`+name:name;}
 function bf(t){const c=FLAGS[t];return c?`<img src="https://flagcdn.com/w20/${c}.png" width="16" height="11" style="border-radius:1.5px;vertical-align:middle;margin-right:3px">`:'';}
 function showToast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2200);}
+
+/** Validate that a pair of teams actually play each other in the official WC26 schedule. */
+const _validMatchPairs = new Set();
+for (const [, , home, away] of MATCHES) {
+  _validMatchPairs.add(`${home}|${away}`);
+  _validMatchPairs.add(`${away}|${home}`);
+}
+function isValidMatchPair(t1, t2, dateStr) {
+  if (!t1 || !t2) return false;
+  if (_validMatchPairs.has(`${t1}|${t2}`)) return true;
+  // Knockout-stage results aren't in WC26.MATCHES, but they are valid once group stage ends.
+  // Group stage ends 2026-06-27; knockouts begin 2026-06-28 (M73).
+  if (dateStr && String(dateStr).substring(0, 10) >= '2026-06-28') return true;
+  return false;
+}
+function getValidMatchPairs() {
+  return _validMatchPairs;
+}
+
 MATCHES.forEach((m, i) => { VENUE_MAP[`${m[0]}|${m[2]}|${m[3]}`] = VENUES[i] || ''; });
 // getVenue is defined in data/matches.js as WC26.getVenue
 
@@ -2156,13 +2175,15 @@ function renderMatches(){
       probHtml+=` <span style="font-size:0.65rem;color:var(--purple)">│ Mkt W:${mw}% D:${md}% L:${ml}%</span>`;}
     const isActual=!!m.actual;
     const label=m.label||'KO',labelColor=m.label==='FIN'?'var(--gold)':m.label==='3rd'?'var(--orange)':'var(--blue)';
-    // Show 90-min score for PSO matches, final score otherwise
-    const scoreDisplay = (m.method==='PSO' && m.ga90!=null) ? `${m.ga90}-${m.gb90}` : `${m.ga}-${m.gb}`;
-    let psoNote = '';
+    // Show final score; for PSO show 90-min score, for AET note the ET result
+    let scoreDisplay = `${m.ga}-${m.gb}`;
+    let koNote = '';
     if(m.method==='PSO' && m.ga90!=null){
-      // Use actual penalty scores if available, otherwise show simulated ga-gb
-      if(m.penalties){ psoNote=` <span style="font-size:0.6rem;color:var(--orange)">(点球 ${m.penalties.home}-${m.penalties.away})</span>`; }
-      else{ psoNote=` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>`; }
+      scoreDisplay = `${m.ga90}-${m.gb90}`;
+      if(m.penalties){ koNote=` <span style="font-size:0.6rem;color:var(--orange)">(点球 ${m.penalties.home}-${m.penalties.away})</span>`; }
+      else{ koNote=` <span style="font-size:0.6rem;color:var(--orange)">(PSO ${m.ga}-${m.gb})</span>`; }
+    } else if(m.method==='AET' && m.ga90!=null){
+      koNote=` <span style="font-size:0.6rem;color:var(--orange)">(${m.ga90}-${m.gb90} AET ${m.ga}-${m.gb})</span>`;
     }
     const actualBadge = isActual ? ' <span style="color:var(--green);font-weight:700;font-size:0.65rem">✓</span>' : '';
     // Expected goals + top-3 most probable scores (for betting reference)
@@ -2194,7 +2215,7 @@ function renderMatches(){
         </div>`;
       }
     }
-    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}${isActual?' ko-locked':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${psoNote}${actualBadge}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}${predLine}</div>`;
+    h+=`<div class="match-card${m.label==='FIN'?' final-match':''}${isActual?' ko-locked':''}" style="flex-wrap:wrap"><span class="m-group" style="color:${labelColor};font-weight:700">${m.label?'<span style="font-size:0.65rem">'+m.label+'</span> ':''}#${m.n}</span><span style="font-size:0.65rem;color:var(--blue);margin:0 0.2rem">${m.t||''}</span><span class="m-team home ${wA}">${fl(m.a)}</span><span class="m-score">${scoreDisplay}</span><span class="m-team away ${wB}">${fl(m.b)}</span>${koNote}${actualBadge}${probHtml}<span style="font-size:0.6rem;color:var(--text3);margin-left:auto">${m.v}</span>${xgLine}${predLine}</div>`;
   });
   h+='</div>';document.getElementById('section-matches').innerHTML=h;
 }
@@ -2247,9 +2268,14 @@ function renderBracket(){
     s+=`<div class="ko-team ${wA}"><span class="ko-flag">${bf(m.a)}</span><span class="ko-name">${WC26.getTeamName(m.a)}</span><span class="ko-score">${sA}</span></div>`;
     s+=`<div class="ko-team ${wB}"><span class="ko-flag">${bf(m.b)}</span><span class="ko-name">${WC26.getTeamName(m.b)}</span><span class="ko-score">${sB}</span></div>`;
     if(m.probs){const p=m.probs;s+=`<div class="ko-probs"><span class="kp w">${(p.win*100).toFixed(0)}%</span><span class="kp d">${(p.draw*100).toFixed(0)}%</span><span class="kp l">${(p.loss*100).toFixed(0)}%</span></div>`;}
+    if(m.mkt&&m.mkt.win!=null){const mk=m.mkt;s+=`<div class="ko-probs" style="color:var(--purple)"><span class="kp">Mkt W:${(mk.win*100).toFixed(0)}%</span><span class="kp">D:${(mk.draw*100).toFixed(0)}%</span><span class="kp">L:${(mk.loss*100).toFixed(0)}%</span></div>`;}
     if(m.top3&&m.top3.length>0){s+=`<div style="font-size:0.5rem;color:var(--text3);padding:0 0.45rem">${m.top3.map(s=>s.s+' '+(s.p*100).toFixed(0)+'%').join(' / ')}</div>`;}
     if(m.method){
-      const pen=m.penalties?`点球 ${m.penalties.home}-${m.penalties.away}`:(m.method==='PSO'?`PSO ${m.ga}-${m.gb}`:m.method);
+      let pen;
+      if(m.penalties&&m.ga90!=null){pen=`${m.ga90}-${m.gb90} (点球 ${m.penalties.home}-${m.penalties.away})`;}
+      else if(m.method==='AET'&&m.ga90!=null){pen=`${m.ga90}-${m.gb90} (AET ${m.ga}-${m.gb})`;}
+      else if(m.method==='PSO'){pen=`PSO ${m.ga}-${m.gb}`;}
+      else{pen=m.method;}
       s+=`<div class="ko-method">${pen}</div>`;
     }
     s+=`</div>`;
@@ -2294,6 +2320,8 @@ function renderBracket(){
   h+=`<div style="font-size:0.6rem;font-weight:700;color:var(--orange);text-align:center;padding:0.15rem;text-transform:uppercase">${currentLang==='zh'?'三四名决赛':'3rd Place'}</div>`;
   h+=`<div class="ko-team ${ko.Third.ga>ko.Third.gb?'w':'l'}"><span class="ko-flag">${bf(ko.Third.a)}</span><span class="ko-name">${WC26.getTeamName(ko.Third.a)}</span><span class="ko-score">${ko.Third.ga}</span></div>`;
   h+=`<div class="ko-team ${ko.Third.gb>ko.Third.ga?'w':'l'}"><span class="ko-flag">${bf(ko.Third.b)}</span><span class="ko-name">${WC26.getTeamName(ko.Third.b)}</span><span class="ko-score">${ko.Third.gb}</span></div>`;
+  if(ko.Third.probs){const p=ko.Third.probs;h+=`<div class="ko-probs"><span class="kp w">${(p.win*100).toFixed(0)}%</span><span class="kp d">${(p.draw*100).toFixed(0)}%</span><span class="kp l">${(p.loss*100).toFixed(0)}%</span></div>`;}
+  if(ko.Third.mkt&&ko.Third.mkt.win!=null){const mk=ko.Third.mkt;h+=`<div class="ko-probs" style="color:var(--purple)"><span class="kp">Mkt W:${(mk.win*100).toFixed(0)}%</span><span class="kp">D:${(mk.draw*100).toFixed(0)}%</span><span class="kp">L:${(mk.loss*100).toFixed(0)}%</span></div>`;}
   if(ko.Third.method) h+=`<div class="ko-method">${ko.Third.method}</div>`;
   h+=`</div>`;
   // Final
@@ -2302,6 +2330,8 @@ function renderBracket(){
   h+=`<div style="font-size:0.7rem;font-weight:700;color:var(--gold);text-align:center;padding:0.15rem;text-transform:uppercase">${currentLang==='zh'?'决赛':'FINAL'}</div>`;
   h+=`<div class="ko-team ${ko.Final.ga>ko.Final.gb?'w':'l'}"><span class="ko-flag">${bf(ko.Final.a)}</span><span class="ko-name">${WC26.getTeamName(ko.Final.a)}</span><span class="ko-score">${ko.Final.ga}</span></div>`;
   h+=`<div class="ko-team ${ko.Final.gb>ko.Final.ga?'w':'l'}"><span class="ko-flag">${bf(ko.Final.b)}</span><span class="ko-name">${WC26.getTeamName(ko.Final.b)}</span><span class="ko-score">${ko.Final.gb}</span></div>`;
+  if(ko.Final.probs){const p=ko.Final.probs;h+=`<div class="ko-probs"><span class="kp w">${(p.win*100).toFixed(0)}%</span><span class="kp d">${(p.draw*100).toFixed(0)}%</span><span class="kp l">${(p.loss*100).toFixed(0)}%</span></div>`;}
+  if(ko.Final.mkt&&ko.Final.mkt.win!=null){const mk=ko.Final.mkt;h+=`<div class="ko-probs" style="color:var(--purple)"><span class="kp">Mkt W:${(mk.win*100).toFixed(0)}%</span><span class="kp">D:${(mk.draw*100).toFixed(0)}%</span><span class="kp">L:${(mk.loss*100).toFixed(0)}%</span></div>`;}
   if(ko.Final.method) h+=`<div class="ko-method">${ko.Final.method}</div>`;
   h+=`</div>`;
   // Champion
@@ -2862,10 +2892,10 @@ async function fetchResults(skipSim){
     const altMap={};
     if(altData){
       for(const m of altData){
-        let s1,s2,t1,t2;
-        if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);}
-        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);}
-        if(s1!=null&&s2!=null&&t1&&t2&&TEAMS[t1]&&TEAMS[t2])altMap[`${t1}|${t2}`]={s1,s2};
+        let s1,s2,t1,t2,md='';
+        if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';}
+        else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';}
+        if(s1!=null&&s2!=null&&t1&&t2&&TEAMS[t1]&&TEAMS[t2]&&isValidMatchPair(t1,t2,md))altMap[`${t1}|${t2}`]={s1,s2};
       }
     }
 
@@ -2879,19 +2909,36 @@ async function fetchResults(skipSim){
       let s1,s2,t1,t2,md,winner=null;
       let rtScore=null; // regularTime score for penalty shootouts
       let penScore=null; // penalty shootout scores
-      if(m.score&&m.score.fullTime){s1=m.score.fullTime?.home;s2=m.score.fullTime?.away;t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';const w=m.score.winner;if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;
-        // Penalty shootout: derive winner from penalties if API didn't set one
-        if(m.score.duration==='PENALTY_SHOOTOUT'&&m.score.penalties){
+      if(m.score&&m.score.fullTime){
+        t1=mapTeamName(m.homeTeam?.name);t2=mapTeamName(m.awayTeam?.name);md=m.utcDate?.substring(0,10)||'';
+        const duration=m.score.duration;const w=m.score.winner;
+        if(w==='HOME_TEAM')winner=t1;else if(w==='AWAY_TEAM')winner=t2;
+        // Store the 90-minute score as the canonical score1/score2
+        const rt=m.score.regularTime;
+        if(rt){s1=rt.home;s2=rt.away;}
+        else{s1=m.score.fullTime.home;s2=m.score.fullTime.away;}
+        if(duration==='PENALTY_SHOOTOUT'&&m.score.penalties){
           const ph=m.score.penalties.home||0,pa=m.score.penalties.away||0;
           penScore={home:ph,away:pa};
           if(!winner){if(ph>pa)winner=t1;else if(pa>ph)winner=t2;}
-          // If penalties tied but fullTime differs, use fullTime to determine winner
-          if(!winner&&s1!==s2)winner=s1>s2?t1:t2;
-          const rt=m.score.regularTime;if(rt)rtScore={s1:rt.home,s2:rt.away};
+          rtScore={s1:s1,s2:s2}; // keep 90-min score for display
+        }else if(duration==='EXTRA_TIME'&&m.score.extraTime){
+          const et=m.score.extraTime;
+          rtScore={s1:et.home,s2:et.away};
+          if(!winner){if(et.home>et.away)winner=t1;else if(et.away>et.home)winner=t2;}
         }}
-      else if(m.score&&m.score.ft){s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';}
+      else if(m.score&&m.score.ft){
+        s1=m.score.ft[0];s2=m.score.ft[1];t1=mapTeamName(m.team1);t2=mapTeamName(m.team2);md=m.date?.substring(0,10)||'';
+        // Knockout: extract extra-time / penalty winner when 90-min score is level
+        if(s1===s2){
+          const et=m.score.et, p=m.score.p;
+          if(p){const ph=p[0],pa=p[1];penScore={home:ph,away:pa};if(ph>pa)winner=t1;else if(pa>ph)winner=t2;}
+          if(!winner&&et){const eh=et[0],ea=et[1];rtScore={s1:eh,s2:ea};if(eh>ea)winner=t1;else if(ea>eh)winner=t2;}
+        }
+      }
       else if(m.home_team&&m.away_team){s1=m.home_team.goals;s2=m.away_team.goals;t1=mapTeamName(m.home_team.name);t2=mapTeamName(m.away_team.name);md=m.datetime?.substring(0,10)||'';if(m.winner)winner=mapTeamName(m.winner);}
       if(s1===undefined||s2===undefined||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
+      if(!isValidMatchPair(t1,t2,md))continue;
       const k=`${t1}|${t2}`;
 
       // Cross-verify with alt source
@@ -2903,14 +2950,14 @@ async function fetchResults(skipSim){
       if(k in existingMap){
         // Already exists — check if we should verify/fix it
         const ex=state.actualResults[existingMap[k]];
-        // Fix existing penalty shootout entries that have no winner (stored fullTime 4-4 etc.)
+        // Fix existing knockout entries that have no winner yet (stored 90-min draw)
         if(!ex.winner&&ex.score1===ex.score2&&winner){
-          ex.winner=winner;
-          if(rtScore){ex.score1=rtScore.s1;ex.score2=rtScore.s2;}
+          ex.winner=winner;ex.actual=winner;
+          if(rtScore)ex.et={s1:rtScore.s1,s2:rtScore.s2};
           if(penScore)ex.penalties=penScore;
           ex.predicted=null;ex.correct=null;ex.predGoals=null;ex.probs=null;
-          mc++;console.log(`[fetchResults] Fixed penalty winner: ${t1} vs ${t2} → ${winner}`);
-          continue; // Skip alt cross-verify — penalty scores differ from fullTime
+          mc++;console.log(`[fetchResults] Fixed KO winner: ${t1} vs ${t2} → ${winner}`);
+          continue; // Skip alt cross-verify — ET/PK scores differ from fullTime
         }
         if(ex.source!=='verified'&&alt){
           if(alt.s1===ex.score1&&alt.s2===ex.score2){
@@ -2932,11 +2979,15 @@ async function fetchResults(skipSim){
 
       // New result — probs will be computed by reevaluateResults()
       const resultSource=verified?'verified':(mismatch?'unverified':source);
-      // For penalty shootouts, use regularTime score for simulation correctness
-      const fs1=rtScore?rtScore.s1:s1, fs2=rtScore?rtScore.s2:s2;
-      const act=fs1>fs2?t1:(fs2>fs1?t2:'draw');
-      const entry={team1:t1,team2:t2,score1:fs1,score2:fs2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:null,actual:act,correct:null,source:resultSource,predGoals:null,probs:null};
+      // For knockouts: store 90-min score in score1/score2; keep ET score and winner separately
+      let act;
+      if(s1>s2)act=t1;
+      else if(s2>s1)act=t2;
+      else if(winner)act=winner;
+      else act='draw';
+      const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:md?`${md}T00:00:00Z`:new Date().toISOString(),predicted:null,actual:act,correct:null,source:resultSource,predGoals:null,probs:null};
       if(winner)entry.winner=winner;
+      if(rtScore)entry.et={s1:rtScore.s1,s2:rtScore.s2};
       if(penScore)entry.penalties=penScore;
       if(mismatch)entry.altScore={s1:alt.s1,s2:alt.s2};
       state.actualResults.push(entry);
@@ -3347,10 +3398,11 @@ async function fetchPolymarketResults() {
         const dateStr = resolveMatchDate(ev, team1, team2);
         const newResult = {team1,team2,score1:s1,score2:s2,date:dateStr,predicted:null,actual:result,correct:null,source:'polymarket',predGoals:null,probs:null,preMatchOdds:preOdds};
         if (key in existingMap) {
-          // Skip if Exact Score already provided a better result
+          // Skip if a reliable source (Exact Score, official, verified, football-data) already has this result
           const idx = existingMap[key];
           const old = state.actualResults[idx];
-          if (old.source === 'polymarket-exact') continue;
+          const reliableSources = new Set(['polymarket-exact', 'official', 'verified', 'football-data.org']);
+          if (reliableSources.has(old.source)) continue;
           if (old.score1 !== s1 || old.score2 !== s2 || old.actual !== result) {
             state.actualResults[idx] = newResult;
             added++;
@@ -3586,14 +3638,14 @@ function validateData() {
   state.actualResults=state.actualResults.filter(r=>{
     if(!r.winner&&r.score1===r.score2&&r.date){
       const d=r.date.substring(0,10);
-      // Group stage ends 2026-06-28; matches after that are knockouts
-      if(d>='2026-06-29'){console.log(`[Init] Removing unresolved KO entry: ${r.team1} vs ${r.team2}`);return false;}
+      // Group stage ends 2026-06-27; knockouts begin 2026-06-28 (M73)
+      if(d>='2026-06-28'){console.log(`[Init] Removing unresolved KO entry: ${r.team1} vs ${r.team2}`);return false;}
     }
     return true;
   });
   if(state.actualResults.length<beforeClean){winnerFixed+=(beforeClean-state.actualResults.length);}
   // Auto-fix: KO matches with winner but no penalties — trigger refetch
-  const needsPenaltyFix=state.actualResults.some(r=>r.winner&&r.score1===r.score2&&!r.penalties&&r.date&&r.date.substring(0,10)>='2026-06-29');
+  const needsPenaltyFix=state.actualResults.some(r=>r.winner&&r.score1===r.score2&&!r.penalties&&r.date&&r.date.substring(0,10)>='2026-06-28');
   if(winnerFixed>0||needsPenaltyFix){console.log(`[Init] Fixed/removed ${winnerFixed} penalty results, needsPenaltyFix=${needsPenaltyFix}`);saveState(state);}
   // Seed initial results (version 4 = Beijing date format + null score fix)
   // Also re-seed if dataVersion is current but actualResults was cleared
@@ -3628,7 +3680,7 @@ function validateData() {
 // Init: single sequential flow — fetch → reevaluate → simulate
 (async()=>{
   // Version check: clear stale localStorage after code updates
-  const CODE_VER = 8; // 8: penalty scores in KO matches
+  const CODE_VER = 9; // 9: fix KO date threshold and et/penalty update logic
   try{
     const verRaw=localStorage.getItem('wc26_code_ver');
     const oldVer=verRaw?parseInt(verRaw):0;
@@ -3670,13 +3722,40 @@ function validateData() {
         const s1=m.score.ft[0],s2=m.score.ft[1];
         const t1=mapTeamName(m.team1),t2=mapTeamName(m.team2);
         if(s1==null||s2==null||!t1||!t2||!TEAMS[t1]||!TEAMS[t2])continue;
+        if(!isValidMatchPair(t1,t2,m.date))continue;
+        // Knockout: extract extra-time / penalty winner when 90-min score is level
+        let winner=null;
+        const et=m.score.et, p=m.score.p;
+        if(s1===s2){
+          if(p){const ph=p[0],pa=p[1];if(ph>pa)winner=t1;else if(pa>ph)winner=t2;}
+          if(!winner&&et){const eh=et[0],ea=et[1];if(eh>ea)winner=t1;else if(ea>eh)winner=t2;}
+        }
         const k=`${t1}|${t2}`;
         if(map[k]!==undefined){
           const ex=s.actualResults[map[k]];
-          if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;added++;}
+          let changed=false;
+          if(ex.score1!==s1||ex.score2!==s2){ex.score1=s1;ex.score2=s2;changed=true;}
+          if(winner&&(ex.winner!==winner||ex.actual!==winner)){ex.winner=winner;ex.actual=winner;changed=true;}
+          if(et){
+            const e={s1:et[0],s2:et[1]};
+            if(!ex.et||ex.et.s1!==e.s1||ex.et.s2!==e.s2){ex.et=e;changed=true;}
+          }
+          if(p){
+            const pen={home:p[0],away:p[1]};
+            if(!ex.penalties||ex.penalties.home!==pen.home||ex.penalties.away!==pen.away){ex.penalties=pen;changed=true;}
+          }
+          if(changed){added++;}
         }else{
-          const act=s1>s2?t1:(s2>s1?t2:'draw');
-          s.actualResults.push({team1:t1,team2:t2,score1:s1,score2:s2,date:toBJDate(m.date),predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'});
+          let act;
+          if(s1>s2)act=t1;
+          else if(s2>s1)act=t2;
+          else if(winner)act=winner;
+          else act='draw';
+          const entry={team1:t1,team2:t2,score1:s1,score2:s2,date:toBJDate(m.date),predicted:null,actual:act,correct:null,predGoals:null,probs:null,source:'auto'};
+          if(winner)entry.winner=winner;
+          if(et)entry.et={s1:et[0],s2:et[1]};
+          if(p)entry.penalties={home:p[0],away:p[1]};
+          s.actualResults.push(entry);
           map[k]=s.actualResults.length-1;
           added++;
         }

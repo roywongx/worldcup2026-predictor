@@ -74,47 +74,41 @@ WC26.buildKOBracket = function(rankings, bestThirds, thirdPlaceGroups) {
       if (thirdMap[group]) thirdAt[THIRD_BRACKET_POS[i]] = thirdMap[group];
     }
   } else {
-    // Fallback: greedy assignment if TPM lookup fails
+    // Fallback: exact backtracking using FIFA Annex C allowed groups per third-place slot.
+    // Source: FIFA 2026 competition regulations Annex C (positions correspond to the
+    // bracket order returned below: M74, M77, M79, M80, M81, M82, M85, M87).
     console.warn(`[Bracket] TPM lookup failed for key "${tpmKey}", using fallback`);
-    const T3 = {};
-    const used3 = new Set();
-    const slots3 = [
-      {m:2,  pref:'D', ex:['E','C','F']},
-      {m:4,  pref:'F', ex:['I','E']},
-      {m:6,  pref:'E', ex:['A','L']},
-      {m:7,  pref:'K', ex:['L','A']},
-      {m:8,  pref:'B', ex:['D','G']},
-      {m:9,  pref:'I', ex:['G','D']},
-      {m:12, pref:'J', ex:['B','J','H']},
-      {m:14, pref:'L', ex:['K','D']},
-    ];
-    for (const s of slots3) {
-      const adjMatch = s.m ^ 1;
-      const adj3Group = T3[adjMatch] || null;
-      let assigned = false;
-      if (s.pref && qualified3.includes(s.pref) && !used3.has(s.pref) && !s.ex.includes(s.pref)) {
-        if (!adj3Group || adj3Group !== thirdMap[s.pref]) {
-          T3[s.m] = thirdMap[s.pref]; used3.add(s.pref); assigned = true;
-        }
+    const allowed = {
+      0:  new Set(['A','B','C','D','F']),   // M74: 1E vs 3rd
+      1:  new Set(['C','D','F','G','H']),   // M77: 1I vs 3rd
+      6:  new Set(['C','E','F','H','I']),   // M79: 1A vs 3rd
+      7:  new Set(['E','H','I','J','K']),   // M80: 1L vs 3rd
+      10: new Set(['B','E','F','I','J']),   // M81: 1D vs 3rd
+      11: new Set(['A','E','H','I','J']),   // M82: 1G vs 3rd
+      14: new Set(['E','F','G','I','J']),   // M85: 1B vs 3rd
+      15: new Set(['D','E','I','J','L'])    // M87: 1K vs 3rd
+    };
+    const positions = [0, 1, 6, 7, 10, 11, 14, 15];
+    function backtrack(idx, used, assignment) {
+      if (idx === positions.length) return assignment;
+      const pos = positions[idx];
+      const candidates = qualified3.filter(g => !used.has(g) && allowed[pos].has(g));
+      for (const g of candidates) {
+        used.add(g);
+        assignment[pos] = thirdMap[g];
+        const res = backtrack(idx + 1, used, assignment);
+        if (res) return res;
+        used.delete(g);
+        delete assignment[pos];
       }
-      if (!assigned) {
-        for (const g of qualified3) {
-          if (used3.has(g) || s.ex.includes(g)) continue;
-          if (adj3Group && adj3Group === thirdMap[g]) continue;
-          T3[s.m] = thirdMap[g]; used3.add(g); assigned = true;
-          break;
-        }
-      }
+      return null;
     }
-    // Map T3 slots (indexed by match number) to bracket positions
-    thirdAt[0] = T3[2];   // M74
-    thirdAt[1] = T3[4];   // M77
-    thirdAt[6] = T3[6];   // M79
-    thirdAt[7] = T3[7];   // M80
-    thirdAt[10] = T3[8];  // M81
-    thirdAt[11] = T3[9];  // M82
-    thirdAt[14] = T3[12]; // M85
-    thirdAt[15] = T3[14]; // M87
+    const assignment = backtrack(0, new Set(), {});
+    if (assignment) {
+      for (const pos of positions) thirdAt[pos] = assignment[pos] || null;
+    } else {
+      console.error(`[Bracket] Could not assign third-place teams for ${tpmKey}`);
+    }
   }
   function getThirdAt(idx) { return thirdAt[idx] || null; }
 
@@ -389,12 +383,14 @@ WC26.buildActualResultsMap = function(actualResults) {
     const dateStr = r.date ? r.date.substring(0, 10) : '';
     const val = { score1: r.score1, score2: r.score2, team1: r.team1, team2: r.team2 };
     if(r.winner)val.winner=r.winner;
+    if(r.et)val.et={s1:r.et.s1,s2:r.et.s2};
     if(r.penalties)val.penalties=r.penalties;
     // Date-specific key
     if (dateStr) {
       map[`${r.team1}|${r.team2}|${dateStr}`] = val;
       map[`${r.team2}|${r.team1}|${dateStr}`] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
       if(r.winner)map[`${r.team2}|${r.team1}|${dateStr}`].winner=r.winner;
+      if(r.et)map[`${r.team2}|${r.team1}|${dateStr}`].et={s1:r.et.s2,s2:r.et.s1};
       if(r.penalties)map[`${r.team2}|${r.team1}|${dateStr}`].penalties=r.penalties;
     }
     // Dateless fallback (handles date format mismatches: UTC vs Beijing time)
@@ -403,6 +399,7 @@ WC26.buildActualResultsMap = function(actualResults) {
     if (!map[dlKey1]) map[dlKey1] = val;
     if (!map[dlKey2]) map[dlKey2] = { score1: r.score2, score2: r.score1, team1: r.team2, team2: r.team1 };
     if(r.winner){if(!map[dlKey1].winner)map[dlKey1].winner=r.winner;if(!map[dlKey2].winner)map[dlKey2].winner=r.winner;}
+    if(r.et){if(!map[dlKey1].et)map[dlKey1].et={s1:r.et.s1,s2:r.et.s2};if(!map[dlKey2].et)map[dlKey2].et={s1:r.et.s2,s2:r.et.s1};}
     if(r.penalties){if(!map[dlKey1].penalties)map[dlKey1].penalties=r.penalties;if(!map[dlKey2].penalties)map[dlKey2].penalties=r.penalties;}
   }
 
