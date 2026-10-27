@@ -9,3 +9,4 @@ __pycache__/
 data/history/
 # 俱乐部联赛 CSV（node engine/cli.js fetch-clubs 下载，约 220 个文件 + fixtures.csv）
 data/clubs/
+data/history/
