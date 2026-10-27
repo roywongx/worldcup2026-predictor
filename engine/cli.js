@@ -9,7 +9,9 @@
 //   node engine/cli.js fetch-clubs [--from 2005]   下载俱乐部联赛 CSV（含当季 fixtures.csv）
 //   node engine/cli.js club-tune                   俱乐部网格调参（只用 1314–1617），参数写入 engine/clubmodel.json
 //   node engine/cli.js club-backtest [--from 1718 --to 2526]  测试赛季回测，指标写入 engine/clubmodel.json
-//   node engine/cli.js simulate-league <league-id> [--sims 20000] [--as-of YYYY-MM-DD] [--out <file>]
+//   node engine/cli.js season-tune                 赛季级调参（σ，只用 1314–1617），写入 clubmodel.json 的 season.train
+//   node engine/cli.js season-backtest [--from 1718 --to 2526] [--sims 5000]  赛季级测试赛季回测，写入 season.test
+//   node engine/cli.js simulate-league <league-id> [--sims 20000] [--as-of YYYY-MM-DD] [--sigma 0.15] [--out <file>]
 const fs = require('fs');
 const path = require('path');
 const data = require('./data');
@@ -149,17 +151,106 @@ function simulateLeagueCmd(a) {
   const cfg = loadLeague(id);
   const ms = loadClubMatches();
   const cm = clubModel();
-  const out = simulateLeague(ms, cfg, { sims: +(a.sims || 20000), asOf: a['as-of'] || null, modelOpts: cm.params || {} });
-  if (cm.tuning && cm.tuning.test) out.validation = cm.tuning.test;
+  const sigma = a.sigma != null ? +a.sigma : (cm.params && cm.params.seasonSigma != null ? +cm.params.seasonSigma : 0);
+  const out = simulateLeague(ms, cfg, { sims: +(a.sims || 20000), asOf: a['as-of'] || null, modelOpts: cm.params || {}, sigma });
+  if (cm.tuning && cm.tuning.test) out.validation = { ...cm.tuning.test, ...(cm.season && cm.season.test ? { season: cm.season.test } : {}) };
   const file = a.out || path.join(ROOT, 'web', 'data', `${id}.json`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(out));
   if (!a.out) writeIndex(path.dirname(file));
   const n = t => (cfg.names && cfg.names[t]) || t;
-  console.log(`${cfg.nameZh || cfg.name} ${cfg.season}：${out.sims} 次模拟，模型截至 ${out.asOf}，已赛 ${out.played} 场，剩余 ${out.remaining} 场 → ${path.relative(ROOT, file)}`);
+  console.log(`${cfg.nameZh || cfg.name} ${cfg.season}：${out.sims} 次模拟，σ=${sigma}，模型截至 ${out.asOf}，已赛 ${out.played} 场，剩余 ${out.remaining} 场 → ${path.relative(ROOT, file)}`);
   for (const t of out.teams.slice(0, 6)) {
     console.log(`  ${String(t.position).padStart(2)} ${n(t.team).padEnd(8)} 当前 ${String(t.current.pts).padStart(3)} 分 期望 ${t.expectedPts.toFixed(1)}  夺冠 ${(t.zones.title * 100).toFixed(1)}%  欧冠 ${(t.zones.ucl * 100).toFixed(1)}%  降级 ${((t.zones.relegation || 0) * 100).toFixed(1)}%`);
   }
+}
+
+/** engine/leagues/*.json 按 division 建立 { tiebreak }；历史赛季的队名用当季数据。 */
+function seasonCfg() {
+  const out = {};
+  for (const id of listLeagues()) { const c = loadLeague(id); out[c.division] = { tiebreak: c.tiebreak }; }
+  return out;
+}
+
+function seasonTuneCmd(a) {
+  const { loadClubMatches } = require('./clubdata');
+  const { seasonTune } = require('./seasonbacktest');
+  const ms = loadClubMatches();
+  const cm = clubModel();
+  const grid = a.grid ? String(a.grid).split(',').map(Number) : undefined;
+  const r = seasonTune(ms, seasonCfg(), {
+    trainFrom: String(a['train-from'] || '1314'), trainTo: String(a['train-to'] || '1617'),
+    sims: +(a.sims || 2000), grid, modelOpts: cm.params || {},
+    log: x => console.log(`σ=${x.sigma.toFixed(2)} 目标(Brier 均值)=${x.objective.toFixed(5)} title=${x.title.toFixed(5)} top4=${x.top4.toFixed(5)} bottom3=${x.bottom3.toFixed(5)} logloss=${x.logLoss.toFixed(4)} RMSE积分=${x.rmsePts.toFixed(3)} n=${x.n}`),
+  });
+  console.log(`最优 σ=${r.best.sigma}（训练 ${r.trainFrom}–${r.trainTo}，${r.sims} 次模拟，目标 ${r.best.objective.toFixed(5)}）`);
+  saveClubModel({
+    params: { ...cm.params, seasonSigma: r.best.sigma },
+    season: {
+      ...(cm.season || {}),
+      train: {
+        how: `node engine/cli.js season-tune —— 只在训练赛季 ${r.trainFrom}–${r.trainTo}（五大联赛顶级，检查点 ${r.checkpoints.join('/')}）上选 σ；目标 = title / top4 / bottom3 三个区间 Brier 的平均（检查点合并），测试赛季 1718–2526 只用来报告`,
+        fromSeason: r.trainFrom, toSeason: r.trainTo,
+        checkpoints: r.checkpoints, sims: r.sims, n: r.n,
+        objective: 'mean Brier (title/top4/bottom3, checkpoints pooled)',
+        candidates: r.results.map(x => ({ sigma: x.sigma, objective: x.objective, title: x.title, top4: x.top4, bottom3: x.bottom3, logLoss: x.logLoss, rmsePts: x.rmsePts })),
+        best: { sigma: r.best.sigma, objective: r.best.objective },
+        skippedSeasons: r.skipped.length,
+      },
+    },
+  });
+  console.log('σ 已写入 engine/clubmodel.json（params.seasonSigma 与 season.train）');
+}
+
+function seasonBacktestCmd(a) {
+  const { loadClubMatches } = require('./clubdata');
+  const { seasonBacktest } = require('./seasonbacktest');
+  const ms = loadClubMatches();
+  const cm = clubModel();
+  const from = String(a.from || '1718'), to = String(a.to || '2526'), sims = +(a.sims || 5000);
+  const sigma = cm.params && cm.params.seasonSigma != null ? +cm.params.seasonSigma : 0;
+  const sigmas = sigma > 0 ? [0, sigma] : [0];
+  console.log(`赛季级测试 ${from}–${to}：σ ∈ ${sigmas.join(', ')}，每个检查点 ${sims} 次模拟，数据截至 ${ms[ms.length - 1].date}`);
+  let k = 0;
+  const r = seasonBacktest(ms, seasonCfg(), {
+    fromSeason: from, toSeason: to, sigmas, sims, modelOpts: cm.params || {},
+    log: x => { if (++k % 20 === 0) console.log(`  已拟合 ${k} 个联赛×赛季×检查点（最新 ${x.division} ${x.season} ${x.asOf}）`); },
+  });
+
+  const pct = x => (x * 100).toFixed(1) + '%';
+  const row = x => `${('σ=' + x.sigma).padEnd(8)} title ${x.title.brier.toFixed(4)} / ${x.title.logLoss.toFixed(4)}  top4 ${x.top4.brier.toFixed(4)} / ${x.top4.logLoss.toFixed(4)}  bottom3 ${x.bottom3.brier.toFixed(4)} / ${x.bottom3.logLoss.toFixed(4)}  平均 ${x.meanBrier.toFixed(4)}  RMSE积分 ${x.rmsePts.toFixed(3)}`;
+  console.log(`\n区间 Brier / log-loss（n=${r.n} 个球队-赛季-检查点，${r.checkpoints.join('/')}，跳过 ${r.skipped.length} 个不完整赛季）：`);
+  for (const x of r.bySigma) console.log('  ' + row(x));
+  for (const x of r.bySigma) {
+    console.log(`\ntitle 校准（σ=${x.sigma}）：区间 n 平均预测 实际频率`);
+    for (const b of x.calibration.title) {
+      if (!b.n) continue;
+      console.log(`  ${(b.lo * 100).toFixed(0)}–${(b.hi * 100).toFixed(0)}%  ${String(b.n).padStart(4)}  ${pct(b.pred)}  ${pct(b.freq)}`);
+    }
+  }
+  for (const x of r.bySigma) console.log(`\nσ=${x.sigma} 分检查点：` + x.byCheckpoint.map(c => `${c.checkpoint} n=${c.n} title ${c.title.brier.toFixed(4)} top4 ${c.top4.brier.toFixed(4)} bottom3 ${c.bottom3.brier.toFixed(4)}`).join(' | '));
+  if (r.skipped.length) console.log(`\n跳过：` + r.skipped.map(s => `${s.division} ${s.season}（${s.matches}/${s.expected} 场，${s.teams} 队）`).join('，'));
+
+  const group = x => ({
+    sigma: x.sigma, n: x.n, title: x.title, top4: x.top4, bottom3: x.bottom3,
+    meanBrier: x.meanBrier, rmsePts: x.rmsePts, calibration: x.calibration, byCheckpoint: x.byCheckpoint,
+  });
+  saveClubModel({
+    season: {
+      ...(cm.season || {}),
+      test: {
+        note: `测试赛季 ${from}–${to}（五大联赛顶级，未参与调参）；每赛季 3 个检查点，检查点之前只用真实比分，之后只用于评分`,
+        seasons: { from, to }, seasonCount: r.seasonCount, divisionSeasons: r.divisionSeasons,
+        checkpoints: r.checkpoints, n: r.n, sims: r.sims,
+        fixed: group(r.bySigma[0]),
+        withSigma: group(r.bySigma[r.bySigma.length - 1]),
+        skipped: r.skipped, notes: r.notes,
+        date: new Date().toISOString().slice(0, 10),
+        dataThrough: ms[ms.length - 1].date,
+      },
+    },
+  });
+  console.log(`\n已写入 engine/clubmodel.json（season.test）`);
 }
 
 async function main() {
@@ -169,6 +260,8 @@ async function main() {
   if (cmd === 'fetch-clubs') return fetchClubsCmd(+(a.from || 2005));
   if (cmd === 'club-tune') return clubTuneCmd(a);
   if (cmd === 'club-backtest') return clubBacktestCmd(a);
+  if (cmd === 'season-tune') return seasonTuneCmd(a);
+  if (cmd === 'season-backtest') return seasonBacktestCmd(a);
   if (cmd === 'simulate-league') return simulateLeagueCmd(a);
   if (cmd === 'events') return listEvents().forEach(id => { const e = loadEvent(id); console.log(`${id}\t${e.nameZh || e.name}\t${e.start} ~ ${e.end}`); });
 

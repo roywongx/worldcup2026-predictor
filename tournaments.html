@@ -69,6 +69,11 @@ const T = {
     modelWDL: '模型 胜/平/负', marketWDL: '市场 胜/平/负', date: '日期', fixture: '对阵',
     noFixtures: '未来 14 天没有该联赛的赛程（data/clubs/fixtures.csv 未下载或暂无安排）。',
     noMarket: '未找到市场赔率',
+    seasonTitle: '赛季级检验（名次概率）',
+    zone: '区间', titleZone: 'title（冠军）', top4Zone: 'top4（前 4）', bottom3Zone: 'bottom3（倒数 3）',
+    fixedSigma: '固定实力 σ=0', withSigmaLabel: s => `含不确定性 σ=${s}`,
+    predRange: '预测区间', avgPred: '平均预测', actualFreq: '实际频率',
+    seasonTableTitle: 'title 校准',
   },
   en: {
     title: 'Major Tournament Predictor', wc26: 'WC 2026 page', loading: 'Loading…', none: 'No simulations yet: run node engine/cli.js simulate <event>',
@@ -88,6 +93,11 @@ const T = {
     modelWDL: 'Model W/D/L', marketWDL: 'Market W/D/L', date: 'Date', fixture: 'Fixture',
     noFixtures: 'No fixtures for this league in the next 14 days (data/clubs/fixtures.csv missing or nothing scheduled).',
     noMarket: 'No market odds found',
+    seasonTitle: 'Season-level test (finish-position odds)',
+    zone: 'Zone', titleZone: 'title (champion)', top4Zone: 'top4 (top four)', bottom3Zone: 'bottom3 (last three)',
+    fixedSigma: 'Fixed strength σ=0', withSigmaLabel: s => `With uncertainty σ=${s}`,
+    predRange: 'Predicted range', avgPred: 'Mean prediction', actualFreq: 'Actual frequency',
+    seasonTableTitle: 'title calibration',
   },
 };
 let lang = localStorage.getItem('mtp-lang') || 'zh', data = null, index = [];
@@ -180,8 +190,46 @@ function renderLeague() {
   }
   h += '</div>';
 
-  if (v && v.model) h += `<div class="card"><h2>${L.method}</h2><p class="muted">${esc(leagueMethodText(v))}</p></div>`;
+  if (v && v.model) h += `<div class="card"><h2>${L.method}</h2><p class="muted">${esc(leagueMethodText(v))}</p>${seasonBlock(v)}</div>`;
   return h;
+}
+
+// 赛季级检验：固定实力（σ=0）vs 含不确定性，以及 title 校准小表；数字全部来自 clubmodel.json 的 season.test
+function seasonBlock(v) {
+  const s = v.season;
+  if (!s || !s.fixed || !s.withSigma || !s.n) return '';
+  const L = T[lang], a = s.fixed, b = s.withSigma;
+  const zoneLabel = { title: L.titleZone, top4: L.top4Zone, bottom3: L.bottom3Zone };
+  const num = x => x.toFixed(4), pct = x => (x * 100).toFixed(1) + '%';
+  const tdc = (x, y) => `<td>${num(x) !== num(y) && x < y ? '<strong>' + num(x) + '</strong>' : num(x)}</td>`;
+  const sg = s.seasons || {};
+  const range = `${seasonLabel(sg.from || '1718')}–${seasonLabel(sg.to || '2526')}`;
+  const diff = b.meanBrier - a.meanBrier;
+  const verdict = lang === 'zh'
+    ? (diff < -0.0005 ? `含不确定性更好（平均 Brier 低 ${(-diff).toFixed(5)}）`
+      : diff > 0.0005 ? `含不确定性更差（平均 Brier 高 ${diff.toFixed(5)}）`
+        : `含不确定性与固定实力基本持平（平均 Brier 差 ${diff >= 0 ? '+' : ''}${diff.toFixed(5)}，量级等同噪声）`)
+    : (diff < -0.0005 ? `Uncertainty is better (mean Brier lower by ${(-diff).toFixed(5)})`
+      : diff > 0.0005 ? `Uncertainty is worse (mean Brier higher by ${diff.toFixed(5)})`
+        : `Uncertainty is essentially level with fixed strength (mean Brier difference ${diff >= 0 ? '+' : ''}${diff.toFixed(5)}, i.e. noise)`);
+  const lead = lang === 'zh'
+    ? `比较两种模拟对最终名次的 Brier（越低越好，较好的加粗）：固定实力（σ=0）与每次模拟给每队抽实力扰动 σ=${b.sigma}。`
+      + `${range} 赛季、${s.seasonCount} 个赛季 × ${s.divisionSeasons} 个联赛-赛季、检查点 ${(s.checkpoints || []).join(' / ')}、每个检查点 ${s.sims.toLocaleString()} 次模拟，`
+      + `n = ${s.n.toLocaleString()} 个球队-赛季-检查点；${(s.skipped || []).length} 个不完整赛季已跳过。${verdict}。页面上的名次概率用 σ=${b.sigma}。`
+    : `Finish-position Brier for two simulation modes (lower is better, better value in bold): fixed strength (σ=0) and a per-team strength draw σ=${b.sigma}. `
+      + `Seasons ${range}, ${s.seasonCount} seasons × ${s.divisionSeasons} league-seasons, checkpoints ${(s.checkpoints || []).join(' / ')}, ${s.sims.toLocaleString()} simulations each, `
+      + `n = ${s.n.toLocaleString()} team-season-checkpoints; ${(s.skipped || []).length} incomplete season(s) skipped. ${verdict}. The odds on this page use σ=${b.sigma}.`;
+
+  let h = `<p class="muted"><strong>${esc(L.seasonTitle)}</strong>${lang === 'zh' ? '：' : ': '}${esc(lead)}</p>`;
+  h += `<table><tr><th>${esc(L.zone)}</th><th>${esc(L.fixedSigma)}</th><th>${esc(L.withSigmaLabel(b.sigma))}</th></tr>`;
+  for (const k of ['title', 'top4', 'bottom3']) h += `<tr><td class="l">${esc(zoneLabel[k])}</td>${tdc(a[k].brier, b[k].brier)}${tdc(b[k].brier, a[k].brier)}</tr>`;
+  h += `</table><p class="muted">${esc(L.seasonTableTitle)}${lang === 'zh' ? `（σ=${b.sigma}）：` : ` (σ=${b.sigma}):`}</p>`;
+  h += `<table><tr><th>${esc(L.predRange)}</th><th>n</th><th>${esc(L.avgPred)}</th><th>${esc(L.actualFreq)}</th></tr>`;
+  for (const bin of ((b.calibration && b.calibration.title) || [])) {
+    if (!bin.n) continue;
+    h += `<tr><td class="l">${(bin.lo * 100).toFixed(0)}–${(bin.hi * 100).toFixed(0)}%</td><td>${bin.n}</td><td>${pct(bin.pred)}</td><td>${pct(bin.freq)}</td></tr>`;
+  }
+  return h + '</table>';
 }
 
 function leagueMethodText(v) {

@@ -51,6 +51,15 @@ The same engine, applied to league football: Dixon-Coles + Elo fitted on 22 seas
 
 The model beats the Elo baseline but **not the market** — 在五大联赛上它比市场差约 0.006 RPS；页面上的「方法与可信度」如实写这一点。逐联赛：意甲 0.1939 / 西甲 0.1988 / 英超 0.2000 / 德甲 0.2036 / 法甲 0.2059（市场均更好）。
 
+**Season-level test / 赛季级检验**（同样 2017-18 – 2025-26，每赛季三个检查点 10-25 / 01-01 / 03-15，每次检查点 5,000 次模拟，n = 2,568 个球队-赛季-检查点；比赛数 ≠ n(n−1) 的赛季跳过，F1 1920 因此跳过；区间一律按名次定义：title 第 1、top4 第 1–4、bottom3 倒数 3 名）：
+
+| Finish-position Brier ↓ | title | top4 | bottom3 | mean |
+|---|---|---|---|---|
+| Fixed strength / 固定实力（σ=0） | 0.0141 | 0.0503 | 0.0633 | 0.0425 |
+| With strength uncertainty / 含实力扰动（σ=0.05） | 0.0141 | **0.0502** | 0.0633 | 0.0425 |
+
+σ was tuned on 2013-14 – 2016-17 only (grid 0–0.30, 2,000 simulations per checkpoint) and landed on 0.05; on the test seasons the two are essentially tied (mean Brier 0.04250 vs 0.04255), so the season-level odds are **not** systematically overconfident in this sample — a larger σ (0.25, which visibly softens a 90% title favourite to ~63%) scores worse. σ 只在 1314–1617 上选，测试赛季只用来报告。
+
 ```bash
 npm run engine:fetch-clubs                    # download club CSVs + upcoming fixtures / 下载 CSV 与未来赛程
 node engine/cli.js club-tune                  # grid search on 2013-14 – 2016-17 → engine/clubmodel.json

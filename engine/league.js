@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { runElo, HOME_ADV } = require('./elo');
 const dc = require('./dc');
-const { mulberry32 } = require('./simulate');
+const { mulberry32, poissonSample } = require('./simulate');
 const { parseCSV, toDay } = require('./data');
 const { CLUB_DIR, seasonTeams, implied, parseDate } = require('./clubdata');
 
@@ -112,10 +112,10 @@ function upcomingFixtures(cfg, asOfDay, predict) {
 }
 
 /**
- * 赛季模拟：当季已赛用真实比分，剩余按模型比分矩阵抽样，逐场排名。
- * asOf 缺省为数据最后一天 + 1（即用尽全部数据）。
+ * 赛季准备：拟合、当前积分表、剩余赛程以及每场的 λ 与比分矩阵。
+ * asOf 缺省为数据最后一天 + 1（即用尽全部数据）。seed 只用于当前表并列抽签，与 simulateLeague 用同一个。
  */
-function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = null, modelOpts = {} } = {}) {
+function prepareLeague(matches, cfg, { asOf = null, modelOpts = {}, seed = 20260801 } = {}) {
   const division = cfg.division, season = cfg.season;
   const dataEnd = matches.length ? matches[matches.length - 1].day : 0;
   const asOfDay = asOf ? (typeof asOf === 'number' ? asOf : toDay(asOf)) : dataEnd + 1;
@@ -142,19 +142,71 @@ function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = nu
     return dist.get(key);
   };
 
-  const rnd = mulberry32(seed);
   const current = rankTable(teams, played, cfg.tiebreak, mulberry32(seed ^ 0x5f3759df));
   const rem = remainingFixtures(teams, played);
   const fixtures = rem.map(([h, a]) => predict(h, a));
+  return { division, season, cfg, teams, played, rem, fixtures, model, elo, current, predict, asOfDay, dataEnd };
+}
+
+/** Box–Muller，一个标准正态（只用 rnd）。 */
+function gauss(rnd) {
+  const u = Math.max(rnd(), 1e-12);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
+}
+
+/** τ 的上界（负值按 0 处理），用于拒绝抽样。 */
+function tauMax(l, m, rho) {
+  let t = 1;
+  for (const [x, y] of [[0, 0], [0, 1], [1, 0], [1, 1]]) {
+    const v = dc.tau(x, y, l, m, rho);
+    if (v > t) t = v;
+  }
+  return t;
+}
+
+/** 精确抽 Dixon-Coles 比分：先独立抽两个 Poisson，再以 τ/τmax 接受，否则重抽。 */
+function sampleDC(l, m, rho, rnd) {
+  const tmax = tauMax(l, m, rho);
+  for (;;) {
+    const x = poissonSample(l, rnd), y = poissonSample(m, rnd);
+    const t = dc.tau(x, y, l, m, rho);
+    if (t <= 0) continue;
+    if (t >= tmax || rnd() < t / tmax) return [x, y];
+  }
+}
+
+/**
+ * 赛季蒙特卡洛：返回每队的名次计数与积分和。
+ * sigma > 0 时，每次模拟开头给每队抽 δ ~ N(0, σ²)，剩余比赛用 λ·exp(δh−δa) 抽精确 DC 比分；
+ * sigma = 0 时沿用比分矩阵抽样，随机数消耗与拆分前逐位相同。
+ */
+function runSeason(prep, { sims = 20000, seed = 20260801, sigma = 0 } = {}) {
+  const { teams, rem, played, fixtures, cfg, model } = prep;
+  if (!(sigma >= 0)) throw new Error(`sigma 必须 ≥ 0（收到 ${sigma}）`);
+  const rnd = mulberry32(seed);
   const tally = new Map(teams.map(t => [t, new Float64Array(teams.length)]));
   const ptsSum = new Map(teams.map(t => [t, 0]));
 
   const base = played.map(m => ({ home: m.home, away: m.away, hg: m.hg, ag: m.ag }));
   const results = base.concat(rem.map(([home, away]) => ({ home, away, hg: 0, ag: 0 })));
+  const idx = new Map(teams.map((t, i) => [t, i]));
+  const hi = rem.map(([h]) => idx.get(h)), ai = rem.map(([, a]) => idx.get(a));
+  const delta = new Float64Array(teams.length);
+  const rho = model.rho;
+
   for (let s = 0; s < sims; s++) {
-    for (let i = 0; i < rem.length; i++) {
-      const [hg, ag] = sampleFrom(fixtures[i].cells, rnd);
-      results[base.length + i].hg = hg; results[base.length + i].ag = ag;
+    if (sigma > 0) {
+      for (let i = 0; i < teams.length; i++) delta[i] = sigma * gauss(rnd);
+      for (let i = 0; i < rem.length; i++) {
+        const f = fixtures[i], dh = delta[hi[i]], da = delta[ai[i]];
+        const [hg, ag] = sampleDC(f.lambdaHome * Math.exp(dh - da), f.lambdaAway * Math.exp(da - dh), rho, rnd);
+        results[base.length + i].hg = hg; results[base.length + i].ag = ag;
+      }
+    } else {
+      for (let i = 0; i < rem.length; i++) {
+        const [hg, ag] = sampleFrom(fixtures[i].cells, rnd);
+        results[base.length + i].hg = hg; results[base.length + i].ag = ag;
+      }
     }
     const table = rankTable(teams, results, cfg.tiebreak, rnd);
     for (let i = 0; i < table.length; i++) {
@@ -162,6 +214,18 @@ function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = nu
       ptsSum.set(table[i].team, ptsSum.get(table[i].team) + table[i].pts);
     }
   }
+  return { sims, sigma, teams, tally, ptsSum };
+}
+
+/**
+ * 赛季模拟：当季已赛用真实比分，剩余按模型比分矩阵抽样，逐场排名。
+ * sigma > 0 时每次模拟额外抽每队实力扰动（见 runSeason）。
+ */
+function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = null, modelOpts = {}, sigma = 0 } = {}) {
+  const division = cfg.division, season = cfg.season;
+  const prep = prepareLeague(matches, cfg, { asOf, modelOpts, seed });
+  const { teams, played, rem, model, elo, current, predict, asOfDay } = prep;
+  const { tally, ptsSum } = runSeason(prep, { sims, seed, sigma });
 
   const zoneProbs = t => Object.fromEntries((cfg.zones || []).map(z => {
     let s = 0;
@@ -186,7 +250,7 @@ function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = nu
     generatedAt: new Date().toISOString(),
     asOf: new Date(asOfDay * DAY).toISOString().slice(0, 10),
     dataThrough: matches.length ? matches[matches.length - 1].date : null,
-    sims, seed,
+    sims, seed, sigma,
     played: played.length, remaining: rem.length,
     zonesDef: cfg.zones || [],
     names: cfg.names || {},
@@ -196,4 +260,4 @@ function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = nu
   };
 }
 
-module.exports = { TOP, remainingFixtures, rankTable, simulateLeague };
+module.exports = { TOP, remainingFixtures, rankTable, prepareLeague, runSeason, sampleDC, tauMax, simulateLeague };

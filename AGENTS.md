@@ -1,7 +1,7 @@
 # worldcup2026-predictor — Agent 指南
 
 2026 世界杯预测器：Dixon-Coles 泊松模型 + Elo + GBDT + 蒙特卡洛模拟，对接 Polymarket 赔率。前端是单文件 `index.html`（内联 JS，zh/en 双语），`server.py` 提供静态文件和外部 API 代理，计算请求转给 Node 的 `compute-server.js`。
-**2026-06-30 之后没有提交，2026-07-07 之后没有改动；赛事已结束，当前不在运行。**
+2026 世界杯已结束，`/` 是那届的历史页面；现在维护的是 `engine/`（`/tournaments.html`，国家队赛事 + 五大联赛）。服务一直在 9090 运行。
 
 ## 运行事实
 | 项 | 值 |
@@ -14,9 +14,8 @@
 | 远端 | GitHub roywongx/worldcup2026-predictor；**推送需用户同意** |
 
 ## 红线
-1. 工作区有 2026-07 的未提交改动（`compute-server.js`、`index.html`、`model/monte-carlo.js`、`data/matches.js`、`sw.js`），来源与是否可用未核实——**不要丢弃，也不要直接提交**，先问用户。
-2. 改了 `sw.js` 或前端资源要同步 bump `CODE_VER`（Service Worker 曾因自缓存导致更新到不了浏览器；`/clear.html` 是一键清缓存页）。
-3. 单文件 HTML：JS 保持内联，不引入外部依赖；所有面向用户的文字都要有 zh/en 翻译，技术术语（API、RPS、Dixon-Coles）两种语言都保留英文。
+1. 改了 `sw.js` 或前端资源要同步 bump `CODE_VER`（Service Worker 曾因自缓存导致更新到不了浏览器；`/clear.html` 是一键清缓存页）。
+2. 单文件 HTML：JS 保持内联，不引入外部依赖；所有面向用户的文字都要有 zh/en 翻译，技术术语（API、RPS、Dixon-Coles）两种语言都保留英文。
 
 ## 验证要求
 - 改球队数据或赛程后跑 `validateData()`，必须 0 错误；赛程日期对照 FIFA 官方，国旗代码 England=`gb-eng`、Scotland=`gb-sct`。
@@ -38,6 +37,8 @@
 | 俱乐部数据 | `npm run engine:fetch-clubs` → `data/clubs/<赛季>/<级别>.csv` + `data/clubs/fixtures.csv`（不入库） |
 | 俱乐部调参 | `node engine/cli.js club-tune`（写 `engine/clubmodel.json` 的 params 与 tuning.train） |
 | 俱乐部指标 | `npm run engine:club-backtest`，应得出 `engine/clubmodel.json` 里 tuning.test 的数字 |
+| 赛季级调参 | `node engine/cli.js season-tune`（σ，写 `params.seasonSigma` 与 season.train） |
+| 赛季级指标 | `node engine/cli.js season-backtest --from 1718 --to 2526 --sims 5000`（写 season.test） |
 | 联赛预测 | `npm run engine:simulate-league -- <league-id>` → `web/data/<id>.json` + 更新 index |
 
 红线：
@@ -45,9 +46,9 @@
 2. 回测里拟合只能用该场比赛日之前的数据（`dc.fit` 的 day 参数；有测试守住）。
 3. 赛事配置（分组、东道主、对阵、第三名组合表）只从官方来源抄，写进 `sources`；第三名表要逐行核对，并在测试里钉住几行。拿不到官方表时用 `thirdAllowed` 约束近似，页面会标注。
 4. 页面上的概率是模型输出，不得手工改数。
-5. **俱乐部调参只用 1314–1617 赛季**（`engine/clubbacktest.js` 的 `clubTune` 默认值）；**1718–2526 只用来报告**（`club-backtest` 默认区间）。改了俱乐部模型结构或参数，必须重跑 `club-backtest` 并更新 `clubmodel.json` 的 test 数字。
+5. **俱乐部调参只用 1314–1617 赛季**（`engine/clubbacktest.js` 的 `clubTune` 默认值）；**1718–2526 只用来报告**（`club-backtest` 默认区间）。改了俱乐部模型结构或参数，必须重跑 `club-backtest` 并更新 `clubmodel.json` 的 test 数字。**σ 只在 1314–1617 上调（`season-tune`），测试赛季只用来报告（`season-backtest`）。**
 
-代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行 · `events/*.json` 赛事配置 · `clubdata.js` 读俱乐部 CSV 与赔率 · `league.js` 双循环赛程、各联赛同分规则排名、赛季蒙特卡洛 · `clubbacktest.js` 俱乐部回测/调参 · `clubmodel.json` 俱乐部参数与测试集指标 · `leagues/*.json` 联赛配置。
+代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行 · `events/*.json` 赛事配置 · `clubdata.js` 读俱乐部 CSV 与赔率 · `league.js` 双循环赛程、各联赛同分规则排名、赛季蒙特卡洛 · `clubbacktest.js` 俱乐部回测/调参 · `seasonbacktest.js` 赛季级检验（名次区间 Brier）与 σ 调参 · `clubmodel.json` 俱乐部参数与测试集指标 · `leagues/*.json` 联赛配置。
 
 俱乐部已知局限：同分规则按各联赛公开规则近似（法甲为近似、意甲附加赛按五五开）；队名用 football-data.co.uk 写法；市场概率来自 Pinnacle/Avg 收盘赔率去抽水；次级联赛只用来给升班马定级，不参与报告。
 
