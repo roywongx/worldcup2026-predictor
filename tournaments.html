@@ -26,6 +26,9 @@ th:first-child, td:first-child, td.l { text-align: left; }
 .bar { position: relative; display: inline-block; min-width: 3.6rem; }
 .bar i { position: absolute; left: 0; top: 15%; bottom: 15%; background: var(--blue); opacity: 0.15; border-radius: 3px; }
 .bar.g i { background: var(--green); } .bar.p i { background: var(--purple); }
+.heat td { text-align: center; padding: 0.15rem 0.2rem; font-size: 0.72rem; border-bottom: 1px solid var(--border); }
+.heat th { text-align: center; padding: 0.15rem 0.2rem; font-size: 0.72rem; }
+.heat th:first-child, .heat td:first-child { text-align: left; padding-right: 0.6rem; }
 .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 1rem; }
 .match { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.4rem; align-items: center; padding: 0.3rem 0; border-bottom: 1px dashed var(--border); font-size: 0.85rem; }
 .match .r { text-align: right; } .match .c { text-align: center; color: var(--text2); min-width: 7.5rem; }
@@ -60,6 +63,12 @@ const T = {
       + `样本外检验（2017–2026 年 20 届洲际/世界大赛、911 场，逐比赛日滚动拟合，未参与调参）：RPS ${v.m.rps.toFixed(4)}（Elo 基线 ${v.e.rps.toFixed(4)}），`
       + `log-loss ${v.m.logLoss.toFixed(4)}（Elo ${v.e.logLoss.toFixed(4)}），校准误差 ECE ${v.m.ece.toFixed(3)}。这是概率，不是保证。`,
     approx: '注意：本赛事未提供官方第三名组合表，第三名对阵按约束近似分配。',
+    groupTournaments: '国家队赛事', groupLeagues: '俱乐部联赛',
+    table: '积分榜与概率', pld: '赛', pts: '积分', gd: '净胜', expPts: '期望积分', remaining: '剩余',
+    heat: '名次概率（每队以第几名的概率，单位 %）', upcoming: '未来 14 天赛程：模型 vs 市场',
+    modelWDL: '模型 胜/平/负', marketWDL: '市场 胜/平/负', date: '日期', fixture: '对阵',
+    noFixtures: '未来 14 天没有该联赛的赛程（data/clubs/fixtures.csv 未下载或暂无安排）。',
+    noMarket: '未找到市场赔率',
   },
   en: {
     title: 'Major Tournament Predictor', wc26: 'WC 2026 page', loading: 'Loading…', none: 'No simulations yet: run node engine/cli.js simulate <event>',
@@ -73,6 +82,12 @@ const T = {
       + `Out-of-sample test (20 continental/world finals 2017–2026, 911 matches, refitted every matchday, not used for tuning): RPS ${v.m.rps.toFixed(4)} (Elo baseline ${v.e.rps.toFixed(4)}), `
       + `log-loss ${v.m.logLoss.toFixed(4)} (Elo ${v.e.logLoss.toFixed(4)}), calibration ECE ${v.m.ece.toFixed(3)}. These are probabilities, not guarantees.`,
     approx: 'Note: no official third-place table for this event; third-place pairings use a constraint-based approximation.',
+    groupTournaments: 'National team tournaments', groupLeagues: 'Club leagues',
+    table: 'Table & odds', pld: 'Pld', pts: 'Pts', gd: 'GD', expPts: 'xPts', remaining: 'Remaining',
+    heat: 'Finish position probabilities (% per position)', upcoming: 'Next 14 days: model vs market',
+    modelWDL: 'Model W/D/L', marketWDL: 'Market W/D/L', date: 'Date', fixture: 'Fixture',
+    noFixtures: 'No fixtures for this league in the next 14 days (data/clubs/fixtures.csv missing or nothing scheduled).',
+    noMarket: 'No market odds found',
   },
 };
 let lang = localStorage.getItem('mtp-lang') || 'zh', data = null, index = [];
@@ -114,13 +129,86 @@ function renderGroups() {
   return h + '</div></div>';
 }
 
-function render() {
+function wdlCell(p) {
+  return `${pc(p[0], 0)} / ${pc(p[1], 0)} / ${pc(p[2], 0)}<div class="wdl"><span style="width:${p[0] * 100}%"></span><span style="width:${p[1] * 100}%"></span><span style="width:${p[2] * 100}%"></span></div>`;
+}
+
+const seasonLabel = s => `${s.slice(0, 2)}/${s.slice(2)}`;
+const zoneLabel = z => (lang === 'zh' ? z.label || z.key : z.labelEn || z.key);
+
+// 俱乐部联赛：积分榜 + 名次概率热力表 + 未来赛程，方法与可信度如实对比市场
+function renderLeague() {
+  const L = T[lang], d = data, lg = d.league, n = d.teams.length, v = d.validation;
+  let h = `<div class="card"><h2>${esc(lang === 'zh' ? lg.nameZh || lg.name : lg.name)} <span class="muted">${seasonLabel(lg.season)}</span></h2><div class="meta">`
+    + `<span>${esc(lg.start)} ~ ${esc(lg.end)}</span><span>${L.asOf} ${esc(d.asOf)}</span><span>${L.data} ${esc(d.dataThrough)}</span>`
+    + `<span>${L.sims} ${d.sims.toLocaleString()}</span><span>${L.played} ${d.played}</span><span>${L.remaining} ${d.remaining}</span></div></div>`;
+
+  h += `<div class="card"><h2>${L.table}</h2><div class="scroll"><table><tr><th>#</th><th>${L.team}</th><th>${L.pld}</th><th>${L.pts}</th><th>${L.gd}</th><th>${L.expPts}</th>`;
+  for (const z of d.zonesDef) h += `<th>${esc(zoneLabel(z))}</th>`;
+  h += `<th>${L.elo}</th></tr>`;
+  for (const t of d.teams) {
+    const c = t.current;
+    h += `<tr><td>${t.position}</td><td class="l">${name(t.team)}</td><td>${c.p}</td><td>${c.pts}</td>`
+      + `<td>${c.gd > 0 ? '+' + c.gd : c.gd}</td><td>${t.expectedPts.toFixed(1)}</td>`;
+    for (const z of d.zonesDef) h += `<td>${bar(t.zones[z.key] || 0, z.key === 'title' ? 'p' : z.key === 'ucl' ? 'g' : '')}</td>`;
+    h += `<td>${t.elo}</td></tr>`;
+  }
+  h += '</table></div></div>';
+
+  h += `<div class="card"><h2>${L.heat}</h2><div class="scroll"><table class="heat"><tr><th></th>${Array.from({ length: n }, (_, i) => `<th>${i + 1}</th>`).join('')}</tr>`;
+  for (const t of d.teams) {
+    h += `<tr><td>${name(t.team)}</td>`;
+    for (const p of t.positions) {
+      if (p < 0.005) { h += '<td></td>'; continue; }
+      const a = (0.08 + p * 0.8).toFixed(2);
+      h += `<td style="background:rgba(9,105,218,${a});${p > 0.5 ? 'color:#fff;font-weight:600' : ''}">${Math.round(p * 100)}</td>`;
+    }
+    h += '</tr>';
+  }
+  h += '</table></div></div>';
+
+  h += `<div class="card"><h2>${L.upcoming}</h2>`;
+  if (!d.upcoming.length) h += `<p class="muted">${L.noFixtures}</p>`;
+  else {
+    h += `<div class="scroll"><table><tr><th>${L.date}</th><th>${L.fixture}</th><th>${L.modelWDL}</th><th>${L.marketWDL}</th><th>${L.xg}</th></tr>`;
+    for (const m of d.upcoming) {
+      h += `<tr><td class="l">${esc(m.date.slice(5))}</td><td class="l">${name(m.home)} vs ${name(m.away)}</td>`
+        + `<td>${wdlCell([m.pH, m.pD, m.pA])}</td><td>${m.market ? wdlCell(m.market) : '—'}</td>`
+        + `<td>${m.xgH.toFixed(2)}-${m.xgA.toFixed(2)}</td></tr>`;
+    }
+    h += '</table></div>';
+  }
+  h += '</div>';
+
+  if (v && v.model) h += `<div class="card"><h2>${L.method}</h2><p class="muted">${esc(leagueMethodText(v))}</p></div>`;
+  return h;
+}
+
+function leagueMethodText(v) {
+  const d = data, m = v.model, mk = v.market, e = v.eloBaseline;
+  const s = v.seasons || {};
+  const from = seasonLabel(s.from || '1718'), to = seasonLabel(s.to || '2526');
+  const better = mk && m.rps < mk.rps;
+  if (lang === 'zh') {
+    return `Dixon-Coles 双泊松模型：五大联赛攻防参数由 football-data.co.uk 的各赛季俱乐部比赛（含次级联赛，用于给升班马定级）按时间衰减加权拟合，并入 World Football Elo；`
+      + `剩余 ${d.remaining} 场按比分矩阵抽样 ${d.sims.toLocaleString()} 次，名次按各联赛同分规则（含相互战绩）排定。`
+      + `样本外检验（${from}–${to} 赛季、${m.n} 场、每 7 天只用当天之前的比赛重拟合，未参与调参）：`
+      + `模型 RPS ${m.rps.toFixed(4)}${mk ? `，市场 ${mk.rps.toFixed(4)}` : ''}，Elo 基线 ${e.rps.toFixed(4)}；`
+      + `${mk ? (better ? `模型略优于市场（低 ${(mk.rps - m.rps).toFixed(4)}）` : `模型不如市场（高 ${(m.rps - mk.rps).toFixed(4)}）`) : '缺少市场概率，无法对比'}。`
+      + `命中率 ${(m.accuracy * 100).toFixed(1)}%${mk ? `（市场 ${(mk.accuracy * 100).toFixed(1)}%）` : ''}，`
+      + `log-loss ${m.logLoss.toFixed(4)}${mk ? `（市场 ${mk.logLoss.toFixed(4)}）` : ''}，校准误差 ECE ${m.ece.toFixed(4)}。这些是概率，不是保证。`;
+  }
+  return `Dixon-Coles bivariate Poisson: attack/defence fitted on football-data.co.uk club seasons (incl. second tiers, so promoted teams are rated) with time decay, blended with World Football Elo; `
+    + `the ${d.remaining} remaining matches are sampled from score matrices ${d.sims.toLocaleString()} times, ranked by each league's own tie-break rules (incl. head-to-head). `
+    + `Out-of-sample test (${from}–${to}, ${m.n} matches, refitted every 7 days using only earlier matches, not used for tuning): `
+    + `model RPS ${m.rps.toFixed(4)}${mk ? `, market ${mk.rps.toFixed(4)}` : ''}, Elo baseline ${e.rps.toFixed(4)}; `
+    + `${mk ? (better ? `the model edges the market by ${(mk.rps - m.rps).toFixed(4)}` : `the model is worse than the market by ${(m.rps - mk.rps).toFixed(4)}`) : 'no market probabilities, no comparison possible'}. `
+    + `Hit rate ${(m.accuracy * 100).toFixed(1)}%${mk ? ` (market ${(mk.accuracy * 100).toFixed(1)}%)` : ''}, `
+    + `log-loss ${m.logLoss.toFixed(4)}${mk ? ` (market ${mk.logLoss.toFixed(4)})` : ''}, calibration ECE ${m.ece.toFixed(4)}. These are probabilities, not guarantees.`;
+}
+
+function renderTournament() {
   const L = T[lang];
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  $('title').textContent = L.title; $('lang').textContent = lang === 'zh' ? 'EN' : '中文'; $('wc26').textContent = L.wc26;
-  document.title = L.title;
-  $('event').innerHTML = index.map(e => `<option value="${esc(e.id)}"${data && e.id === data.event.id ? ' selected' : ''}>${esc(lang === 'zh' ? e.nameZh || e.name : e.name)}</option>`).join('');
-  if (!data) { $('app').innerHTML = `<div class="empty">${index.length ? L.loading : L.none}</div>`; return; }
   const v = data.validation;
   let h = `<div class="card"><h2>${esc(lang === 'zh' ? data.event.nameZh || data.event.name : data.event.name)}</h2><div class="meta">`
     + `<span>${esc(data.event.start)} ~ ${esc(data.event.end)}</span><span>${L.asOf} ${esc(data.asOf)}</span><span>${L.data} ${esc(data.dataThrough)}</span>`
@@ -128,7 +216,24 @@ function render() {
   if (data.approximateThirdsShare > 0) h += `<p class="muted">${L.approx}</p>`;
   h += '</div>' + renderOdds() + renderGroups();
   if (v) h += `<div class="card"><h2>${L.method}</h2><p class="muted">${esc(L.methodText({ sims: data.sims, m: v.model, e: v.eloBaseline }))}</p></div>`;
-  $('app').innerHTML = h;
+  return h;
+}
+
+function render() {
+  const L = T[lang];
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  $('title').textContent = L.title; $('lang').textContent = lang === 'zh' ? 'EN' : '中文'; $('wc26').textContent = L.wc26;
+  document.title = L.title;
+  const curId = data ? (data.kind === 'league' ? data.league.id : data.event.id) : null;
+  const kindOf = e => e.kind === 'league' ? 'league' : 'tournament';
+  $('event').innerHTML = [['tournament', L.groupTournaments], ['league', L.groupLeagues]].map(([k, label]) => {
+    const items = index.filter(e => kindOf(e) === k);
+    if (!items.length) return '';
+    return `<optgroup label="${esc(label)}">` + items.map(e =>
+      `<option value="${esc(e.id)}"${e.id === curId ? ' selected' : ''}>${esc(lang === 'zh' ? e.nameZh || e.name : e.name)}</option>`).join('') + '</optgroup>';
+  }).join('');
+  if (!data) { $('app').innerHTML = `<div class="empty">${index.length ? L.loading : L.none}</div>`; return; }
+  $('app').innerHTML = data.kind === 'league' ? renderLeague() : renderTournament();
 }
 
 async function load(id) {

@@ -1,0 +1,65 @@
+{
+  "id": "serie-a-2026-27",
+  "division": "I1",
+  "season": "2627",
+  "name": "Serie A",
+  "nameZh": "意大利足球甲级联赛",
+  "teams": 20,
+  "tiebreak": [
+    "pts",
+    "h2h_pts",
+    "h2h_gd",
+    "gd",
+    "gf"
+  ],
+  "zones": [
+    {
+      "key": "title",
+      "from": 1,
+      "to": 1,
+      "label": "冠军",
+      "labelEn": "Title"
+    },
+    {
+      "key": "ucl",
+      "from": 1,
+      "to": 4,
+      "label": "欧冠",
+      "labelEn": "Champions League"
+    },
+    {
+      "key": "relegation",
+      "from": 18,
+      "to": 20,
+      "label": "降级",
+      "labelEn": "Relegation"
+    }
+  ],
+  "names": {
+    "Atalanta": "亚特兰大",
+    "Bologna": "博洛尼亚",
+    "Cagliari": "卡利亚里",
+    "Como": "科莫",
+    "Fiorentina": "佛罗伦萨",
+    "Frosinone": "弗罗西诺内",
+    "Genoa": "热那亚",
+    "Inter": "国际米兰",
+    "Juventus": "尤文图斯",
+    "Lazio": "拉齐奥",
+    "Lecce": "莱切",
+    "Milan": "AC米兰",
+    "Monza": "蒙扎",
+    "Napoli": "那不勒斯",
+    "Parma": "帕尔马",
+    "Roma": "罗马",
+    "Sassuolo": "萨索洛",
+    "Torino": "都灵",
+    "Udinese": "乌迪内斯",
+    "Venezia": "威尼斯"
+  },
+  "sources": [
+    "https://www.legaseriea.it/serie-a/classifica （同分规则：相互战绩优先）",
+    "https://www.football-data.co.uk/italym.php （比分与 Pinnacle/Avg 赔率）"
+  ],
+  "notes": "同分先比相互战绩（这几队之间的积分、净胜球），再比总净胜球、总进球。意甲规定：若冠军或降级线最后一名的名次仍无法分出，需打附加赛；本模型按上述规则顺延（最后随机），即把附加赛视为五五开。"
+}

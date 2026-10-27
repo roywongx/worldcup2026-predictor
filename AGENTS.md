@@ -32,16 +32,23 @@
 |---|---|
 | 页面 | `/tournaments.html`，读 `web/data/<赛事>.json`（已提交，克隆即可看） |
 | 数据 | `npm run engine:fetch` → `data/history/`（不入库） |
-| 测试 | `npm run test:engine`（合成数据，不联网；含赛事配置校验） |
+| 测试 | `npm run test:engine`（合成数据，不联网；含赛事配置校验与联赛配置校验）；只跑俱乐部用 `npm run test:club` |
 | 复现指标 | `npm run engine:backtest`，应得出 `engine/model.json` 里 test 的数字 |
 | 更新预测 | 先 fetch，再 `npm run engine:simulate -- <id>`，提交 `web/data/` |
+| 俱乐部数据 | `npm run engine:fetch-clubs` → `data/clubs/<赛季>/<级别>.csv` + `data/clubs/fixtures.csv`（不入库） |
+| 俱乐部调参 | `node engine/cli.js club-tune`（写 `engine/clubmodel.json` 的 params 与 tuning.train） |
+| 俱乐部指标 | `npm run engine:club-backtest`，应得出 `engine/clubmodel.json` 里 tuning.test 的数字 |
+| 联赛预测 | `npm run engine:simulate-league -- <league-id>` → `web/data/<id>.json` + 更新 index |
 
 红线：
 1. **调参只用训练届次**（`engine/tune.js` 默认 2010–2016）；2017 年以后的届次只用来报告。改了模型结构或参数，必须重跑 `backtest` 并更新 `model.json` 的 test 数字，不得只报训练集成绩。
 2. 回测里拟合只能用该场比赛日之前的数据（`dc.fit` 的 day 参数；有测试守住）。
 3. 赛事配置（分组、东道主、对阵、第三名组合表）只从官方来源抄，写进 `sources`；第三名表要逐行核对，并在测试里钉住几行。拿不到官方表时用 `thirdAllowed` 约束近似，页面会标注。
 4. 页面上的概率是模型输出，不得手工改数。
+5. **俱乐部调参只用 1314–1617 赛季**（`engine/clubbacktest.js` 的 `clubTune` 默认值）；**1718–2526 只用来报告**（`club-backtest` 默认区间）。改了俱乐部模型结构或参数，必须重跑 `club-backtest` 并更新 `clubmodel.json` 的 test 数字。
 
-代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行 · `events/*.json` 赛事配置。
+代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行 · `events/*.json` 赛事配置 · `clubdata.js` 读俱乐部 CSV 与赔率 · `league.js` 双循环赛程、各联赛同分规则排名、赛季蒙特卡洛 · `clubbacktest.js` 俱乐部回测/调参 · `clubmodel.json` 俱乐部参数与测试集指标 · `leagues/*.json` 联赛配置。
+
+俱乐部已知局限：同分规则按各联赛公开规则近似（法甲为近似、意甲附加赛按五五开）；队名用 football-data.co.uk 写法；市场概率来自 Pinnacle/Avg 收盘赔率去抽水；次级联赛只用来给升班马定级，不参与报告。
 
 已知局限：数据集比分含加时、不含点球（淘汰赛平局按 90+30 分钟结果计）；无伤病/阵容信息；点球按五五开；小组排名未含纪律分。

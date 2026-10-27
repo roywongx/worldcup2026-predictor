@@ -33,6 +33,36 @@ Add a tournament / 新增赛事：copy `engine/events/asian-cup-2027.json`, fill
 
 ---
 
+## 🏟️ Club leagues / 俱乐部联赛（2026-27）
+
+The same engine, applied to league football: Dixon-Coles + Elo fitted on 22 seasons of [football-data.co.uk](https://www.football-data.co.uk/) club results (five top divisions plus second tiers, so promoted teams are rated), then a Monte Carlo of the rest of the double round-robin. Tables are ranked by each league's own tie-break rules, head-to-head included.
+
+同一套引擎，换成联赛赛制：用 football-data.co.uk 的俱乐部比赛（五大联赛 + 次级联赛，给升班马定级）拟合 Dixon-Coles + Elo，剩余赛程按比分矩阵蒙特卡洛，名次按各联赛官方同分规则（含相互战绩）排定。
+
+- **Leagues / 联赛**：Premier League, La Liga, Bundesliga, Serie A, Ligue 1 (2026-27) — configs in `engine/leagues/*.json`, zones (title / UCL / relegation play-off / relegation) per league
+- **Page / 页面**：`/tournaments.html` → pick a club league: table with zone probabilities, finish-position heatmap, next-14-day model vs market, and the honest out-of-sample comparison
+- **Tuning / 调参**：grid search on 2013-14 – 2016-17 only；**tested out-of-sample on 2017-18 – 2025-26**（五大联赛顶级，16,111 场，每 7 天重拟合，未参与调参）
+
+| 2017-18 – 2025-26 out-of-sample | RPS ↓ | log-loss ↓ | accuracy | ECE |
+|---|---|---|---|---|
+| This model / 本模型 | 0.2002 | 0.9851 | 52.7% | 0.005 |
+| Market / 市场（Pinnacle 收盘去抽水，16,110 场） | **0.1944** | **0.9662** | **53.9%** | 0.006 |
+| Elo baseline / Elo 基线 | 0.2065 | 1.0748 | 52.2% | 0.041 |
+
+The model beats the Elo baseline but **not the market** — 在五大联赛上它比市场差约 0.006 RPS；页面上的「方法与可信度」如实写这一点。逐联赛：意甲 0.1939 / 西甲 0.1988 / 英超 0.2000 / 德甲 0.2036 / 法甲 0.2059（市场均更好）。
+
+```bash
+npm run engine:fetch-clubs                    # download club CSVs + upcoming fixtures / 下载 CSV 与未来赛程
+node engine/cli.js club-tune                  # grid search on 2013-14 – 2016-17 → engine/clubmodel.json
+npm run engine:club-backtest                  # 2017-18 – 2025-26 metrics → engine/clubmodel.json
+npm run engine:simulate-league -- premier-league-2026-27   # → web/data/premier-league-2026-27.json
+npm run test:club                             # contract tests (synthetic data, offline)
+```
+
+Known limits / 已知局限：tie-break rules are the published ones but approximated where leagues use play-offs (Serie A title/relegation, Ligue 1 is a simplification); team names follow football-data.co.uk spelling; market probabilities come from Pinnacle/Avg closing odds de-vigged proportionally; no injuries, lineups or European fixtures congestion; second tiers only inform promoted teams' initial ratings.
+
+---
+
 ## English
 
 ### Architecture Overview

@@ -56,6 +56,8 @@ function loadClubMatches(dir = CLUB_DIR) {
   if (!fs.existsSync(dir)) throw new Error(`缺少 ${dir}，先运行 node engine/cli.js fetch-clubs`);
   const out = [];
   for (const season of fs.readdirSync(dir).sort()) {
+    // 同目录下还有 fixtures.csv（未来赛程），不是赛季目录
+    if (!fs.statSync(path.join(dir, season)).isDirectory()) continue;
     for (const f of fs.readdirSync(path.join(dir, season)).filter(x => x.endsWith('.csv'))) {
       const text = fs.readFileSync(path.join(dir, season, f), 'latin1').replace(/^﻿|^ï»¿/, '');
       for (const r of parseCSV(text)) {

@@ -5,6 +5,52 @@
   "nameZh": "2027 亚洲杯（沙特）",
   "start": "2027-01-07",
   "end": "2027-02-05",
+  "kind": "tournament",
   "generatedAt": "2026-10-24T10:26:57.065Z"
+ },
+ {
+  "id": "serie-a-2026-27",
+  "name": "Serie A",
+  "nameZh": "意大利足球甲级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-24T11:32:49.829Z"
+ },
+ {
+  "id": "premier-league-2026-27",
+  "name": "Premier League",
+  "nameZh": "英格兰足球超级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-24T11:32:42.578Z"
+ },
+ {
+  "id": "ligue-1-2026-27",
+  "name": "Ligue 1",
+  "nameZh": "法国足球甲级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-24T11:32:51.879Z"
+ },
+ {
+  "id": "la-liga-2026-27",
+  "name": "La Liga",
+  "nameZh": "西班牙足球甲级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-24T11:32:45.103Z"
+ },
+ {
+  "id": "bundesliga-2026-27",
+  "name": "Bundesliga",
+  "nameZh": "德国足球甲级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-24T11:32:47.300Z"
  }
 ]
