@@ -1,0 +1,72 @@
+{
+  "id": "primeira-liga-2026-27",
+  "division": "P1",
+  "season": "2627",
+  "name": "Primeira Liga",
+  "nameZh": "葡萄牙足球超级联赛",
+  "teams": 18,
+  "tiebreak": [
+    "pts",
+    "h2h_pts",
+    "h2h_gd",
+    "h2h_away_gf",
+    "gd",
+    "gf"
+  ],
+  "zones": [
+    {
+      "key": "title",
+      "from": 1,
+      "to": 1,
+      "label": "冠军",
+      "labelEn": "Title"
+    },
+    {
+      "key": "ucl",
+      "from": 1,
+      "to": 3,
+      "label": "欧冠",
+      "labelEn": "Champions League"
+    },
+    {
+      "key": "relegation_playoff",
+      "from": 16,
+      "to": 16,
+      "label": "保级附加赛",
+      "labelEn": "Relegation play-off"
+    },
+    {
+      "key": "relegation",
+      "from": 17,
+      "to": 18,
+      "label": "降级",
+      "labelEn": "Relegation"
+    }
+  ],
+  "names": {
+    "Benfica": "本菲卡",
+    "Porto": "波尔图",
+    "Sp Lisbon": "葡萄牙体育",
+    "Sp Braga": "布拉加",
+    "Guimaraes": "吉马良斯",
+    "Famalicao": "法马利康",
+    "Moreirense": "莫雷伦斯",
+    "Arouca": "阿罗卡",
+    "Estoril": "埃斯托里尔",
+    "Estrela": "埃斯特雷拉",
+    "Gil Vicente": "吉尔维森特",
+    "Rio Ave": "里奥阿维",
+    "Santa Clara": "圣克拉拉",
+    "Casa Pia": "卡萨皮亚",
+    "Nacional": "国民",
+    "Academico Viseu": "维塞乌学院",
+    "Alverca": "阿尔韦卡",
+    "Maritimo": "马里迪莫"
+  },
+  "sources": [
+    "比分与赔率：football-data.co.uk /mmz4281/2627/P1.csv（葡超；收盘赔率来自 Pinnacle / 平均）",
+    "同分规则（积分 → 相互战绩积分 → 相互净胜球 → 相互客场进球 → 总净胜球 → 总进球）：Liga Portugal 官方排名规则；之后按随机抽签近似",
+    "欧战名额：前 3 名进欧冠（第 3 名为资格赛），页面把 1–3 名统一算作「欧冠」——近似"
+  ],
+  "notes": "18 队。第 16 名打保级附加赛，17–18 名直接降级。同分先看相互战绩（葡超与其他四大联赛不同），规则用尽后随机；欧战名额按前 3 名算，资格赛与正赛不区分。数据源是 football-data.co.uk 的 CSV，不在五大联赛的检验报告里。"
+}

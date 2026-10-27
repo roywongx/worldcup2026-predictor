@@ -1,0 +1,140 @@
+{
+  "id": "copa-libertadores-2026",
+  "code": "CLI",
+  "apiSeason": 2026,
+  "kind": "groups2leg",
+  "season": "2626",
+  "name": "Copa Libertadores",
+  "nameZh": "南美解放者杯",
+  "start": "2026-02-04",
+  "end": "2026-11-28",
+  "groups": {
+    "A": [
+      "CD Independiente Medellín",
+      "CR Flamengo",
+      "Cusco FC",
+      "Estudiantes de La Plata"
+    ],
+    "B": [
+      "CD Coquimbo Unido",
+      "CD Tolima",
+      "Club Nacional de Football",
+      "Club Universitario de Deportes"
+    ],
+    "C": [
+      "CS Independiente Rivadavia",
+      "Club Bolívar",
+      "Deportivo La Guaira FC",
+      "Fluminense FC"
+    ],
+    "D": [
+      "Barcelona SC",
+      "CA Boca Juniors",
+      "CD Universidad Católica",
+      "Cruzeiro EC"
+    ],
+    "E": [
+      "CA Peñarol",
+      "CA Platense",
+      "Independiente Santa Fe",
+      "SC Corinthians Paulista"
+    ],
+    "F": [
+      "CDP Junior FC",
+      "CS Cristal",
+      "Club Cerro Porteño",
+      "SE Palmeiras"
+    ],
+    "G": [
+      "CA Lanús",
+      "Club Always Ready",
+      "LDU de Quito",
+      "Mirassol FC"
+    ],
+    "H": [
+      "CA Rosario Central",
+      "CAR Independiente del Valle",
+      "Club Libertad Asuncion",
+      "Universidad Central de Venezuela FC"
+    ]
+  },
+  "tiebreak": [
+    "pts",
+    "gd",
+    "gf",
+    "away_gf"
+  ],
+  "rounds": [
+    {
+      "key": "R16",
+      "stage": "PLAY_OFFS",
+      "label": "16 强",
+      "labelEn": "Round of 16"
+    },
+    {
+      "key": "QF",
+      "stage": "QUARTER_FINALS",
+      "label": "8 强",
+      "labelEn": "Quarter-finals"
+    },
+    {
+      "key": "SF",
+      "stage": "SEMI_FINALS",
+      "label": "4 强",
+      "labelEn": "Semi-finals"
+    },
+    {
+      "key": "F",
+      "stage": "FINAL",
+      "label": "决赛",
+      "labelEn": "Final"
+    }
+  ],
+  "stageOf": {
+    "R16": "PLAY_OFFS",
+    "QF": "QUARTER_FINALS",
+    "SF": "SEMI_FINALS",
+    "F": "FINAL"
+  },
+  "names": {
+    "CD Independiente Medellín": "麦德林独立",
+    "CR Flamengo": "弗拉门戈",
+    "Cusco FC": "库斯科",
+    "Estudiantes de La Plata": "拉普拉塔大学生",
+    "CD Coquimbo Unido": "科金博联",
+    "CD Tolima": "托利马",
+    "Club Nacional de Football": "蒙得维的亚国民",
+    "Club Universitario de Deportes": "秘鲁大学",
+    "CS Independiente Rivadavia": "里瓦达维亚独立",
+    "Club Bolívar": "玻利瓦尔",
+    "Deportivo La Guaira FC": "拉瓜伊拉",
+    "Fluminense FC": "弗鲁米嫩塞",
+    "Barcelona SC": "瓜亚基尔巴塞罗那",
+    "CA Boca Juniors": "博卡青年",
+    "CD Universidad Católica": "天主教大学",
+    "Cruzeiro EC": "克鲁塞罗",
+    "CA Peñarol": "佩纳罗尔",
+    "CA Platense": "普拉滕塞",
+    "Independiente Santa Fe": "圣菲独立",
+    "SC Corinthians Paulista": "科林蒂安",
+    "CDP Junior FC": "巴兰基亚青年",
+    "CS Cristal": "水晶体育",
+    "Club Cerro Porteño": "波特诺山丘",
+    "SE Palmeiras": "帕尔梅拉斯",
+    "CA Lanús": "拉努斯",
+    "Club Always Ready": "奥尔维斯里迪",
+    "LDU de Quito": "基多大学",
+    "Mirassol FC": "米拉索尔",
+    "CA Rosario Central": "罗萨里奥中央",
+    "CAR Independiente del Valle": "山谷独立",
+    "Club Libertad Asuncion": "亚松森自由",
+    "Universidad Central de Venezuela FC": "委内瑞拉中央大学"
+  },
+  "modelNames": {},
+  "sources": [
+    "赛程与比分：football-data.org v4 /competitions/CLI/matches?season=2026（2026-10-28 抓取，155 场，2026-02-04 ~ 2026-11-28）",
+    "小组分组（8 组 × 4）：同一响应里的 group 字段（GROUP_A…GROUP_H），赛制为 4 队双循环、每组前 2 进 16 强",
+    "16 强起两回合、决赛单场：CONMEBOL Libertadores 2026 赛制（football-data.org 的 PLAY_OFFS 阶段即 16 强）"
+  ],
+  "notes": "2026 解放者杯：预选赛（ROUND_1–ROUND_3，2–3 月）+ 小组赛（8 组 × 4，4–5 月）+ 16 强/8 强/4 强两回合（8–10 月）+ 决赛（2026-11-28，单场）。免费数据源没有赔率，页面市场列一律「—」。小组同分按 pts→gd→gf→away_gf（CONMEBOL 规则的近似）；16 强按「小组第一抽小组第二、同组回避」随机近似（真实赛制是抽签）；API 已给出的具体对阵与真实比分优先，之后各轮按签位顺序两两配对（真实赛制也是固定签位）。总比分平按点球五五开（不单独建模加时）。南美俱乐部不在 football-data.co.uk 的欧洲联赛 CSV 里，实力只能靠本赛事比赛定级。"
+}

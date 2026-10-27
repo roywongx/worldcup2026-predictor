@@ -88,6 +88,40 @@ function teamsForSeason(matches, division, season) {
   return teams;
 }
 
+/**
+ * 新赛季球队数护栏（2026-10 补）：seasonTeams 只看「数据里出现过的队」，新赛季刚踢一轮时可能只见到部分球队，
+ * 直接写配置会把「10 队」写进去。
+ *   - 少于模板的 75%：明显是数据不全，直接拒绝（--force 也不写），等更多轮次；
+ *   - 队数不等于模板（但在 75% 以上）：只警告，要 --force 才写；
+ *   - 与模板一致：正常通过。
+ */
+function seasonTeamCheck(template, teams = []) {
+  const n = teams.length;
+  const expected = Number(template && template.teams) || 0;
+  const ratio = expected ? n / expected : 1;
+  if (!n) {
+    return { n, expected, ratio: 0, level: 'block', message: `${template.division} 新赛季还没有任何比赛，先跑 fetch-clubs 等新赛季开始` };
+  }
+  if (expected && ratio < 0.75) {
+    return { n, expected, ratio, level: 'block', message: `${template.division} 新赛季只见到 ${n} 队（模板 ${expected} 队，不足 75%），像数据不全：等更多轮次再生成配置` };
+  }
+  if (expected && n !== expected) {
+    return { n, expected, ratio, level: 'warn', message: `${template.division} 新赛季见到 ${n} 队，与模板 ${expected} 队不同（可能还有比赛没踢）；确认无误再加 --force` };
+  }
+  return { n, expected, ratio, level: 'ok', message: '' };
+}
+
+/**
+ * 新赛季生成计划（不落盘）：{ level, n, expected, ratio, message, block, write, cfg }。
+ * block=true 时不写，write=false 时等 --force；cli 与测试共用这一份判断。
+ */
+function newSeasonPlan(template, { season, teams, force = false } = {}) {
+  const check = seasonTeamCheck(template, teams);
+  if (check.level === 'block') return { ...check, block: true, write: false, cfg: null };
+  const cfg = buildSeasonConfig(template, { season, teams });
+  return { ...check, block: false, write: check.level === 'ok' || !!force, cfg };
+}
+
 /** 由模板配置推导新赛季配置（不落盘）。 */
 function buildSeasonConfig(template, { season, teams }) {
   const list = teams || [];
@@ -138,5 +172,6 @@ function leagueSeasonState(cfg, matches = [], today) {
 module.exports = {
   seasonYears, nextSeasonCode, seasonLabel, leagueIdFor,
   deriveZones, rewriteNotes, missingNames, teamsForSeason, buildSeasonConfig, writeSeasonConfig,
+  seasonTeamCheck, newSeasonPlan,
   shanghaiToday, isEventActive, leagueSeasonState,
 };

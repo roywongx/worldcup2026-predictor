@@ -9,3 +9,5 @@ __pycache__/
 data/history/
 # 俱乐部联赛 CSV（node engine/cli.js fetch-clubs 下载，约 220 个文件 + fixtures.csv）
 data/clubs/
+# 欧战原始响应（node engine/cli.js fetch-euro 下载：football-data.org v4，6 小时缓存）
+data/uefa/

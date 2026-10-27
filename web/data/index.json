@@ -6,7 +6,16 @@
   "start": "2027-01-07",
   "end": "2027-02-05",
   "kind": "tournament",
-  "generatedAt": "2026-10-27T17:13:09.533Z"
+  "generatedAt": "2026-10-27T18:31:36.545Z"
+ },
+ {
+  "id": "ucl-2026-27",
+  "name": "UEFA Champions League",
+  "nameZh": "欧洲冠军联赛",
+  "start": "2026-09-08",
+  "end": "2027-05-31",
+  "kind": "swiss",
+  "generatedAt": "2026-10-27T18:32:00.199Z"
  },
  {
   "id": "serie-a-2026-27",
@@ -15,7 +24,16 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T17:13:23.207Z"
+  "generatedAt": "2026-10-27T18:31:56.815Z"
+ },
+ {
+  "id": "primeira-liga-2026-27",
+  "name": "Primeira Liga",
+  "nameZh": "葡萄牙足球超级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-27T18:31:56.292Z"
  },
  {
   "id": "premier-league-2026-27",
@@ -24,7 +42,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T17:13:21.890Z"
+  "generatedAt": "2026-10-27T18:31:55.799Z"
  },
  {
   "id": "ligue-1-2026-27",
@@ -33,7 +51,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T17:13:20.824Z"
+  "generatedAt": "2026-10-27T18:31:55.314Z"
  },
  {
   "id": "la-liga-2026-27",
@@ -42,7 +60,16 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T17:13:19.933Z"
+  "generatedAt": "2026-10-27T18:31:54.838Z"
+ },
+ {
+  "id": "eredivisie-2026-27",
+  "name": "Eredivisie",
+  "nameZh": "荷兰足球甲级联赛",
+  "start": "2026-08-01",
+  "end": "2027-05-31",
+  "kind": "league",
+  "generatedAt": "2026-10-27T18:31:54.293Z"
  },
  {
   "id": "bundesliga-2026-27",
@@ -51,6 +78,15 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T17:13:18.614Z"
+  "generatedAt": "2026-10-27T18:31:53.783Z"
+ },
+ {
+  "id": "copa-libertadores-2026",
+  "name": "Copa Libertadores",
+  "nameZh": "南美解放者杯",
+  "start": "2026-02-04",
+  "end": "2026-11-28",
+  "kind": "groups2leg",
+  "generatedAt": "2026-10-27T18:31:59.025Z"
  }
 ]

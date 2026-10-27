@@ -187,3 +187,59 @@ test('今天用上海日期：UTC 还是前一天时也按上海算', () => {
   assert.equal(seasonLib.shanghaiToday(new Date('2026-10-27T15:59:59Z')), '2026-10-27');
   assert.equal(seasonLib.shanghaiToday(new Date('2027-01-01T00:30:00Z')), '2027-01-01');
 });
+
+// ── 2026-10-28 追加：新赛季球队数护栏（S4） ─────────────────────────────────
+// 新赛季只踢了一轮时 seasonTeams 可能只见到部分球队；少于模板 75% 一律拒绝（--force 也不行），
+// 队数不同（但在 75% 以上）只警告并要求 --force。
+test('新赛季护栏：队数明显不全（<75%）直接拒绝，--force 也不写', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wc-newseason-'));
+  try {
+    const plan = seasonLib.newSeasonPlan(TPL20, { season: '2728', teams: teams(10) });
+    assert.equal(plan.level, 'block');
+    assert.equal(plan.block, true);
+    assert.equal(plan.write, false);
+    assert.equal(plan.cfg, null, '数据不全时不生成配置');
+    assert.match(plan.message, /75%/, '要说明为什么拒绝');
+    const forced = seasonLib.newSeasonPlan(TPL20, { season: '2728', teams: teams(10), force: true });
+    assert.equal(forced.write, false, '--force 不能把不完整的数据写进配置');
+    assert.deepEqual(fs.readdirSync(dir), [], '不得写出任何文件');
+    // 75% 正好是边界：15/20 不算「明显不全」，只警告
+    assert.equal(seasonLib.seasonTeamCheck(TPL20, teams(15)).level, 'warn');
+    assert.equal(seasonLib.seasonTeamCheck(TPL20, teams(14)).level, 'block');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('新赛季护栏：队数与模板不同只警告、要 --force；与模板一致时直接通过', () => {
+  const warn = seasonLib.newSeasonPlan(TPL20, { season: '2728', teams: teams(19) });
+  assert.equal(warn.level, 'warn');
+  assert.equal(warn.block, false, '不是错误，只是要确认');
+  assert.equal(warn.write, false, '没有 --force 不写');
+  assert.equal(warn.cfg.teams, 19, '计划里仍带着配置，--force 时可直接写');
+  assert.match(warn.message, /--force/);
+  assert.match(warn.message, /19.*20/, '要写出见到几队、模板几队');
+
+  const forced = seasonLib.newSeasonPlan(TPL20, { season: '2728', teams: teams(19), force: true });
+  assert.equal(forced.write, true);
+  assert.equal(forced.level, 'warn');
+
+  const ok = seasonLib.newSeasonPlan(TPL20, { season: '2728', teams: teams(20) });
+  assert.equal(ok.level, 'ok');
+  assert.equal(ok.block, false);
+  assert.equal(ok.write, true);
+  assert.equal(ok.message, '');
+  assert.equal(ok.cfg.id, 'premier-league-2027-28');
+  assert.equal(ok.cfg.season, '2728');
+  assert.equal(ok.cfg.teams, 20);
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wc-newseason-'));
+  try {
+    const file = seasonLib.writeSeasonConfig(dir, ok.cfg);
+    const back = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.equal(back.teams, 20);
+    assert.equal(back.zones.find(z => z.key === 'relegation').from, 18);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

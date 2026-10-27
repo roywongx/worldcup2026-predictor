@@ -1,0 +1,70 @@
+{
+  "id": "eredivisie-2026-27",
+  "division": "N1",
+  "season": "2627",
+  "name": "Eredivisie",
+  "nameZh": "荷兰足球甲级联赛",
+  "teams": 18,
+  "tiebreak": [
+    "pts",
+    "gd",
+    "gf",
+    "wins"
+  ],
+  "zones": [
+    {
+      "key": "title",
+      "from": 1,
+      "to": 1,
+      "label": "冠军",
+      "labelEn": "Title"
+    },
+    {
+      "key": "ucl",
+      "from": 1,
+      "to": 2,
+      "label": "欧冠",
+      "labelEn": "Champions League"
+    },
+    {
+      "key": "relegation_playoff",
+      "from": 16,
+      "to": 16,
+      "label": "保级附加赛",
+      "labelEn": "Relegation play-off"
+    },
+    {
+      "key": "relegation",
+      "from": 17,
+      "to": 18,
+      "label": "降级",
+      "labelEn": "Relegation"
+    }
+  ],
+  "names": {
+    "Ajax": "阿贾克斯",
+    "PSV Eindhoven": "埃因霍温",
+    "Feyenoord": "费耶诺德",
+    "AZ Alkmaar": "阿尔克马尔",
+    "Twente": "特温特",
+    "Utrecht": "乌德勒支",
+    "Go Ahead Eagles": "前进之鹰",
+    "Nijmegen": "奈梅亨",
+    "Heerenveen": "海伦芬",
+    "Sparta Rotterdam": "鹿特丹斯巴达",
+    "Groningen": "格罗宁根",
+    "Zwolle": "兹沃勒",
+    "Excelsior": "埃克塞尔西奥",
+    "For Sittard": "福图纳锡塔德",
+    "Den Haag": "海牙",
+    "Cambuur": "坎布尔",
+    "Telstar": "特尔斯达",
+    "Willem II": "蒂尔堡威廉二世"
+  },
+  "sources": [
+    "比分与赔率：football-data.co.uk /mmz4281/2627/N1.csv（荷甲；收盘赔率来自 Pinnacle / 平均）",
+    "同分规则（积分 → 净胜球 → 进球 → 胜场）：Eredivisie 官方排名；完全并列时官方另有附加赛，这里按随机抽签近似",
+    "欧战名额：前 2 名进欧冠正赛，页面只标 1–2 名——近似"
+  ],
+  "notes": "18 队。第 16 名打保级附加赛（与荷乙球队），17–18 名直接降级。同分按净胜球、进球、胜场，之后随机（官方会打附加赛，未建模）。欧战名额只标前 2 名进欧冠；数据源是 football-data.co.uk 的 CSV，不在五大联赛的检验报告里。"
+}
