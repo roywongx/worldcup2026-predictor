@@ -260,4 +260,4 @@ function simulateLeague(matches, cfg, { sims = 20000, seed = 20260801, asOf = nu
   };
 }
 
-module.exports = { TOP, remainingFixtures, rankTable, prepareLeague, runSeason, sampleDC, tauMax, simulateLeague };
+module.exports = { TOP, remainingFixtures, rankTable, prepareLeague, runSeason, sampleDC, tauMax, simulateLeague, seasonBounds };

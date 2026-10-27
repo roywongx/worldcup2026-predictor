@@ -6,7 +6,7 @@
   "start": "2027-01-07",
   "end": "2027-02-05",
   "kind": "tournament",
-  "generatedAt": "2026-10-24T10:26:57.065Z"
+  "generatedAt": "2026-10-27T17:13:09.533Z"
  },
  {
   "id": "serie-a-2026-27",
@@ -15,7 +15,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T16:13:31.190Z"
+  "generatedAt": "2026-10-27T17:13:23.207Z"
  },
  {
   "id": "premier-league-2026-27",
@@ -24,7 +24,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T16:13:24.026Z"
+  "generatedAt": "2026-10-27T17:13:21.890Z"
  },
  {
   "id": "ligue-1-2026-27",
@@ -33,7 +33,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T16:13:33.357Z"
+  "generatedAt": "2026-10-27T17:13:20.824Z"
  },
  {
   "id": "la-liga-2026-27",
@@ -42,7 +42,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T16:20:55.465Z"
+  "generatedAt": "2026-10-27T17:13:19.933Z"
  },
  {
   "id": "bundesliga-2026-27",
@@ -51,6 +51,6 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T16:13:28.583Z"
+  "generatedAt": "2026-10-27T17:13:18.614Z"
  }
 ]

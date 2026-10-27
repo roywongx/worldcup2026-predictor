@@ -12,6 +12,8 @@
 | 启动 | `nohup python3 server.py 9090 > /tmp/worldcup.log 2>&1 &`（= `npm start`） |
 | 停止 | `pkill -xf python3 server.py 9090` |
 | 测试 | `npm test`（语法）；`npm run test:engine`（引擎契约）；`npm run test:ui`（`index.html` 的 UI-CORE 纯函数） |
+| 每日刷新 | `scripts/refresh.sh`（cron 06:30，参数透传如 `--sims 2000`）：国家队 `fetch` + 在赛赛事 `simulate`，俱乐部 `fetch-clubs` + 在赛联赛 `simulate-league`，写 `web/data/` |
+| 新赛季 | `node engine/cli.js new-season --season 2728`（按当季数据生成五份联赛配置，已存在不覆盖，加 `--force`），再 `node engine/cli.js refresh` |
 | 远端 | GitHub roywongx/worldcup2026-predictor；**推送需用户同意** |
 
 ## 红线
@@ -21,7 +23,7 @@
 4. 旧页面的资源路径不能动：`data/`、`model/`、`api/`、`ui/` 仍按现在的位置给 `/wc2026.html` 服务。
 
 ## 验证要求
-- 前端改版后跑 `node --test tests/engine.test.js tests/club.test.js tests/season.test.js tests/ui.test.js`，并在浏览器里用 375px 与 1280px 各看一遍：整页不能出现横向滚动（宽表格只能在自己的滚动容器里滚）。
+- 前端改版后跑 `node --test tests/engine.test.js tests/club.test.js tests/season.test.js tests/refresh.test.js tests/ui.test.js`，并在浏览器里用 375px 与 1280px 各看一遍：整页不能出现横向滚动（宽表格只能在自己的滚动容器里滚）。
 - 改模型参数后按下面的「重大赛事引擎」重跑对应的回测，更新 `engine/model.json` / `engine/clubmodel.json` 的 test 数字，再看 `#/method` 与赛事页「可信度」是否跟着变。
 - 以下浏览器内验证函数**只适用于归档页 `/wc2026.html`**，与新的单页应用无关：改归档页的球队数据或赛程后跑 `validateData()`（必须 0 错误，国旗代码 England=`gb-eng`、Scotland=`gb-sct`）；改归档页模型后跑 2022 世界杯回测 `runBacktest()`（应返回 30+ 场，最可能比分 1-1 占比 <40%，总 λ 均值 2.5~3.0，平局率 20%~28%），并确认 `runSimulation()` 与 `runMonteCarloUI()`（10,000 次）无报错。
 - 先找根因再修，完成前用实际输出证明，不说"应该好了"。
@@ -51,7 +53,7 @@
 4. 页面上的概率是模型输出，不得手工改数。
 5. **俱乐部调参只用 1314–1617 赛季**（`engine/clubbacktest.js` 的 `clubTune` 默认值）；**1718–2526 只用来报告**（`club-backtest` 默认区间）。改了俱乐部模型结构或参数，必须重跑 `club-backtest` 并更新 `clubmodel.json` 的 test 数字。**σ 只在 1314–1617 上调（`season-tune`），测试赛季只用来报告（`season-backtest`）。**
 
-代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行（含 `writeIndex`）· `events/*.json` 赛事配置 · `clubdata.js` 读俱乐部 CSV 与赔率 · `league.js` 双循环赛程、各联赛同分规则排名、赛季蒙特卡洛 · `clubbacktest.js` 俱乐部回测/调参 · `seasonbacktest.js` 赛季级检验（名次区间 Brier）与 σ 调参 · `clubmodel.json` 俱乐部参数与测试集指标 · `leagues/*.json` 联赛配置。
+代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行（含 `writeIndex`、`new-season`、`refresh`）· `season.js` 新赛季推导（id/队数/区间/notes）与刷新判定 · `scripts/refresh.sh` 每日刷新入口 · `events/*.json` 赛事配置 · `clubdata.js` 读俱乐部 CSV 与赔率 · `league.js` 双循环赛程、各联赛同分规则排名、赛季蒙特卡洛 · `clubbacktest.js` 俱乐部回测/调参 · `seasonbacktest.js` 赛季级检验（名次区间 Brier）与 σ 调参 · `clubmodel.json` 俱乐部参数与测试集指标 · `leagues/*.json` 联赛配置。
 
 俱乐部已知局限：同分规则按各联赛公开规则近似（法甲为近似、意甲附加赛按五五开）；队名用 football-data.co.uk 写法；市场概率来自 Pinnacle/Avg 收盘赔率去抽水；次级联赛只用来给升班马定级，不参与报告。
 

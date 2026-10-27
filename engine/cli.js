@@ -12,9 +12,12 @@
 //   node engine/cli.js season-tune                 赛季级调参（σ，只用 1314–1617），写入 clubmodel.json 的 season.train
 //   node engine/cli.js season-backtest [--from 1718 --to 2526] [--sims 5000]  赛季级测试赛季回测，写入 season.test
 //   node engine/cli.js simulate-league <league-id> [--sims 20000] [--as-of YYYY-MM-DD] [--sigma 0.15] [--out <file>]
+//   node engine/cli.js new-season [--season 2728] [--force]  按当季数据生成下赛季联赛配置
+//   node engine/cli.js refresh [--sims 20000]               国家队 + 俱乐部一键刷新（scripts/refresh.sh）
 const fs = require('fs');
 const path = require('path');
 const data = require('./data');
+const seasonLib = require('./season');
 
 const ROOT = path.join(__dirname, '..');
 const EVENTS = path.join(__dirname, 'events');
@@ -143,23 +146,37 @@ function clubBacktestCmd(a) {
   console.log(`已写入 engine/clubmodel.json（tuning.test，含 ${rows.length} 场的实测指标）`);
 }
 
+/** 联赛模拟结果（σ 默认取 clubmodel 的 params.seasonSigma）；不落盘。 */
+function buildLeagueOut(cfg, ms, { sims = 20000, asOf = null, sigma = null } = {}) {
+  const { simulateLeague } = require('./league');
+  const cm = clubModel();
+  const s = sigma != null ? +sigma : (cm.params && cm.params.seasonSigma != null ? +cm.params.seasonSigma : 0);
+  const out = simulateLeague(ms, cfg, { sims, asOf, modelOpts: cm.params || {}, sigma: s });
+  if (cm.tuning && cm.tuning.test) out.validation = { ...cm.tuning.test, ...(cm.season && cm.season.test ? { season: cm.season.test } : {}) };
+  return out;
+}
+
+/** 写页面数据并重建 index.json。 */
+function writePageData(out, file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(out));
+  writeIndex(path.dirname(file));
+}
+
 function simulateLeagueCmd(a) {
   const { loadClubMatches } = require('./clubdata');
-  const { simulateLeague } = require('./league');
   const id = a._[1];
   if (!id) throw new Error(`用法：simulate-league <league-id>（engine/leagues/ 下：${listLeagues().join(', ')}）`);
   const cfg = loadLeague(id);
   const ms = loadClubMatches();
-  const cm = clubModel();
-  const sigma = a.sigma != null ? +a.sigma : (cm.params && cm.params.seasonSigma != null ? +cm.params.seasonSigma : 0);
-  const out = simulateLeague(ms, cfg, { sims: +(a.sims || 20000), asOf: a['as-of'] || null, modelOpts: cm.params || {}, sigma });
-  if (cm.tuning && cm.tuning.test) out.validation = { ...cm.tuning.test, ...(cm.season && cm.season.test ? { season: cm.season.test } : {}) };
+  const out = buildLeagueOut(cfg, ms, { sims: +(a.sims || 20000), asOf: a['as-of'] || null, sigma: a.sigma != null ? +a.sigma : null });
   const file = a.out || path.join(ROOT, 'web', 'data', `${id}.json`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(out));
-  if (!a.out) writeIndex(path.dirname(file));
+  if (a.out) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(out));
+  } else writePageData(out, file);
   const n = t => (cfg.names && cfg.names[t]) || t;
-  console.log(`${cfg.nameZh || cfg.name} ${cfg.season}：${out.sims} 次模拟，σ=${sigma}，模型截至 ${out.asOf}，已赛 ${out.played} 场，剩余 ${out.remaining} 场 → ${path.relative(ROOT, file)}`);
+  console.log(`${cfg.nameZh || cfg.name} ${cfg.season}：${out.sims} 次模拟，σ=${out.sigma}，模型截至 ${out.asOf}，已赛 ${out.played} 场，剩余 ${out.remaining} 场 → ${path.relative(ROOT, file)}`);
   for (const t of out.teams.slice(0, 6)) {
     console.log(`  ${String(t.position).padStart(2)} ${n(t.team).padEnd(8)} 当前 ${String(t.current.pts).padStart(3)} 分 期望 ${t.expectedPts.toFixed(1)}  夺冠 ${(t.zones.title * 100).toFixed(1)}%  欧冠 ${(t.zones.ucl * 100).toFixed(1)}%  降级 ${((t.zones.relegation || 0) * 100).toFixed(1)}%`);
   }
@@ -253,6 +270,101 @@ function seasonBacktestCmd(a) {
   console.log(`\n已写入 engine/clubmodel.json（season.test）`);
 }
 
+/** 新赛季：按数据里已出现的当季球队生成下赛季配置（每个 division 取赛季代码最大的配置当模板）。 */
+function newSeasonCmd(a) {
+  const { loadClubMatches } = require('./clubdata');
+  const templates = new Map();
+  for (const id of listLeagues()) {
+    const c = loadLeague(id);
+    const cur = templates.get(c.division);
+    if (!cur || c.season > cur.season) templates.set(c.division, c);
+  }
+  const latest = [...templates.values()].map(c => c.season).sort().pop();
+  const code = a.season ? String(a.season) : seasonLib.nextSeasonCode(latest);
+  seasonLib.seasonYears(code); // 格式不对直接抛错，不做半成品
+  let ms;
+  try { ms = loadClubMatches(); } catch (e) { throw new Error(`${e.message}（新赛季配置必须基于已下载的比赛数据）`); }
+
+  const failures = [];
+  const wrote = [];
+  for (const tpl of templates.values()) {
+    try {
+      const teams = seasonLib.teamsForSeason(ms, tpl.division, code);
+      const cfg = seasonLib.buildSeasonConfig(tpl, { season: code, teams });
+      const file = seasonLib.writeSeasonConfig(LEAGUES, cfg, { force: !!a.force });
+      const missing = seasonLib.missingNames(teams, tpl.names);
+      console.log(`${path.relative(ROOT, file)}：${cfg.teams} 队，${cfg.zones.map(z => `${z.key} ${z.from}–${z.to}`).join('，')}`);
+      if (missing.length) console.log(`  ⚠ ${cfg.division}：这些队名没有中文名（不阻断，页面回落英文）：${missing.join('、')}`);
+      wrote.push(`${cfg.id}（${cfg.teams} 队）`);
+    } catch (e) {
+      failures.push(`${tpl.division}：${e.message}`);
+    }
+  }
+  if (failures.length) {
+    for (const f of failures) console.error(`✗ ${f}`);
+    console.error(`新赛季 ${code}：写入 ${wrote.length} 份，失败 ${failures.length} 个 division`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`新赛季 ${code}：写入 ${wrote.length} 份配置 —— ${wrote.join('，')}；下一步 node engine/cli.js refresh`);
+}
+
+/**
+ * 一键刷新：国家队赛事数据 → 在赛赛事模拟；俱乐部数据 → 在赛联赛模拟。
+ * 「今天」用上海日期；单个赛事/联赛失败只记录，最后非零退出。scripts/refresh.sh 只调这一条。
+ */
+async function refreshCmd(a) {
+  const sims = +(a.sims || 20000);
+  const today = seasonLib.shanghaiToday();
+  const failures = [];
+  const tours = [], leagues = [];
+
+  try { await fetchData(); } catch (e) { failures.push(`国家队数据：${e.message}`); }
+  let matches = [];
+  try { matches = data.loadMatches(); } catch (e) { failures.push(`国家队数据：${e.message}`); }
+  const nationalThrough = matches.length ? matches[matches.length - 1].date : null;
+
+  const { simulate } = require('./simulate');
+  for (const id of listEvents()) {
+    const ev = loadEvent(id);
+    if (!seasonLib.isEventActive(ev, today)) { console.log(`跳过 ${id}：赛事 ${ev.end} 已结束`); continue; }
+    try {
+      const out = simulate(matches, ev, { sims, asOf: null, modelOpts: MODEL.params });
+      out.validation = MODEL.tuning.test;
+      writePageData(out, path.join(ROOT, 'web', 'data', `${id}.json`));
+      tours.push(`${ev.nameZh || ev.name} 已赛 ${out.playedMatches} 场`);
+    } catch (e) { failures.push(`${id}：${e.message}`); }
+  }
+
+  try { await fetchClubsCmd(); } catch (e) { failures.push(`俱乐部数据：${e.message}`); }
+  let clubMs = [];
+  try {
+    const { loadClubMatches } = require('./clubdata');
+    clubMs = loadClubMatches();
+  } catch (e) { failures.push(`俱乐部数据：${e.message}`); }
+  const clubThrough = clubMs.length ? clubMs[clubMs.length - 1].date : null;
+
+  for (const id of listLeagues()) {
+    const cfg = loadLeague(id);
+    const st = seasonLib.leagueSeasonState(cfg, clubMs, today);
+    if (!st.hasMatches) { console.log(`跳过 ${id}：数据里还没有 ${cfg.season} 的比赛`); continue; }
+    if (st.ended) { console.log(`跳过 ${id}：赛季已于 ${st.end} 结束`); continue; }
+    try {
+      const out = buildLeagueOut(cfg, clubMs, { sims });
+      writePageData(out, path.join(ROOT, 'web', 'data', `${id}.json`));
+      leagues.push(`${cfg.nameZh || cfg.name} 已赛 ${out.played} 场`);
+    } catch (e) { failures.push(`${id}：${e.message}`); }
+  }
+
+  if (failures.length) {
+    for (const f of failures) console.error(`✗ ${f}`);
+    console.error(`刷新失败 ${failures.length} 项（已完成的部分已写入），今天=${today}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`刷新完成（${today}）：国家队赛事 ${tours.length} 个、联赛 ${leagues.length} 个 —— ${[...tours, ...leagues].join('；')}；数据截至 国家队 ${nationalThrough} / 俱乐部 ${clubThrough}`);
+}
+
 async function main() {
   const a = args(process.argv.slice(2));
   const cmd = a._[0];
@@ -263,6 +375,8 @@ async function main() {
   if (cmd === 'season-tune') return seasonTuneCmd(a);
   if (cmd === 'season-backtest') return seasonBacktestCmd(a);
   if (cmd === 'simulate-league') return simulateLeagueCmd(a);
+  if (cmd === 'new-season') return newSeasonCmd(a);
+  if (cmd === 'refresh') return refreshCmd(a);
   if (cmd === 'events') return listEvents().forEach(id => { const e = loadEvent(id); console.log(`${id}\t${e.nameZh || e.name}\t${e.start} ~ ${e.end}`); });
 
   const matches = data.loadMatches();
@@ -302,7 +416,7 @@ async function main() {
     for (const t of out.teams.slice(0, 10)) console.log(`  ${n(t.team).padEnd(8)} 夺冠 ${(t.champion * 100).toFixed(1)}%  决赛 ${(t.reach.F * 100).toFixed(1)}%  出线 ${(t.advance * 100).toFixed(1)}%`);
     return;
   }
-  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(2, 12).join('\n'));
+  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(2, 16).join('\n'));
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });

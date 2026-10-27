@@ -58,15 +58,18 @@ Every event JSON carries `asOf`, `dataThrough`, `sims`, `seed`, `model` and `val
 
 **新的联赛赛季 / a new league season**
 
-1. 在 `engine/leagues/*.json` 里加赛季配置（id、赛季代码、分区、起止日期、区间规则）。
-2. `npm run engine:fetch-clubs`（下载 CSV 与未来赛程）。
-3. `npm run engine:simulate-league -- <联赛 id>` → `web/data/<id>.json` + `index.json`。
-4. 页面自动列出；赛季结束后自动进归档。
+1. `scripts/refresh.sh`（或直接 `node engine/cli.js refresh`）先拉到当季数据；新赛季踢过一轮后跑 `node engine/cli.js new-season --season 2728`：按数据里已出现的球队自动生成五份 `engine/leagues/*.json`（id、赛季、队数、区间都重算；已有同名文件不覆盖，确认要重写加 `--force`）。
+2. 再跑一次 `node engine/cli.js refresh`：国家队赛事 + 在赛联赛一起刷新，重建 `web/data/*.json` 与 `index.json`。
+3. 页面自动列出；赛季结束后（5 月 31 日）自动跳过并进归档；缺中文名的球队会在输出里列出来，补进配置的 `names` 即可（不阻断）。
 
-1. Add the season to `engine/leagues/*.json` (id, season code, division, dates, zones).
-2. `npm run engine:fetch-clubs`.
-3. `npm run engine:simulate-league -- <league id>` → `web/data/<id>.json` + `index.json`.
-4. The page lists it automatically; when the season ends it moves to the archive automatically.
+1. `scripts/refresh.sh` (or `node engine/cli.js refresh`) pulls the current season data; once the new season has played a round, run `node engine/cli.js new-season --season 2728` to derive all five `engine/leagues/*.json` from the teams that actually appear (id, season, team count and zones are recomputed; existing files are not overwritten without `--force`).
+2. Run `node engine/cli.js refresh` again: tournaments and active leagues are refreshed together, rebuilding `web/data/*.json` and `index.json`.
+3. The page picks them up automatically; after 31 May the season is skipped and archived. Teams missing a Chinese name are listed in the output (not blocking) — add them to `names`.
+
+**每日刷新 / daily refresh**
+
+`scripts/refresh.sh` 是 cron 06:30 跑的那一条：国家队 `fetch` → 在赛赛事 `simulate`；俱乐部 `fetch-clubs`（含 `fixtures.csv`）→ 在赛联赛 `simulate-league`。「今天」按 `Asia/Shanghai` 算；单个赛事/联赛失败会打印错误并继续，最后以非零码退出。
+`scripts/refresh.sh` is the cron 06:30 entry point: national-team `fetch` → `simulate` for live events; club `fetch-clubs` (incl. `fixtures.csv`) → `simulate-league` for live leagues. "Today" is the `Asia/Shanghai` date; a failing event/league is reported and skipped, and the run exits non-zero.
 
 ## 命令 / Commands
 
@@ -86,6 +89,8 @@ Every event JSON carries `asOf`, `dataThrough`, `sims`, `seed`, `model` and `val
 | `node engine/cli.js season-tune` | 只在 1314–1617 上选 σ / tune σ |
 | `node engine/cli.js season-backtest --from 1718 --to 2526 --sims 5000` | 赛季级回测 / season-level backtest |
 | `npm run engine:simulate-league -- <id>` | 生成联赛 JSON 并更新 index / simulate a league |
+| `node engine/cli.js new-season --season 2728` | 生成下赛季联赛配置（已存在不覆盖，`--force` 才重写）/ derive next-season league configs |
+| `node engine/cli.js refresh --sims 20000`（= `scripts/refresh.sh`） | 国家队 + 俱乐部一键刷新，写 `web/data/` / refresh tournaments + leagues |
 
 ## 测试 / Tests
 
@@ -93,7 +98,7 @@ Every event JSON carries `asOf`, `dataThrough`, `sims`, `seed`, `model` and `val
 npm test                     # server.py 与 JS 语法
 npm run test:engine          # 引擎契约（合成数据、不联网）
 npm run test:ui              # index.html 里的 UI-CORE 纯函数
-node --test tests/engine.test.js tests/club.test.js tests/season.test.js tests/ui.test.js
+node --test tests/engine.test.js tests/club.test.js tests/season.test.js tests/refresh.test.js tests/ui.test.js
 ```
 
 `tests/ui.test.js` 用 `// ==UI-CORE-BEGIN==` / `// ==UI-CORE-END==` 抽出 `index.html` 里那段不碰 DOM 的纯函数（状态判定、UTC 日期、百分比、分歧、概率带分段、名次区间、热力等级、赛程窗口兜底），用 `new Function` 求值后测，附带一条「核心段不许出现 `document` / `window` / `localStorage`」的守卫。
