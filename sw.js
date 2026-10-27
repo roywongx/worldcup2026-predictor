@@ -1,38 +1,18 @@
-// Service Worker — offline cache for World Cup 2026 Predictor
-const CACHE = 'wc26-v6';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/data/teams.js',
-  '/data/matches.js'
-];
+// Service Worker — 注销开关 / unregister switch.
+//
+// 2026 世界杯页面曾用这个 SW 做离线缓存；现在它什么都不缓存：
+// install 时直接 skipWaiting，activate 时删掉本域全部 cache 并注销自己，
+// 让浏览器退回普通网络请求（/clear.html 是一键清缓存页）。
+// The World Cup 2026 page used to cache assets here. Nothing is cached any
+// more: install skips waiting, activate deletes every cache for this origin and
+// unregisters the worker, so browsers fall back to plain network requests.
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
-});
+self.addEventListener('install', () => self.skipWaiting());
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  // Never cache index.html, sw.js, model code, API calls, or external requests — always fetch fresh
-  if (url.pathname.startsWith('/api/') || url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname === '/sw.js' || url.pathname.startsWith('/model/') || url.pathname.startsWith('/web/data/') || url.pathname.endsWith('/tournaments.html') || url.hostname.includes('polymarket') || url.hostname.includes('football-data')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-  } else {
-    e.respondWith(
-      caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return resp;
-      }))
-    );
-  }
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(key => caches.delete(key)));
+    await self.registration.unregister();
+  })());
 });
