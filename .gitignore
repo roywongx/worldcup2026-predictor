@@ -1,15 +1,9 @@
 __pycache__/
 data/api-keys.json
-
-# 运行产物
-__pycache__/
 *.log
-
-# 引擎历史数据（node engine/cli.js fetch 下载，CC0，约 4MB）
-data/history/
-# 俱乐部联赛 CSV（node engine/cli.js fetch-clubs 下载，约 220 个文件 + fixtures.csv）
-data/clubs/
 # 引擎历史数据（node engine/cli.js fetch 下载）
 data/history/
-# 欧战原始响应（node engine/cli.js fetch-euro 下载：football-data.org v4，6 小时缓存）
+# 俱乐部联赛 CSV（node engine/cli.js fetch-clubs 下载）
+data/clubs/
+# 欧战原始响应（node engine/cli.js fetch-euro 下载）
 data/uefa/
