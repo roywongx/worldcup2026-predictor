@@ -1,0 +1,65 @@
+{
+  "id": "la-liga-2026-27",
+  "division": "SP1",
+  "season": "2627",
+  "name": "La Liga",
+  "nameZh": "西班牙足球甲级联赛",
+  "teams": 20,
+  "tiebreak": [
+    "pts",
+    "h2h_pts",
+    "h2h_gd",
+    "gd",
+    "gf"
+  ],
+  "zones": [
+    {
+      "key": "title",
+      "from": 1,
+      "to": 1,
+      "label": "冠军",
+      "labelEn": "Title"
+    },
+    {
+      "key": "ucl",
+      "from": 1,
+      "to": 4,
+      "label": "欧冠",
+      "labelEn": "Champions League"
+    },
+    {
+      "key": "relegation",
+      "from": 18,
+      "to": 20,
+      "label": "降级",
+      "labelEn": "Relegation"
+    }
+  ],
+  "names": {
+    "Alaves": "阿拉维斯",
+    "Ath Bilbao": "毕尔巴鄂竞技",
+    "Ath Madrid": "马德里竞技",
+    "Barcelona": "巴塞罗那",
+    "Betis": "皇家贝蒂斯",
+    "Celta": "塞尔塔",
+    "Elche": "埃尔切",
+    "Espanol": "西班牙人",
+    "Getafe": "赫塔费",
+    "La Coruna": "拉科鲁尼亚",
+    "Levante": "莱万特",
+    "Malaga": "马拉加",
+    "Osasuna": "奥萨苏纳",
+    "Real Madrid": "皇家马德里",
+    "Santander": "桑坦德竞技",
+    "Sevilla": "塞维利亚",
+    "Sociedad": "皇家社会",
+    "Valencia": "瓦伦西亚",
+    "Vallecano": "巴列卡诺",
+    "Villarreal": "比利亚雷亚尔"
+  },
+  "sources": [
+    "https://www.laliga.com/laliga-easports/clasificacion （同分规则：相互战绩优先于总净胜球）",
+    "https://www.football-data.co.uk/spainm.php （比分与 Pinnacle/Avg 赔率）"
+  ],
+  "notes": "西甲同分先比相互战绩（这几队之间的积分、净胜球），再比总净胜球、总进球，最后随机；与英超相反。"
+}

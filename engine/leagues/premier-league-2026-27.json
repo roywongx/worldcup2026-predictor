@@ -1,0 +1,65 @@
+{
+  "id": "premier-league-2026-27",
+  "division": "E0",
+  "season": "2627",
+  "name": "Premier League",
+  "nameZh": "英格兰足球超级联赛",
+  "teams": 20,
+  "tiebreak": [
+    "pts",
+    "gd",
+    "gf",
+    "h2h_pts",
+    "h2h_away_gf"
+  ],
+  "zones": [
+    {
+      "key": "title",
+      "from": 1,
+      "to": 1,
+      "label": "冠军",
+      "labelEn": "Title"
+    },
+    {
+      "key": "ucl",
+      "from": 1,
+      "to": 4,
+      "label": "欧冠",
+      "labelEn": "Champions League"
+    },
+    {
+      "key": "relegation",
+      "from": 18,
+      "to": 20,
+      "label": "降级",
+      "labelEn": "Relegation"
+    }
+  ],
+  "names": {
+    "Arsenal": "阿森纳",
+    "Aston Villa": "阿斯顿维拉",
+    "Bournemouth": "伯恩茅斯",
+    "Brentford": "布伦特福德",
+    "Brighton": "布莱顿",
+    "Chelsea": "切尔西",
+    "Coventry": "考文垂",
+    "Crystal Palace": "水晶宫",
+    "Everton": "埃弗顿",
+    "Fulham": "富勒姆",
+    "Hull": "赫尔城",
+    "Ipswich": "伊普斯维奇",
+    "Leeds": "利兹联",
+    "Liverpool": "利物浦",
+    "Man City": "曼城",
+    "Man United": "曼联",
+    "Newcastle": "纽卡斯尔联",
+    "Nott'm Forest": "诺丁汉森林",
+    "Sunderland": "桑德兰",
+    "Tottenham": "托特纳姆热刺"
+  },
+  "sources": [
+    "https://www.premierleague.com/tables （积分榜与同分规则：积分 → 净胜球 → 进球数 → 相互战绩客场进球）",
+    "https://www.football-data.co.uk/englandm.php （比分与 Pinnacle/Avg 赔率）"
+  ],
+  "notes": "同分规则按英超官方顺序（积分、净胜球、进球数、相互战绩、相互战绩客场进球），最后随机。欧冠名额：前 4 名直接进联赛阶段；若有英格兰球队靠欧战表现拿到额外名额，第 5 名也可能进欧冠（模型中未单独建模，故 ucl 区间只到第 4）。"
+}
