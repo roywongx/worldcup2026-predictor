@@ -105,6 +105,7 @@ table.t tr.flag td.rank{padding-left:0}
 .group-table th:first-child,.group-table td:first-child{text-align:left}
 .group-table thead th{font-size:12px;color:var(--muted);font-weight:600}
 .group-table tbody th{font-weight:400}
+.group-table tr.in th,.group-table tr.in td{box-shadow:inset 2px 0 0 var(--ucl)}
 .match{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}
 .match .mt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .match .mt.r{text-align:right}
@@ -182,8 +183,17 @@ const T = {
     wc2026: '2026 世界杯（归档页面）',
     wc2026Note: '2026 年 6–7 月世界杯的完整页面，保留原样作为历史快照；数据、赔率、模拟都不再更新。',
     back: '返回赛事总览',
-    tabs: { table: '积分榜', heat: '名次概率', fixtures: '赛程', reliability: '可信度', odds: '夺冠与晋级', groups: '小组', knockout: '淘汰赛' },
+    tabs: { table: '积分榜', heat: '名次概率', fixtures: '赛程', reliability: '可信度', odds: '夺冠与晋级', groups: '小组', knockout: '淘汰赛', swissStage: '联赛阶段', groupStage: '小组赛' },
     position: '名次', team: '球队', pld: '赛', pts: '积分', gd: '净胜', xp: '期望积分', elo: 'Elo',
+    swissTableNote: '36 队一张表，每队 8 场。1–8 名直接进 16 强，9–24 名打附加赛，25–36 名出局。期望积分与三条区间概率都来自模拟（已赛的比赛用真实比分）。',
+    swissKoNote: '「进 16 强」= 踢到 16 强（直接晋级或附加赛过关）；8 强、4 强、决赛、夺冠都是模拟频率。当前签位按现在的名次算。',
+    koRounds: { r16: '进 16 强', qf: '进 8 强', sf: '进 4 强', final: '进决赛', title: '夺冠' },
+    currentSlot: '当前签位',
+    groupStageNote: '8 组 × 4 队双循环，每组前 2 进 16 强（表里标了出线区）。之后两回合淘汰赛，决赛单场中立场。',
+    advanceZone: '出线区',
+    noEuroMarket: '该赛事没有免费赔率源（football-data.org 免费档只有比分），市场列一律显示「—」。',
+    stageNames: { LEAGUE_STAGE: '联赛阶段', GROUP_STAGE: '小组赛', PLAY_OFFS: '16 强', QUARTER_FINALS: '8 强', SEMI_FINALS: '4 强', FINAL: '决赛' },
+    matchday: n => `第 ${n} 轮`,
     standingsNote: zones => `区间概率来自模拟：${zones}。同一支球队可以同时出现在多个区间里（冠军也在前四）。`,
     heatNote: '每支球队最终落在第几名的概率（%）；低于 0.5% 留空，悬停可看具体数值。',
     next14: '未来 14 天：模型 vs 市场',
@@ -258,8 +268,17 @@ const T = {
     wc2026: 'World Cup 2026 (archived page)',
     wc2026Note: 'The full page for the June–July 2026 World Cup, kept as a historical snapshot; data, odds and simulations are frozen.',
     back: 'Back to events',
-    tabs: { table: 'Table', heat: 'Position odds', fixtures: 'Fixtures', reliability: 'Reliability', odds: 'Title & progression', groups: 'Groups', knockout: 'Knockout' },
+    tabs: { table: 'Table', heat: 'Position odds', fixtures: 'Fixtures', reliability: 'Reliability', odds: 'Title & progression', groups: 'Groups', knockout: 'Knockout', swissStage: 'League phase', groupStage: 'Group stage' },
     position: 'Pos', team: 'Team', pld: 'Pld', pts: 'Pts', gd: 'GD', xp: 'xPts', elo: 'Elo',
+    swissTableNote: 'One table of 36 teams, eight matches each. 1st–8th go straight to the round of 16, 9th–24th into the play-offs, 25th–36th are out. Expected points and the three zone odds come from the simulation (played matches keep their real score).',
+    swissKoNote: '"Round of 16" means reaching the last 16 (by bye or through the play-offs); quarter-final, semi-final, final and title odds are simulation frequencies. The current slot follows the present league position.',
+    koRounds: { r16: 'Round of 16', qf: 'Quarter-final', sf: 'Semi-final', final: 'Final', title: 'Champion' },
+    currentSlot: 'Current slot',
+    groupStageNote: 'Eight groups of four, double round robin; the top two of each group reach the round of 16 (marked in the tables). From there it is two-legged knockout, with a single-match final at a neutral venue.',
+    advanceZone: 'Advance',
+    noEuroMarket: 'No free odds source for this competition (the football-data.org free tier carries scores only), so the market column always shows "—".',
+    stageNames: { LEAGUE_STAGE: 'League phase', GROUP_STAGE: 'Group stage', PLAY_OFFS: 'Round of 16', QUARTER_FINALS: 'Quarter-finals', SEMI_FINALS: 'Semi-finals', FINAL: 'Final' },
+    matchday: n => `MD ${n}`,
     standingsNote: zones => `Zone odds come from the simulation: ${zones}. A team can sit in more than one zone at once (the champion is also top four).`,
     heatNote: 'Probability (%) of finishing in each position; below 0.5% is blank, hover for the exact number.',
     next14: 'Next 14 days: model vs market',
@@ -384,6 +403,15 @@ const UI_CORE = {
     return hit;
   },
 
+  // 欧战联赛阶段：名次落在哪一段（1–8 直接进 16 强 / 9–24 附加赛 / 25–36 出局）
+  currentBand(bands, pos) {
+    if (!Array.isArray(bands)) return null;
+    const p = Number(pos);
+    if (!isFinite(p)) return null;
+    for (const b of bands) if (p >= b.from && p <= b.to) return b;
+    return null;
+  },
+
   // 夺冠概率带：按概率降序切段，pct 合计恰好 100
   bandSegments(rows) {
     const list = (Array.isArray(rows) ? rows : [])
@@ -506,15 +534,24 @@ function zoneLabel(z) { return state.lang === 'zh' ? (z.label || z.labelEn || z.
 function zoneCls(key) { return ZONE_COLOR[key] || 'z-muted'; }
 function seasonOf(d) {
   if (!d) return '';
-  if (d.kind === 'league' && d.league && d.league.season) return C.seasonLabel(d.league.season);
+  if ((d.kind === 'league' || d.kind === 'swiss') && d.league && d.league.season) return C.seasonLabel(d.league.season);
   return '';
 }
-// 国家队赛事的 JSON 没有 kind 字段，一律按「不是联赛就是国家队赛事」判断
-function kindOf(d) { return d && d.kind === 'league' ? 'league' : 'tournament'; }
+// 国家队赛事的 JSON 没有 kind 字段，一律按「不是联赛/欧战就是国家队赛事」判断
+function kindOf(d) {
+  const k = d && d.kind;
+  return k === 'league' || k === 'swiss' || k === 'groups2leg' ? k : 'tournament';
+}
 
 function champRows(d) {
   if (!d || !Array.isArray(d.teams)) return [];
-  return d.teams.map(t => ({ team: t.team, p: kindOf(d) === 'league' ? ((t.zones && t.zones.title) || 0) : (t.champion || 0) }));
+  const k = kindOf(d);
+  return d.teams.map(t => ({
+    team: t.team,
+    p: k === 'league' ? ((t.zones && t.zones.title) || 0)
+      : k === 'swiss' ? ((t.knockout && t.knockout.title) || 0)
+        : (t.champion || 0),
+  }));
 }
 function eventDates(meta, d) {
   const s = (meta && meta.start) || (d && ((d.league && d.league.start) || (d.event && d.event.start)));
@@ -547,10 +584,11 @@ function wdlCell(p) {
   return `${C.fmtPct(p[0])} · ${C.fmtPct(p[1])} · ${C.fmtPct(p[2])}`;
 }
 
-function weekTable(rows, note) {
+function weekTable(rows, note, marketLabel) {
   const t = L();
   if (!rows.length) return `<p class="muted">${esc(t.noFixtures)}</p>`;
   const cap = note === undefined ? t.weekNote : note;
+  const mkLabel = marketLabel || t.noMarket;
   let h = `<div class="scroll"><table class="t">${cap ? `<caption class="small muted" style="text-align:left;padding:0 0 8px">${esc(cap)}</caption>` : ''}`
     + `<thead><tr><th scope="col" class="l">${esc(t.date)}</th><th scope="col" class="l">${esc(t.league)}</th><th scope="col" class="l">${esc(t.fixture)}</th>`
     + `<th scope="col">${esc(t.modelWDL)}</th><th scope="col">${esc(t.marketWDL)}</th><th scope="col">${esc(t.gap)}</th></tr></thead><tbody>`;
@@ -559,7 +597,7 @@ function weekTable(rows, note) {
     const flag = gap != null && gap >= 8;
     h += `<tr${flag ? ' class="flag"' : ''}><td class="l">${esc(fmtDate(r.date))}</td><td class="l">${esc(r.leagueName)}</td>`
       + `<td class="l">${esc(teamName(r.data, r.home))} – ${esc(teamName(r.data, r.away))}</td>`
-      + `<td>${wdlCell(r.model)}</td><td>${r.market ? wdlCell(r.market) : `<span class="muted">${esc(t.noMarket)}</span>`}</td>`
+      + `<td>${wdlCell(r.model)}</td><td>${r.market ? wdlCell(r.market) : `<span class="muted">${esc(mkLabel)}</span>`}</td>`
       + `<td>${gap == null ? '—' : esc(C.fmtPp(gap))}</td></tr>`;
   }
   return h + '</tbody></table></div>';
@@ -607,6 +645,9 @@ function eventRow(meta, d, today) {
     const total = (d.played || 0) + (d.remaining || 0);
     const ratio = C.progressRatio(d.played, d.remaining);
     progress = `${t.played} ${num(d.played || 0)} / ${num(total)} · ${C.fmtPct(ratio, 0)}`;
+  } else if (kindOf(d) !== 'tournament' && d.played != null) {
+    const total = (d.played || 0) + (d.remaining || 0);
+    progress = `${t.played} ${num(d.played || 0)} / ${num(total)} · ${C.fmtPct(C.progressRatio(d.played, d.remaining), 0)}`;
   } else {
     progress = `${t.played} ${num(d.playedMatches || 0)} ${t.matches}`;
   }
@@ -649,6 +690,8 @@ function overviewPage() {
 // ── 赛事页 / event ────────────────────────────────────────────────────────
 function leagueTabs() { return ['table', 'heat', 'fixtures', 'reliability']; }
 function tournamentTabs() { return ['odds', 'groups', 'knockout', 'fixtures', 'reliability']; }
+function swissTabs() { return ['swissStage', 'knockout', 'fixtures', 'reliability']; }
+function groups2legTabs() { return ['groupStage', 'knockout', 'fixtures', 'reliability']; }
 
 function tabsHtml(keys) {
   const t = L();
@@ -869,13 +912,100 @@ function groupFixturesPanel(d) {
   return h + '</tbody></table></div>';
 }
 
+/** 阶段名：联赛阶段带轮次（第 N 轮 / MD N），淘汰赛用阶段名。 */
+function stageLabel(stage, matchday) {
+  const t = L();
+  const base = (t.stageNames && t.stageNames[stage]) || stage || '';
+  return matchday ? `${base} · ${t.matchday(matchday)}` : base;
+}
+
+const BAND_CLS = { r16: 'z-title', playoff: 'z-ucl', out: 'z-brick' };
+
+/** 欧冠联赛阶段 36 队表：当前名次 / 期望积分 / 三条区间概率 / 夺冠。 */
+function swissTablePanel(d) {
+  const t = L(), bands = d.bandsDef || [];
+  let h = `<div class="scroll"><table class="t"><thead><tr>`
+    + `<th scope="col" class="l rank stick">${esc(t.position)}</th><th scope="col" class="l stick2">${esc(t.team)}</th>`
+    + `<th scope="col">${esc(t.pld)}</th><th scope="col">${esc(t.pts)}</th><th scope="col">${esc(t.gd)}</th><th scope="col">${esc(t.xp)}</th>`;
+  for (const b of bands) h += `<th scope="col" class="zone-head">${esc(zoneLabel(b))} <span class="zone-range">${b.from === b.to ? b.from : b.from + '–' + b.to}</span></th>`;
+  h += `<th scope="col">${esc(t.champion)}</th></tr></thead><tbody>`;
+  for (const team of d.teams) {
+    const c = team.current || {};
+    const gd = Number(c.gd) || 0;
+    h += `<tr><td class="l rank stick">${team.position}</td><th scope="row" class="l stick2">${esc(teamName(d, team.team))}</th>`
+      + `<td>${num(c.p || 0)}</td><td>${num(c.pts || 0)}</td><td>${gd > 0 ? '+' + gd : gd}</td><td>${Number(team.expectedPts || 0).toFixed(1)}</td>`;
+    for (const b of bands) {
+      const p = (team.bands && team.bands[b.key]) || 0;
+      h += `<td>${miniBar(p, BAND_CLS[b.key] || 'z-muted')}${C.fmtPct(p)}</td>`;
+    }
+    const title = (team.knockout && team.knockout.title) || 0;
+    h += `<td>${miniBar(title, 'z-ucl')}${C.fmtPct(title)}</td></tr>`;
+  }
+  return h + `</tbody></table></div><p class="muted small">${esc(t.swissTableNote)}</p>`;
+}
+
+/** 欧冠淘汰赛：每队一行，进 16 强 / 8 强 / 4 强 / 决赛 / 夺冠 + 当前签位。 */
+function swissKnockoutPanel(d) {
+  const t = L(), rounds = t.koRounds;
+  const rows = d.teams.slice().sort((a, b) => (b.knockout.title - a.knockout.title) || (b.knockout.final - a.knockout.final) || (a.position - b.position));
+  let h = `<p class="lead">${esc(t.swissKoNote)}</p><div class="scroll"><table class="t"><thead><tr><th scope="col" class="l stick">${esc(t.team)}</th>`
+    + `<th scope="col">${esc(t.elo)}</th><th scope="col" class="l">${esc(t.currentSlot)}</th>`;
+  for (const k of ['r16', 'qf', 'sf', 'final', 'title']) h += `<th scope="col">${esc(rounds[k])}</th>`;
+  h += '</tr></thead><tbody>';
+  for (const team of rows) {
+    const ko = team.knockout || {};
+    const band = C.currentBand(d.bandsDef, team.position);
+    h += `<tr><th scope="row" class="l stick">${esc(teamName(d, team.team))}</th><td>${num(team.elo || 0)}</td>`
+      + `<td class="l"><span class="badge">${esc(band ? zoneLabel(band) : '—')}</span></td>`;
+    for (const k of ['r16', 'qf', 'sf', 'final', 'title']) h += `<td>${miniBar(ko[k] || 0, k === 'title' ? 'z-ucl' : 'z-title')}${C.fmtPct(ko[k] || 0)}</td>`;
+    h += '</tr>';
+  }
+  return h + '</tbody></table></div>';
+}
+
+/** 解放者杯小组赛：8 张小组表，前 2 标出线区。 */
+function groupStagePanel(d) {
+  const t = L(), groups = Object.keys(d.groups || {}).sort();
+  let h = `<p class="lead">${esc(t.groupStageNote)}</p><div class="groups">`;
+  for (const g of groups) {
+    const rows = d.teams.filter(x => x.group === g).sort((a, b) => a.position - b.position);
+    h += `<div><h3>${esc(g)} ${esc(state.lang === 'zh' ? '组' : 'group')}</h3><table class="group-table"><thead><tr>`
+      + `<th scope="col">${esc(t.team)}</th><th scope="col">${esc(t.pld)}</th><th scope="col">${esc(t.pts)}</th>`
+      + `<th scope="col">${esc(t.gd)}</th><th scope="col">${esc(t.xp)}</th><th scope="col">${esc(t.advance)}</th></tr></thead><tbody>`;
+    for (const team of rows) {
+      const c = team.current || {}, gd = Number(c.gd) || 0;
+      h += `<tr${team.position <= 2 ? ' class="in"' : ''}><th scope="row">${esc(teamName(d, team.team))}</th>`
+        + `<td>${num(c.p || 0)}</td><td>${num(c.pts || 0)}</td><td>${gd > 0 ? '+' + gd : gd}</td>`
+        + `<td>${Number(team.expectedPts || 0).toFixed(1)}</td><td>${C.fmtPct(team.advance || 0, 0)}</td></tr>`;
+    }
+    h += '</tbody></table></div>';
+  }
+  return h + `</div><p class="muted small">${esc(t.advanceZone)} = ${esc(state.lang === 'zh' ? '每组前 2 名' : 'top two of each group')}</p>`;
+}
+
+/** 欧战赛程：未来 14 天（窗口为空则列出全部已排赛程），市场一列固定「—」。 */
+function euroFixturesPanel(d) {
+  const t = L(), today = C.todayISO(Date.now());
+  const rows = (Array.isArray(d.upcoming) ? d.upcoming : []).map(m => ({
+    date: m.date, league: (d.league && d.league.id) || '', leagueName: stageLabel(m.stage, m.matchday),
+    home: m.home, away: m.away, model: [m.pH, m.pD, m.pA], market: null, data: d,
+  }));
+  let h = `<h2>${esc(t.next14)}</h2>`;
+  if (d.marketAvailable === false) h += `<p class="muted small">${esc(t.noEuroMarket)}</p>`;
+  if (!rows.length) return h + `<p class="muted">${esc(t.noFixtures)}</p>`;
+  const win = rows.filter(r => C.inWindow(r.date, today, 14));
+  if (!win.length) h += `<p class="muted small">${esc(t.outsideWindow)}</p>`;
+  return h + weekTable(win.length ? win : rows, '', '—');
+}
+
 function eventPage(id) {
   const t = L();
   const meta = evMeta(id), d = state.events.get(id);
   if (!meta) return `<h1>${esc(t.notFound)}</h1><p><a class="link" href="#/">${esc(t.back)}</a></p>`;
   if (!d) return `<h1>${esc(evName(meta))}</h1><p class="muted">${esc(t.loading)}</p>`;
   if (state.tabFor !== id) { state.tabFor = id; state.tab = null; }
-  const keys = kindOf(d) === 'league' ? leagueTabs() : tournamentTabs();
+  const kind = kindOf(d);
+  const keys = kind === 'league' ? leagueTabs() : kind === 'swiss' ? swissTabs() : kind === 'groups2leg' ? groups2legTabs() : tournamentTabs();
   if (!keys.includes(state.tab)) state.tab = keys[0];
   const dates = eventDates(meta, d);
   const segs = C.bandSegments(champRows(d));
@@ -886,6 +1016,7 @@ function eventPage(id) {
   h += `<span>${esc(t.modelAsOf)} ${esc(fmtDate(d.asOf, true))}</span><span>${esc(t.dataThrough)} ${esc(fmtDate(d.dataThrough, true))}</span>`
     + `<span>${num(d.sims || 0)} ${esc(t.sims)}</span>`;
   if (kindOf(d) === 'league') h += `<span>${esc(t.played)} ${num(d.played || 0)} / ${num((d.played || 0) + (d.remaining || 0))}</span>`;
+  else if (kindOf(d) !== 'tournament' && d.played != null) h += `<span>${esc(t.played)} ${num(d.played || 0)} / ${num((d.played || 0) + (d.remaining || 0))}</span>`;
   else h += `<span>${esc(t.played)} ${num(d.playedMatches || 0)} ${esc(t.matches)}</span>`;
   h += '</div>';
   h += `<div style="margin-top:20px">${bandHtml(d, segs)}${hotRow(d, segs)}</div>`;
@@ -893,10 +1024,20 @@ function eventPage(id) {
   h += tabsHtml(keys);
 
   let panel = '';
-  if (kindOf(d) === 'league') {
+  if (kind === 'league') {
     if (state.tab === 'table') panel = standingsPanel(d);
     else if (state.tab === 'heat') panel = heatPanel(d);
     else if (state.tab === 'fixtures') panel = leagueFixturesPanel(d);
+    else panel = reliabilityPanel(d);
+  } else if (kind === 'swiss') {
+    if (state.tab === 'swissStage') panel = swissTablePanel(d);
+    else if (state.tab === 'knockout') panel = swissKnockoutPanel(d);
+    else if (state.tab === 'fixtures') panel = euroFixturesPanel(d);
+    else panel = reliabilityPanel(d);
+  } else if (kind === 'groups2leg') {
+    if (state.tab === 'groupStage') panel = groupStagePanel(d);
+    else if (state.tab === 'knockout') panel = knockoutPanel(d);
+    else if (state.tab === 'fixtures') panel = euroFixturesPanel(d);
     else panel = reliabilityPanel(d);
   } else {
     if (state.tab === 'odds') panel = oddsPanel(d);
@@ -934,8 +1075,8 @@ function methodPage() {
 
   h += `<section><h2>${esc(t.methodSections.data)}</h2><div class="prose">`;
   h += zh
-    ? `<p>俱乐部比赛来自 football-data.co.uk 的各赛季 CSV（含次级联赛，只用来给升班马定级，不参与报告）；国家队比赛来自公开的国际比赛记录；市场概率来自 Pinnacle / 平均收盘赔率去抽水后的隐含概率。每个赛事 JSON 里的 <code>dataThrough</code> 是数据截止日，<code>asOf</code> 是模型生成日。</p>`
-    : `<p>Club matches come from the football-data.co.uk season CSVs (second tiers included, used only to rate promoted teams and not reported); internationals come from public match records; market probabilities are implied from Pinnacle / average closing odds with the margin removed. In each event JSON, <code>dataThrough</code> is the data cutoff and <code>asOf</code> is the day the model was generated.</p>`;
+    ? `<p>俱乐部比赛来自 football-data.co.uk 的各赛季 CSV（英西德意法五个联赛 + 葡超、荷甲、比甲、苏超两级、土超、希超；次级联赛只用来给升班马定级，不参与报告）；国家队比赛来自公开的国际比赛记录；欧战（欧冠联赛阶段、解放者杯）的比赛与比分来自 football-data.org 免费档，这个档位没有赔率，所以这两项赛事的市场对照一律显示「—」。市场概率来自 Pinnacle / 平均收盘赔率去抽水后的隐含概率。每个赛事 JSON 里的 <code>dataThrough</code> 是数据截止日，<code>asOf</code> 是模型生成日。</p>`
+    : `<p>Club matches come from the football-data.co.uk season CSVs (the big five plus Primeira Liga, Eredivisie, Belgian Pro League, both Scottish tiers, Süper Lig and Super League Greece; second tiers are used only to rate promoted teams and are not reported); internationals come from public match records; European matches (Champions League league phase, Copa Libertadores) and their scores come from the free football-data.org tier, which carries no odds, so the market column is always “—” for those two events. Market probabilities are implied from Pinnacle / average closing odds with the margin removed. In each event JSON, <code>dataThrough</code> is the data cutoff and <code>asOf</code> is the day the model was generated.</p>`;
   h += '</div></section>';
 
   h += `<section><h2>${esc(t.methodSections.split)}</h2><div class="prose">`;
@@ -994,8 +1135,8 @@ function methodPage() {
 
   h += `<section><h2>${esc(t.methodSections.limits)}</h2><div class="prose"><p>`;
   h += zh
-    ? '模型只用比分历史：没有伤停、阵容、转会、赛程密度、天气和裁判信息，也不读新闻。淘汰赛的点球按五五开；小组同分规则按公开规则近似（法甲为近似、意甲附加赛按五五开）；数据集比分含加时、不含点球。所以这里的概率适合比较球队之间的强弱和区间的量级，不适合当成投注建议。'
-    : 'The model only sees scorelines: no injuries, line-ups, transfers, fixture congestion, weather or referees, and it reads no news. Knockout penalties are a coin flip; group tie-breaks follow the published rules approximately (Ligue 1 approximated, Serie A play-offs 50/50); the dataset includes extra time but not penalty shootouts. So these probabilities are good for comparing teams and the size of a zone, not for betting.';
+    ? '模型只用比分历史：没有伤停、阵容、转会、赛程密度、天气和裁判信息，也不读新闻。淘汰赛的点球按五五开；小组同分规则按公开规则近似（法甲为近似、意甲附加赛按五五开）；数据集比分含加时、不含点球。欧战的附加赛/16 强配对与 8 强、4 强首回合主场按官方结构随机近似（真实是抽签），解放者杯的南美俱乐部没有国内联赛数据、只能靠本赛事比赛定级；这两项赛事也没有免费赔率可对照。所以这里的概率适合比较球队之间的强弱和区间的量级，不适合当成投注建议。'
+    : 'The model only sees scorelines: no injuries, line-ups, transfers, fixture congestion, weather or referees, and it reads no news. Knockout penalties are a coin flip; group tie-breaks follow the published rules approximately (Ligue 1 approximated, Serie A play-offs 50/50); the dataset includes extra time but not penalty shootouts. For the European events the play-off and round-of-16 pairings, and home order in the quarter- and semi-finals, follow the official bracket with random assignment (the real thing is a draw); the South American clubs have no domestic data and are rated from Libertadores matches only; and neither European event offers free odds to compare against. So these probabilities are good for comparing teams and the size of a zone, not for betting.';
   h += '</p></div></section>';
   return h;
 }

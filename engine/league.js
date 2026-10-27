@@ -21,15 +21,15 @@ function remainingFixtures(teams, played) {
 }
 
 function basicStats(teams, results) {
-  const st = new Map(teams.map(t => [t, { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, away_gf: 0 }]));
+  const st = new Map(teams.map(t => [t, { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, away_gf: 0, away_wins: 0 }]));
   for (const m of results) {
     const A = st.get(m.home), B = st.get(m.away);
     if (!A || !B) continue;
     A.p++; B.p++;
     A.gf += m.hg; A.ga += m.ag; B.gf += m.ag; B.ga += m.hg;
-    A.away_gf += m.ag;
+    B.away_gf += m.ag;
     if (m.hg > m.ag) { A.w++; B.l++; A.pts += 3; }
-    else if (m.hg < m.ag) { B.w++; A.l++; B.pts += 3; }
+    else if (m.hg < m.ag) { B.w++; A.l++; B.pts += 3; B.away_wins++; }
     else { A.d++; B.d++; A.pts++; B.pts++; }
   }
   for (const r of st.values()) r.gd = r.gf - r.ga;
@@ -44,7 +44,7 @@ function h2hStats(group, results) {
     if (!set.has(m.home) || !set.has(m.away)) continue;
     const A = st.get(m.home), B = st.get(m.away);
     A.gf += m.hg; B.gf += m.ag; A.gd += m.hg - m.ag; B.gd += m.ag - m.hg;
-    A.away_gf += m.ag;
+    B.away_gf += m.ag;
     if (m.hg > m.ag) A.pts += 3; else if (m.hg < m.ag) B.pts += 3; else { A.pts++; B.pts++; }
   }
   return st;

@@ -1,0 +1,256 @@
+{
+  "id": "ucl-2026-27",
+  "code": "CL",
+  "apiSeason": 2026,
+  "kind": "swiss",
+  "season": "2627",
+  "name": "UEFA Champions League",
+  "nameZh": "欧洲冠军联赛",
+  "start": "2026-09-08",
+  "end": "2027-05-31",
+  "teams": [
+    "AS Roma",
+    "Arsenal FC",
+    "Aston Villa FC",
+    "Borussia Dortmund",
+    "Club Atlético de Madrid",
+    "Club Brugge KV",
+    "Como 1907",
+    "FC Barcelona",
+    "FC Bayern München",
+    "FC Internazionale Milano",
+    "FC Porto",
+    "FK Bodø/Glimt",
+    "FK Shakhtar Donetsk",
+    "Fenerbahçe SK",
+    "Feyenoord Rotterdam",
+    "Galatasaray SK",
+    "LASK Linz",
+    "Lille OSC",
+    "Liverpool FC",
+    "Manchester City FC",
+    "Manchester United FC",
+    "PAE AEK",
+    "PSV",
+    "Paris Saint-Germain FC",
+    "RB Leipzig",
+    "Racing Club de Lens",
+    "Real Betis Balompié",
+    "Real Madrid CF",
+    "SK Slavia Praha",
+    "SSC Napoli",
+    "Sabah FK",
+    "Sporting Clube de Portugal",
+    "VfB Stuttgart",
+    "Viking FK",
+    "Villarreal CF",
+    "ŠK Slovan Bratislava"
+  ],
+  "tiebreak": [
+    "pts",
+    "gd",
+    "gf",
+    "away_gf",
+    "wins",
+    "away_wins"
+  ],
+  "bands": [
+    {
+      "key": "r16",
+      "from": 1,
+      "to": 8,
+      "label": "直接进 16 强",
+      "labelEn": "Direct to round of 16"
+    },
+    {
+      "key": "playoff",
+      "from": 9,
+      "to": 24,
+      "label": "附加赛",
+      "labelEn": "Knockout play-offs"
+    },
+    {
+      "key": "out",
+      "from": 25,
+      "to": 36,
+      "label": "出局",
+      "labelEn": "Eliminated"
+    }
+  ],
+  "playoffGroups": [
+    {
+      "seeded": [
+        9,
+        10
+      ],
+      "unseeded": [
+        23,
+        24
+      ]
+    },
+    {
+      "seeded": [
+        11,
+        12
+      ],
+      "unseeded": [
+        21,
+        22
+      ]
+    },
+    {
+      "seeded": [
+        13,
+        14
+      ],
+      "unseeded": [
+        19,
+        20
+      ]
+    },
+    {
+      "seeded": [
+        15,
+        16
+      ],
+      "unseeded": [
+        17,
+        18
+      ]
+    }
+  ],
+  "r16Groups": [
+    {
+      "seeds": [
+        1,
+        2
+      ],
+      "playoffGroup": 3
+    },
+    {
+      "seeds": [
+        3,
+        4
+      ],
+      "playoffGroup": 2
+    },
+    {
+      "seeds": [
+        5,
+        6
+      ],
+      "playoffGroup": 1
+    },
+    {
+      "seeds": [
+        7,
+        8
+      ],
+      "playoffGroup": 0
+    }
+  ],
+  "qfBracket": [
+    [
+      0,
+      7
+    ],
+    [
+      1,
+      6
+    ],
+    [
+      2,
+      4
+    ],
+    [
+      3,
+      5
+    ]
+  ],
+  "sfBracket": [
+    [
+      0,
+      2
+    ],
+    [
+      1,
+      3
+    ]
+  ],
+  "names": {
+    "AS Roma": "罗马",
+    "Arsenal FC": "阿森纳",
+    "Aston Villa FC": "阿斯顿维拉",
+    "Borussia Dortmund": "多特蒙德",
+    "Club Atlético de Madrid": "马德里竞技",
+    "Club Brugge KV": "布鲁日",
+    "Como 1907": "科莫",
+    "FC Barcelona": "巴塞罗那",
+    "FC Bayern München": "拜仁慕尼黑",
+    "FC Internazionale Milano": "国际米兰",
+    "FC Porto": "波尔图",
+    "FK Bodø/Glimt": "博多格林特",
+    "FK Shakhtar Donetsk": "顿涅茨克矿工",
+    "Fenerbahçe SK": "费内巴切",
+    "Feyenoord Rotterdam": "费耶诺德",
+    "Galatasaray SK": "加拉塔萨雷",
+    "LASK Linz": "LASK 林茨",
+    "Lille OSC": "里尔",
+    "Liverpool FC": "利物浦",
+    "Manchester City FC": "曼城",
+    "Manchester United FC": "曼联",
+    "PAE AEK": "AEK 雅典",
+    "PSV": "埃因霍温",
+    "Paris Saint-Germain FC": "巴黎圣日耳曼",
+    "RB Leipzig": "RB 莱比锡",
+    "Racing Club de Lens": "朗斯",
+    "Real Betis Balompié": "皇家贝蒂斯",
+    "Real Madrid CF": "皇家马德里",
+    "SK Slavia Praha": "布拉格斯拉维亚",
+    "SSC Napoli": "那不勒斯",
+    "Sabah FK": "萨巴巴",
+    "Sporting Clube de Portugal": "葡萄牙体育",
+    "VfB Stuttgart": "斯图加特",
+    "Viking FK": "维京",
+    "Villarreal CF": "比利亚雷亚尔",
+    "ŠK Slovan Bratislava": "布拉迪斯拉发斯洛万"
+  },
+  "modelNames": {
+    "AS Roma": "Roma",
+    "Arsenal FC": "Arsenal",
+    "Aston Villa FC": "Aston Villa",
+    "Borussia Dortmund": "Dortmund",
+    "Club Atlético de Madrid": "Ath Madrid",
+    "Club Brugge KV": "Club Brugge",
+    "Como 1907": "Como",
+    "FC Barcelona": "Barcelona",
+    "FC Bayern München": "Bayern Munich",
+    "FC Internazionale Milano": "Inter",
+    "FC Porto": "Porto",
+    "Fenerbahçe SK": "Fenerbahce",
+    "Feyenoord Rotterdam": "Feyenoord",
+    "Galatasaray SK": "Galatasaray",
+    "Lille OSC": "Lille",
+    "Liverpool FC": "Liverpool",
+    "Manchester City FC": "Man City",
+    "Manchester United FC": "Man United",
+    "PAE AEK": "AEK",
+    "PSV": "PSV Eindhoven",
+    "Paris Saint-Germain FC": "Paris SG",
+    "RB Leipzig": "RB Leipzig",
+    "Racing Club de Lens": "Lens",
+    "Real Betis Balompié": "Betis",
+    "Real Madrid CF": "Real Madrid",
+    "SSC Napoli": "Napoli",
+    "Sporting Clube de Portugal": "Sp Lisbon",
+    "VfB Stuttgart": "Stuttgart",
+    "Villarreal CF": "Villarreal"
+  },
+  "sources": [
+    "赛程与比分：football-data.org v4 /competitions/CL/matches?season=2026（2026-10-28 抓取，联赛阶段 144 场，2026-09-08 ~ 2027-01-27）",
+    "赛制（36 队单循环 8 轮、1–8 直接进 16 强、9–24 打附加赛、25–36 出局）：UEFA Champions League Regulations 2024/25 Art. 14；UEFA.com「New format for Champions League post-2024」",
+    "联赛阶段同分规则（净胜球、进球、客场进球、胜场、客场胜场、对手集体积分…）：2024–25 UEFA Champions League league phase 条目（据 UEFA Regulations Art. 17）；对手集体积分/纪律分/俱乐部系数不建模",
+    "淘汰赛固定签位（附加赛 9/10 vs 23/24、11/12 vs 21/22、13/14 vs 19/20、15/16 vs 17/18；16 强 1/2 对附加赛 IV 胜者…；8 强、4 强签位固定）：2024–25 UEFA Champions League knockout phase「Predetermined pairings」（据 UEFA Regulations Art. 15）"
+  ],
+  "notes": "2026-27 赛季欧冠联赛阶段（36 队、每队 8 场、共 144 场）。免费数据源只有比赛与比分、没有赔率，页面市场列一律「—」。附加赛与 16 强在同组区间内随机分配（官方是抽签，这里按官方配对结构近似；种子队第二回合主场）。8 强、4 强的首回合主场按名单顺序近似（官方抽签决定）。决赛单场中立场，平局按点球五五开（不单独建模加时）。淘汰赛日期以 UEFA 公布为准；2026-10-28 时 API 只给到联赛阶段（2027-01-27），所以 end 暂取 2027-05-31。联赛阶段同分先按 pts→gd→gf→away_gf→wins→away_wins，之后（对手集体积分、纪律分、俱乐部系数）按随机抽签近似。"
+}

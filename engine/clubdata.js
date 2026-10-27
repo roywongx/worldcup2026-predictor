@@ -10,6 +10,10 @@ const BASE = 'https://www.football-data.co.uk/mmz4281';
 const DIVISIONS = {
   E0: 'Premier League', E1: 'Championship', SP1: 'La Liga', SP2: 'Segunda División',
   D1: 'Bundesliga', D2: '2. Bundesliga', I1: 'Serie A', I2: 'Serie B', F1: 'Ligue 1', F2: 'Ligue 2',
+  // 2026-10 追加（football-data.co.uk 同一目录下确认存在）：葡超、荷甲、比甲、苏超两级、土超、希超。
+  // 它们进入同一个 Dixon-Coles 拟合（给欧战球队定级），但没有市场赔率报告的独立检验。
+  P1: 'Primeira Liga', N1: 'Eredivisie', B1: 'Belgian Pro League',
+  SC0: 'Scottish Premiership', SC1: 'Scottish Championship', T1: 'Süper Lig', G1: 'Super League Greece',
 };
 
 /** 赛季代码：2005 → '0506' */
@@ -82,3 +86,4 @@ function seasonTeams(matches, division, season) {
 }
 
 module.exports = { CLUB_DIR, DIVISIONS, seasonCode, currentSeasonStart, fetchClubs, loadClubMatches, seasonTeams, implied, parseDate };
+
