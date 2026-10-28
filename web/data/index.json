@@ -6,7 +6,7 @@
   "start": "2027-01-07",
   "end": "2027-02-05",
   "kind": "tournament",
-  "generatedAt": "2026-10-27T18:36:21.660Z"
+  "generatedAt": "2026-10-27T22:30:04.888Z"
  },
  {
   "id": "ucl-2026-27",
@@ -15,7 +15,7 @@
   "start": "2026-09-08",
   "end": "2027-05-31",
   "kind": "swiss",
-  "generatedAt": "2026-10-27T18:36:51.364Z"
+  "generatedAt": "2026-10-27T22:30:36.622Z"
  },
  {
   "id": "serie-a-2026-27",
@@ -24,7 +24,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:46.779Z"
+  "generatedAt": "2026-10-27T22:30:29.098Z"
  },
  {
   "id": "primeira-liga-2026-27",
@@ -33,7 +33,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:45.270Z"
+  "generatedAt": "2026-10-27T22:30:26.774Z"
  },
  {
   "id": "premier-league-2026-27",
@@ -42,7 +42,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:44.050Z"
+  "generatedAt": "2026-10-27T22:30:25.122Z"
  },
  {
   "id": "ligue-1-2026-27",
@@ -51,7 +51,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:42.866Z"
+  "generatedAt": "2026-10-27T22:30:23.898Z"
  },
  {
   "id": "la-liga-2026-27",
@@ -60,7 +60,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:41.824Z"
+  "generatedAt": "2026-10-27T22:30:22.823Z"
  },
  {
   "id": "eredivisie-2026-27",
@@ -69,7 +69,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:40.379Z"
+  "generatedAt": "2026-10-27T22:30:21.170Z"
  },
  {
   "id": "bundesliga-2026-27",
@@ -78,7 +78,7 @@
   "start": "2026-08-01",
   "end": "2027-05-31",
   "kind": "league",
-  "generatedAt": "2026-10-27T18:36:39.355Z"
+  "generatedAt": "2026-10-27T22:30:19.782Z"
  },
  {
   "id": "copa-libertadores-2026",
@@ -87,6 +87,6 @@
   "start": "2026-02-04",
   "end": "2026-11-28",
   "kind": "groups2leg",
-  "generatedAt": "2026-10-27T18:36:49.103Z"
+  "generatedAt": "2026-10-27T22:30:32.249Z"
  }
 ]
