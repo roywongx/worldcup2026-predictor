@@ -177,3 +177,15 @@ test('百分比格式化：四舍五入、100%、极小值与 0', () => {
   assert.equal(C.fmtPp(8.234), '8.2pp');
   assert.equal(C.fmtPp(null), '0.0pp');
 });
+
+// 回测结论（训练季 1314–1617 与测试季 1718–2526 都是市场 RPS 更低）决定：
+// 模型偏离市场是风险，不是机会。这条测试钉住文案语义，防止被改回「发现分歧=找机会」。
+test('模型偏离市场的文案是风险提示，不是机会提示', () => {
+  const copies = HTML.match(/gapRisk:\s*'([^']*)'/g) || [];
+  assert.equal(copies.length, 2, 'zh/en 各一条 gapRisk');
+  assert.match(copies[0], /风险/);
+  assert.match(copies[1], /risk/i);
+  for (const m of copies) assert.doesNotMatch(m, /机会/, '不得把偏离描述成机会');
+  // 表格里标黄的判定阈值仍是 8pp
+  assert.match(HTML, /gap >= 8/);
+});
