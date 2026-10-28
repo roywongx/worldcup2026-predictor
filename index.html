@@ -169,11 +169,12 @@ const T = {
     dataThrough: '数据截至', modelAsOf: '模型截至',
     startsIn: n => `距开赛 ${n} 天`,
     bandAria: list => `夺冠概率带：${list}`,
-    weekNote: '所有联赛 upcoming 里从今天起的 7 天赛程。分歧 = 三个结果上模型与市场差值的最大值。',
+    weekNote: '所有联赛 upcoming 里从今天起的 7 天赛程。分歧 = 三个结果上模型与市场差值的最大值；标黄表示模型明显偏离市场——历史回测里市场更准，所以这是风险提示，不是机会提示。',
     weekFallback: d => `未来 7 天没有已排赛程（数据只到 ${d}），下面显示最近 10 场。`,
-    leagueFilter: '联赛', allLeagues: '全部联赛', onlyGap: '只看分歧 ≥8pp',
+    leagueFilter: '联赛', allLeagues: '全部联赛', onlyGap: '只看偏离 ≥8pp',
     date: '日期', league: '联赛', fixture: '对阵',
-    modelWDL: '模型 胜/平/负', marketWDL: '市场 胜/平/负', gap: '分歧',
+    modelWDL: '模型 胜/平/负', marketWDL: '市场 胜/平/负', gap: '偏离',
+    gapRisk: '模型在此偏离市场；训练季与测试季上市场 RPS 都更低，偏离按风险看。',
     noFixtures: '没有可显示的赛程。',
     noMarket: '无市场赔率',
     archiveLink: n => `归档：已结束的赛事与历史页面（${n}）`,
@@ -254,11 +255,12 @@ const T = {
     dataThrough: 'Data through', modelAsOf: 'Model as of',
     startsIn: n => `starts in ${n} day${n === 1 ? '' : 's'}`,
     bandAria: list => `Title probability band: ${list}`,
-    weekNote: 'Fixtures in the next 7 days across every league. Gap = the largest model-versus-market difference across the three outcomes.',
+    weekNote: 'Fixtures in the next 7 days across every league. Gap = the largest model-versus-market difference across the three outcomes. A row flagged amber means the model departs sharply from the market — in backtests the market scores better, so treat this as a risk flag, not an opportunity.',
     weekFallback: d => `No fixtures scheduled in the next 7 days (data only runs to ${d}), so the 10 most recent matches are shown.`,
-    leagueFilter: 'League', allLeagues: 'All leagues', onlyGap: 'Only gaps ≥8pp',
+    leagueFilter: 'League', allLeagues: 'All leagues', onlyGap: 'Only deviations ≥8pp',
     date: 'Date', league: 'League', fixture: 'Fixture',
     modelWDL: 'Model W/D/L', marketWDL: 'Market W/D/L', gap: 'Gap',
+    gapRisk: 'The model departs from the market here; the market scores a lower RPS on both the tuning and test seasons, so read the gap as risk.',
     noFixtures: 'No fixtures to show.',
     noMarket: 'no market odds',
     archiveLink: n => `Archive: finished events and past pages (${n})`,
@@ -592,15 +594,19 @@ function weekTable(rows, note, marketLabel) {
   let h = `<div class="scroll"><table class="t">${cap ? `<caption class="small muted" style="text-align:left;padding:0 0 8px">${esc(cap)}</caption>` : ''}`
     + `<thead><tr><th scope="col" class="l">${esc(t.date)}</th><th scope="col" class="l">${esc(t.league)}</th><th scope="col" class="l">${esc(t.fixture)}</th>`
     + `<th scope="col">${esc(t.modelWDL)}</th><th scope="col">${esc(t.marketWDL)}</th><th scope="col">${esc(t.gap)}</th></tr></thead><tbody>`;
+  let flagged = false;
   for (const r of rows) {
     const gap = C.disagreement(r.model, r.market);
     const flag = gap != null && gap >= 8;
+    if (flag) flagged = true;
     h += `<tr${flag ? ' class="flag"' : ''}><td class="l">${esc(fmtDate(r.date))}</td><td class="l">${esc(r.leagueName)}</td>`
       + `<td class="l">${esc(teamName(r.data, r.home))} – ${esc(teamName(r.data, r.away))}</td>`
       + `<td>${wdlCell(r.model)}</td><td>${r.market ? wdlCell(r.market) : `<span class="muted">${esc(mkLabel)}</span>`}</td>`
       + `<td>${gap == null ? '—' : esc(C.fmtPp(gap))}</td></tr>`;
   }
-  return h + '</tbody></table></div>';
+  h += '</tbody></table></div>';
+  if (flagged) h += `<p class="muted small" style="margin:8px 0 0">${esc(t.gapRisk)}</p>`;
+  return h;
 }
 
 function collectFixtures() {

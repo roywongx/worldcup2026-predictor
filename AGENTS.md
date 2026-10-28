@@ -60,7 +60,7 @@
 
 代码地图：`data.js` 读数据、按 >150 天断档切届 · `elo.js` World Football Elo · `dc.js` Dixon-Coles 拟合与比分矩阵 · `metrics.js` RPS/log-loss/校准 · `backtest.js` 滚动回测 · `tune.js` 网格调参 · `simulate.js` 赛制蒙特卡洛 · `cli.js` 命令行（含 `writeIndex`、`new-season`、`refresh`）· `season.js` 新赛季推导（id/队数/区间/notes）与刷新判定 · `scripts/refresh.sh` 每日刷新入口 · `events/*.json` 赛事配置 · `clubdata.js` 读俱乐部 CSV 与赔率 · `league.js` 双循环赛程、各联赛同分规则排名、赛季蒙特卡洛 · `clubbacktest.js` 俱乐部回测/调参 · `seasonbacktest.js` 赛季级检验（名次区间 Brier）与 σ 调参 · `clubmodel.json` 俱乐部参数与测试集指标 · `leagues/*.json` 联赛配置 · `eurodata.js` 欧战数据（football-data.org v4：缓存/限流/解析，点球不计入比分）· `euro.js` 欧战赛制（联赛阶段排名、两回合淘汰、小组+两回合、签位近似）· `events/euro/*.json` 欧战配置。
 
-俱乐部已知局限：同分规则按各联赛公开规则近似（法甲为近似、意甲附加赛按五五开）；队名用 football-data.co.uk 写法；市场概率来自 Pinnacle/Avg 收盘赔率去抽水；次级联赛只用来给升班马定级，不参与报告。
+俱乐部已知局限：同分规则按各联赛公开规则近似（法甲为近似、意甲附加赛按五五开）；队名用 football-data.co.uk 写法；市场概率来自 Pinnacle/Avg 收盘赔率去抽水；**次级联赛（E1/SP2/D2/I2/F2 等）的比分也进同一个 Dixon-Coles 拟合池**——升班马靠这些比赛积累样本，代码里没有单独的「升班马先验」；只有五大联赛顶级参与回测评分，次级联赛本身不报指标。
 
 欧战已知局限：免费档只有比分（没有赔率）；附加赛/16 强配对与 8 强、4 强首回合主场按官方固定结构随机近似（真实是抽签）；总比分平按点球五五开（不单独建模加时）；南美俱乐部没有国内联赛数据，只靠解放者杯比赛定级；球队强弱来自同一个单池拟合（见 README 的「单池结论」）。
 
